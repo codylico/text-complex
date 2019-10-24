@@ -19,6 +19,9 @@ is C 89. In addition:
   than necessary, and should not be larger (in lines of code)
   than needed.
 
+- This library should support at least one form of emoji font encoding
+  (likely COLR/CPAL).
+
 ## Build
 
 This project will use CMake for building. Developers can obtain CMake from
