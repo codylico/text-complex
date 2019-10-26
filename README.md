@@ -46,9 +46,6 @@ make
 For IDE projects, the IDE must be installed and ready to use. Open the
 project within the IDE.
 
-Since this project's source only holds two files, developers could also
-use these files independently from CMake.
-
 ## License
 This project uses the Unlicense, which makes the source effectively
 public domain. Go to [http://unlicense.org/](http://unlicense.org/)
