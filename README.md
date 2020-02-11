@@ -22,6 +22,13 @@ is C 89. In addition:
 - This library should support at least one form of emoji font encoding
   (likely COLR/CPAL).
 
+- The `text-complex-plus` library should support using font ensembles
+  within single text runs (for example, to handle missing glyphs from
+  single fonts).
+
+- The library should allow for Graphite pass configuration (i.e. to
+  add or remove passes from the Graphite processing pipeline).
+
 ## Build
 
 This project will use CMake for building. Developers can obtain CMake from
