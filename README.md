@@ -29,6 +29,8 @@ is C 89. In addition:
 - The library should allow for Graphite pass configuration (i.e. to
   add or remove passes from the Graphite processing pipeline).
 
+- This library should provide a TrueType instruction runner.
+
 ## Build
 
 This project will use CMake for building. Developers can obtain CMake from
