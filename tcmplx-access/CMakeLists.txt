@@ -3,7 +3,9 @@ project(text-complex-access C)
 
 
 set(text_complex_access_FILES
-  api.c     api.h
+  api.c         api.h
+  util.c        util.h
+  offtable.c    offtable.h
   )
 
 add_library(tcmplx_access ${text_complex_access_FILES})

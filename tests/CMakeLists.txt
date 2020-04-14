@@ -8,4 +8,14 @@ add_library(munit STATIC munit/munit.c munit/munit.h)
   add_executable(tcmplx_access_test_api tca_api.c)
   target_link_libraries(tcmplx_access_test_api tcmplx_access)
 #END   API test
+
+#BEGIN Util test
+  add_executable(tcmplx_access_test_util tca_util.c)
+  target_link_libraries(tcmplx_access_test_util munit tcmplx_access)
+#END   Util test
+
+#BEGIN OffTable test
+  add_executable(tcmplx_access_test_offtable tca_offtable.c)
+  target_link_libraries(tcmplx_access_test_offtable munit tcmplx_access)
+#END   OffTable test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
