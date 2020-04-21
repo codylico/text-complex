@@ -40,6 +40,10 @@ char const* tcmplxA_api_version(void);
 
 /* BEGIN error codes */
 enum tcmplxA_error {
+  /** Invalid parameter given */
+  tcmplxA_ErrParam = -4,
+  /** File sanity check failed */
+  tcmplxA_ErrSanitize = -3,
   /** Memory allocation error */
   tcmplxA_ErrMemory = -2,
   /** Initialization error */
