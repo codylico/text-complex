@@ -10,3 +10,7 @@ set(text_complex_access_FILES
 
 add_library(tcmplx_access ${text_complex_access_FILES})
 target_link_libraries(tcmplx_access mmaptwo)
+if (WIN32 AND BUILD_SHARED_LIBS)
+  target_compile_definitions(tcmplx_access
+    PUBLIC "TCMPLX_A_WIN32_DLL")
+endif(WIN32 AND BUILD_SHARED_LIBS)
