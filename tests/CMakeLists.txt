@@ -3,6 +3,8 @@ option(TCMPLX_ACCESS_BUILD_TESTS "build some tests" ON)
 
 if (TCMPLX_ACCESS_BUILD_TESTS)
 add_library(munit STATIC munit/munit.c munit/munit.h)
+add_library(tcmplx_access_testfont STATIC testfont.c testfont.h)
+target_link_libraries(tcmplx_access_testfont mmaptwo)
 
 #BEGIN API test
   add_executable(tcmplx_access_test_api tca_api.c)
