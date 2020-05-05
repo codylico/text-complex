@@ -16,6 +16,26 @@ struct mmaptwo_i;
 
 struct tcmplxA_seq;
 
+/* BEGIN sequential whence */
+/**
+ * @brief Sequential seek starting position.
+ */
+enum tcmplxA_seq_whence {
+  /**
+   * @brief Count from zero.
+   */
+  tcmplxA_SeqSet = 0,
+  /**
+   * @brief Count from current position.
+   */
+  tcmplxA_SeqCur = 1,
+  /**
+   * @brief Count from the end.
+   */
+  tcmplxA_SeqEnd = 2
+};
+/* END   sequential whence */
+
 /* BEGIN sequential */
 /**
  * @brief Construct a new sequential.
@@ -49,6 +69,16 @@ size_t tcmplxA_seq_get_pos(struct tcmplxA_seq const* x);
  */
 TCMPLX_A_API
 size_t tcmplxA_seq_set_pos(struct tcmplxA_seq* x, size_t i);
+
+/**
+ * @brief Configure the read position.
+ * @param i a read position
+ * @param whence a @link tcmplxA_seq_whence @endlink value
+ * @return the new position on success, -1 if the position is too
+ *   large for a `long int`, other negative value on error
+ */
+TCMPLX_A_API
+long int tcmplxA_seq_seek(struct tcmplxA_seq* x, long int i, int whence);
 
 /**
  * @brief Read a single byte from the sequential.

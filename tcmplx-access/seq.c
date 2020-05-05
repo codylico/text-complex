@@ -163,4 +163,87 @@ int tcmplxA_seq_get_byte(struct tcmplxA_seq* x) {
     return out;
   } else /* end of stream, so */return -1;
 }
+
+long int tcmplxA_seq_seek(struct tcmplxA_seq* x, long int i, int whence) {
+  long int l_out;
+  switch (whence) {
+  case tcmplxA_SeqSet:
+    {
+      if (i < 0)
+        l_out = -2L;
+      else {
+        size_t const out = tcmplxA_seq_set_pos(x,(size_t)i);
+        if (out == ~(size_t)0u) {
+          l_out = -2L;
+        } else if (out > (size_t)LONG_MAX) {
+          l_out = -1L;
+        } else l_out = (long int)out;
+      }
+    }break;
+  case tcmplxA_SeqCur:
+  case tcmplxA_SeqEnd:
+    {
+      static unsigned long int const nonzero =
+        (unsigned long int)(~(size_t)0u);
+      size_t here = (whence == tcmplxA_SeqCur) ? x->pos : (
+          (x->fh != NULL) ? mmaptwo_length(x->fh) : 0u
+        );
+      if (i == 0) {
+        /* do nothing */
+      } else if (i < 0) {
+        long int i_prime[2];
+        /* break apart any LONG_MIN values */{
+          static long int const branch = (LONG_MIN/2);
+          if (i <= branch) {
+            i_prime[0] = i-branch;
+            i_prime[1] = branch;
+          } else {
+            i_prime[0] = 0;
+            i_prime[1] = i;
+          }
+        }
+        /* */{
+          int j;
+          for (j = 0; j < 2; ++j) {
+            if (((unsigned long int)-i_prime[j]) > nonzero) {
+              /* negative overflow */
+              break;
+            } else {
+              size_t const n_prime = (size_t)-i_prime[j];
+              if (here >= n_prime)
+                here -= n_prime;
+              else break;
+            }
+          }
+          if (j < 2) {
+            l_out = -2L;
+            break;
+          }
+        }
+      } else if (((unsigned long int)i) > nonzero) {
+        /* positive overflow */
+        l_out = -2L;
+        break;
+      } else {
+        size_t n_prime = (size_t)i;
+        if (n_prime > (~(size_t)0u) - here) {
+          l_out = -2L;
+          break;
+        } else here += n_prime;
+      }
+      /* perform seek */{
+        size_t const out = tcmplxA_seq_set_pos(x,(size_t)here);
+        if (out == ~(size_t)0u) {
+          l_out = -2L;
+        } else if (out > (size_t)LONG_MAX) {
+          l_out = -1L;
+        } else l_out = (long int)out;
+      }
+    }break;
+  default:
+    l_out = -2L;
+    break;
+  }
+  return l_out;
+}
 /* END   sequential / public */
