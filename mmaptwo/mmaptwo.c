@@ -7,6 +7,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "mmaptwo.h"
 #include <stdlib.h>
+#include <errno.h>
 
 #ifndef MMAPTWO_MAX_CACHE
 #  define MMAPTWO_MAX_CACHE 1048576
@@ -60,7 +61,6 @@ static struct mmaptwo_mode_tag mmaptwo_mode_parse(char const* mmode);
 #  include <fcntl.h>
 #  include <sys/mman.h>
 #  include <sys/stat.h>
-#  include <errno.h>
 
 /**
  * \brief File handler structure for POSIX `mmaptwo` implementation.
@@ -144,7 +144,6 @@ static struct mmaptwo_i* mmaptwo_open_rest
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #  include <limits.h>
-#  include <errno.h>
 #  if (defined EILSEQ)
 #    define MMAPTWO_EILSEQ EILSEQ
 #  else
@@ -455,7 +454,7 @@ struct mmaptwo_i* mmaptwo_open_rest
   if (sz == 0)/* then fail */ {
     close(fd);
     free(out);
-    errno = EDOM;
+    errno = ERANGE;
     return NULL;
   }
   /* initialize the interface */{
@@ -768,12 +767,18 @@ struct mmaptwo_i* mmaptwo_open_rest
       /* reject non-ending zero parameter */
       CloseHandle(fd);
       free(out);
+      errno = ERANGE;
       return NULL;
     } else sz = xsz-off;
   } else if (sz == 0) {
     /* reject non-ending zero parameter */
     CloseHandle(fd);
     free(out);
+#if (defined EINVAL)
+    errno = EINVAL;
+#else
+    errno = EDOM;
+#endif /*EINVAL*/
     return NULL;
   }
   /* fix to allocation granularity */{
@@ -979,6 +984,17 @@ void const* mmaptwo_mmtp_getconst(struct mmaptwo_page_i const* p) {
 }
 #endif /*MMAPTWO_OS*/
 /* END   static functions */
+
+/* BEGIN error handling */
+int mmaptwo_get_errno(void) {
+  return errno;
+}
+
+void mmaptwo_set_errno(int x) {
+  errno = x;
+  return;
+}
+/* END   error handling */
 
 /* BEGIN configuration functions */
 int mmaptwo_get_os(void) {
