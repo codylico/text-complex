@@ -40,6 +40,8 @@ char const* tcmplxA_api_version(void);
 
 /* BEGIN error codes */
 enum tcmplxA_api_error {
+  /** Code for unknown error */
+  tcmplxA_ErrUnknown = -5,
   /** Invalid parameter given */
   tcmplxA_ErrParam = -4,
   /** File sanity check failed */
@@ -51,6 +53,14 @@ enum tcmplxA_api_error {
   /** Success code */
   tcmplxA_Success = 0
 };
+
+/**
+ * @brief Convert an error code to a string.
+ * @param v the code to convert
+ * @return a string describing the code
+ */
+TCMPLX_A_API
+char const* tcmplxA_api_error_toa(int v);
 /* END   error codes */
 
 #ifdef __cplusplus
