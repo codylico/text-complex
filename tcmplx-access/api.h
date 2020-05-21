@@ -39,7 +39,7 @@ char const* tcmplxA_api_version(void);
 /* END   configurations */
 
 /* BEGIN error codes */
-enum tcmplxA_error {
+enum tcmplxA_api_error {
   /** Invalid parameter given */
   tcmplxA_ErrParam = -4,
   /** File sanity check failed */
