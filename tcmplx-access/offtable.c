@@ -89,8 +89,10 @@ struct tcmplxA_offtable* tcmplxA_offtable_new(size_t n) {
 }
 
 void tcmplxA_offtable_destroy(struct tcmplxA_offtable* x) {
-  tcmplxA_offtable_close(x);
-  tcmplxA_util_free(x);
+  if (x != NULL) {
+    tcmplxA_offtable_close(x);
+    tcmplxA_util_free(x);
+  }
   return;
 }
 

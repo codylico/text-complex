@@ -51,6 +51,7 @@ MunitResult test_offtable_cycle
   ptr[0] = tcmplxA_offtable_new(12);
   munit_assert_not_null(ptr[0]);
   tcmplxA_offtable_destroy(ptr[0]);
+  tcmplxA_offtable_destroy(NULL);
   return MUNIT_OK;
 }
 
