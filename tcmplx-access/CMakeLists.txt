@@ -6,6 +6,7 @@ set(text_complex_access_FILES
   api.c         api.h
   util.c        util.h
   offtable.c    offtable.h
+  woff2.c       woff2.h
   seq.c         seq.h
   )
 
