@@ -6,6 +6,21 @@
 #include <limits.h>
 #include <stdlib.h>
 #include "../mmaptwo/mmaptwo.h"
+#include "munit/munit.h"
+#include <stdio.h>
+
+static
+bool tcmplxAtest_arg_fp_parse
+  ( const MunitSuite* suite, void* user_data, int* arg, int argc,
+    char* const argv[]);
+static
+void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data);
+
+MunitArgument const tcmplxAtest_arglist[] = {
+  { "font-path", tcmplxAtest_arg_fp_parse, tcmplxAtest_arg_fp_help },
+  { NULL, NULL, NULL }
+};
+
 
 struct tcmplxAtest_mmtp {
   struct mmaptwo_page_i base;
@@ -171,4 +186,66 @@ struct mmaptwo_i* tcmplxAtest_gen_maptwo
     out->base.mmt_offset = tcmplxAtest_mmt_offset;
   }
   return (struct mmaptwo_i*)out;
+}
+
+int tcmplxAtest_strdup(char** out, char const* arg) {
+  if (arg != NULL) {
+    size_t const len = strlen(arg);
+    char* const p = calloc(len+1u,sizeof(char));
+    if (p == NULL) {
+      return -1;
+    } else {
+      memcpy(p, arg, len);
+      *(p+len) = '\0';
+      *out = p;
+      return 0;
+    }
+  } else {
+    *out = NULL;
+    return 0;
+  }
+}
+
+int tcmplxAtest_arg_init(struct tcmplxAtest_arg* tfa) {
+  tfa->font_path = NULL;
+  return 0;
+}
+
+void tcmplxAtest_arg_close(struct tcmplxAtest_arg* tfa) {
+  free(tfa->font_path);
+  tfa->font_path = NULL;
+  return;
+}
+
+struct MunitArgument_ const* tcmplxAtest_get_args(void) {
+  return tcmplxAtest_arglist;
+}
+
+bool tcmplxAtest_arg_fp_parse
+  ( const MunitSuite* suite, void* user_data, int* arg, int argc,
+    char* const argv[])
+{
+  struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
+  ++(*arg);
+  if ((*arg) < argc) {
+    char* dup;
+    int const res = tcmplxAtest_strdup(&dup, argv[*arg]);
+    if (res != 0) {
+      fprintf(stdout, "File name broke --font-path.\n");
+      return false;
+    } else {
+      free(tfa->font_path);
+      tfa->font_path = dup;
+      return true;
+    }
+  } else {
+    fprintf(stdout, "Missing file name for --font-path.\n");
+    return false;
+  }
+}
+
+void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data) {
+  fprintf(stdout, " --font-path\n"
+    "           Path of font file against which to test.\n");
+  return;
 }
