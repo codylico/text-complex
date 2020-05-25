@@ -261,7 +261,7 @@ int tcmplxA_woff2_initparse
       unsigned short table_i;
       tcmplxA_uint32 next_offset = 0u;
       for (table_i = 0u; table_i < table_count; ++table_i) {
-        /* TODO put into an offset table */
+        /* put into an offset table */
         unsigned char tag_text[4];
         unsigned int enc_path;
         tcmplxA_uint32 len, use_len;
