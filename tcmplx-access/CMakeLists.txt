@@ -8,6 +8,7 @@ set(text_complex_access_FILES
   offtable.c    offtable.h
   woff2.c       woff2.h
   seq.c         seq.h
+  fixlist.c     fixlist.h
   )
 
 add_library(tcmplx_access ${text_complex_access_FILES})
