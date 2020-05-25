@@ -46,36 +46,36 @@ void tcmplxA_fixlist_destroy(struct tcmplxA_fixlist* x);
 
 
 /**
- * @brief Query the size of the table.
- * @return the number of lines in this table
+ * @brief Query the size of the list.
+ * @return the number of lines in this list
  */
 TCMPLX_A_API
 size_t tcmplxA_fixlist_size(struct tcmplxA_fixlist const* x);
 
 /**
- * @brief Write to an offset table.
+ * @brief Write to a prefix list.
  * @param x the table to write
  * @param i an array index
- * @return a pointer to an offset line on success, NULL otherwise
+ * @return a pointer to a code line on success, NULL otherwise
  */
 TCMPLX_A_API
 struct tcmplxA_fixline* tcmplxA_fixlist_at
   (struct tcmplxA_fixlist* x, size_t i);
 
 /**
- * @brief Read from an offset table.
- * @param x the table to read
+ * @brief Read from a prefix list.
+ * @param x the list to read
  * @param i an array index
- * @return a pointer to an offset line on success, NULL otherwise
+ * @return a pointer to a code line on success, NULL otherwise
  */
 TCMPLX_A_API
 struct tcmplxA_fixline const* tcmplxA_fixlist_at_c
   (struct tcmplxA_fixlist const* x, size_t i);
 
 /**
- * @brief Copy an offset table.
- * @param dst destination table instance
- * @param src source table instance
+ * @brief Copy a prefix list.
+ * @param dst destination list instance
+ * @param src source list instance
  * @return tcmplxA_Success on success, nonzero otherwise
  */
 TCMPLX_A_API
