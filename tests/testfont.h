@@ -35,6 +35,18 @@ struct tcmplxAtest_arg {
   char* font_path;
 };
 
+/* Parses stuff like (len) '*' (repeat_count) [',' ...]
+ * ex:
+ *   "7*12,9*100,8,1,0*10,12*2"
+ */
+struct tcmplxAtest_fixlist_lex {
+  char const* p;
+  size_t total;
+  size_t left;
+  int prefix_len;
+};
+
+
 /**
  * @brief Generate some data.
  * @param n @link tcmplxAtest_testfont @endlink
@@ -86,5 +98,22 @@ void tcmplxAtest_arg_close(struct tcmplxAtest_arg* tfa);
  * @return the argument list
  */
 struct MunitArgument_ const* tcmplxAtest_get_args(void);
+
+/**
+ * @brief Start a code string parsing.
+ * @param x parser struct
+ * @param s the string to parse
+ * @return zero on success, other nonzero on parse error
+ */
+int tcmplxAtest_fixlist_lex_start
+  (struct tcmplxAtest_fixlist_lex *x, char const* s);
+
+/**
+ * @brief Acquire the next code length from a string.
+ * @param x parser struct
+ * @return a length, or -1 at end of parser
+ */
+int tcmplxAtest_fixlist_lex_next(struct tcmplxAtest_fixlist_lex *x);
+
 
 #endif /*hg_TCMPLXA_TESTFONT_H_*/

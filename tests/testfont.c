@@ -249,3 +249,73 @@ void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data) {
     "           Path of font file against which to test.\n");
   return;
 }
+
+int tcmplxAtest_fixlist_lex_start
+  (struct tcmplxAtest_fixlist_lex *x, char const* s)
+{
+  x->p = NULL;
+  x->total = 0u;
+  x->left = 0u;
+  x->prefix_len = -2;
+  if (s == NULL) return -1;
+  else {
+    char const* q;
+    for (q = s; *q != '\0'; ++q) {
+      char* ep;
+      size_t r_count = 1u;
+      unsigned long int n = strtoul(q, &ep, 0);
+      if ((*ep) != '\0' && (*ep) != ',' && (*ep) != '*') {
+        return -1;
+      } else if (n > (unsigned long)(INT_MAX)) {
+        /* overflow, so */return -2;
+      } else {
+        /* this is the prefix_len */
+      }
+      q = ep;
+      if ((*q) == '*') {
+        unsigned long int new_r;
+        ++q;
+        new_r = strtoul(q, &ep, 0);
+        if (((*ep) != '\0' && (*ep) != ',')) {
+          return -1;
+        } else if (new_r > ((~(size_t)0u) - x->total)) {
+          /* overflow, so */return -2;
+        } else if (new_r > 0u) {
+          /* this is the repeat_count */
+          r_count = (size_t)new_r;
+        }
+        q = ep;
+      }
+      x->total += r_count;
+      if (*q == '\0') break;
+    }
+  }
+  x->p = s;
+  return 0;
+}
+int tcmplxAtest_fixlist_lex_next(struct tcmplxAtest_fixlist_lex *x) {
+  if (x->prefix_len == -2 || x->left == 0u) {
+    /* start */
+    char const* q = x->p;
+    char* ep;
+    size_t r_count = 1u;
+    if (q == NULL || (*q) == '\0')
+      return -1;
+    x->prefix_len = (int)strtoul(q, &ep, 0);
+    q = ep;
+    if ((*q) == '*') {
+      unsigned long int new_r;
+      ++q;
+      new_r = strtoul(q, &ep, 0);
+      if (new_r > 0u) {
+        r_count = (size_t)new_r;
+      }
+      q = ep;
+    }
+    x->left = r_count;
+    if (*q == ',') ++q;
+    x->p = q;
+  }
+  x->left -= 1u;
+  return x->prefix_len;
+}

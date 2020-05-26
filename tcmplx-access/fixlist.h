@@ -81,6 +81,14 @@ struct tcmplxA_fixline const* tcmplxA_fixlist_at_c
 TCMPLX_A_API
 int tcmplxA_fixlist_copy
   (struct tcmplxA_fixlist* dst, struct tcmplxA_fixlist const* src);
+
+/**
+ * @brief Generate prefix codes given a prefix list.
+ * @param dst list to populate with codes
+ * @return tcmplxA_Success on success, nonzero otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_fixlist_gen_codes(struct tcmplxA_fixlist* dst);
 /* END   prefix list */
 
 #ifdef __cplusplus

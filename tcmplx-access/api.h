@@ -40,6 +40,10 @@ char const* tcmplxA_api_version(void);
 
 /* BEGIN error codes */
 enum tcmplxA_api_error {
+  /** Prefix code lengths of same bit count were too numerous */
+  tcmplxA_ErrFixCodeAlloc = -7,
+  /** Prefix code lengths were too large */
+  tcmplxA_ErrFixLenRange = -6,
   /** Code for unknown error */
   tcmplxA_ErrUnknown = -5,
   /** Invalid parameter given */
