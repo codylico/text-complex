@@ -16,9 +16,6 @@ static void* test_fixlist_setup
     (const MunitParameter params[], void* user_data);
 static void test_fixlist_teardown(void* fixture);
 
-static MunitParameterEnum test_fixlist_params[] = {
-  { NULL, NULL },
-};
 
 static MunitTest tests_fixlist[] = {
   {"cycle", test_fixlist_cycle,
