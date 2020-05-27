@@ -146,7 +146,7 @@ MunitResult test_fixlist_preset
   if (p == NULL)
     return MUNIT_SKIP;
   (void)params;
-  x = (unsigned int)testfont_rand_int_range(0,0);
+  x = (unsigned int)testfont_rand_int_range(0,5);
   /* generate once */{
     munit_assert_int(tcmplxA_fixlist_preset(p, x),==,tcmplxA_Success);
   }

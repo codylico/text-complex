@@ -23,6 +23,35 @@ struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliComplex[] = {
   {0x2   /*10*/, 2u, 0 },
   {0xf /*1111*/, 4u, 0 }
 };
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliS1[] = {
+  {  0    /*-*/, 0u, 0 },
+};
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliS2[] = {
+  {  0    /*0*/, 1u, 0 },
+  {0x1    /*1*/, 1u, 0 }
+};
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliS3[] = {
+  {  0    /*0*/, 1u, 0 },
+  {0x2   /*10*/, 2u, 0 },
+  {0x3   /*11*/, 2u, 0 }
+};
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliS4A[] = {
+  {  0   /*00*/, 2u, 0 },
+  {0x1   /*01*/, 2u, 0 },
+  {0x2   /*10*/, 2u, 0 },
+  {0x3   /*11*/, 2u, 0 }
+};
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliS4B[] = {
+  {  0    /*0*/, 1u, 0 },
+  {0x2   /*10*/, 2u, 0 },
+  {0x6  /*110*/, 3u, 0 },
+  {0x7  /*111*/, 3u, 0 }
+};
 
 static
 struct {
@@ -30,6 +59,11 @@ struct {
   struct tcmplxA_fixline const* v;
 } const tcmplxA_fixlist_ps[] = {
   { 6u, tcmplxA_fixlist_ps_BrotliComplex },
+  { 1u, tcmplxA_fixlist_ps_BrotliS1 },
+  { 2u, tcmplxA_fixlist_ps_BrotliS2 },
+  { 3u, tcmplxA_fixlist_ps_BrotliS3 },
+  { 4u, tcmplxA_fixlist_ps_BrotliS4A },
+  { 4u, tcmplxA_fixlist_ps_BrotliS4B }
 };
 
 /**

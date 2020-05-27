@@ -20,7 +20,39 @@ enum tcmplxA_fix_preset {
   /**
    * @brief Alphabet for Brotli complex prefix codes.
    */
-  tcmplxA_FixList_BrotliComplex = 0
+  tcmplxA_FixList_BrotliComplex = 0,
+  /**
+   * @brief Code lengths for Brotli simple prefix list `(NSYM=1)`.
+   * @note Sort the values before applying the prefix codes.
+   *   Use @link tcmplxA_fixlist_gen_codes @endlink if necessary.
+   */
+  tcmplxA_FixList_BrotliSimple1 = 1,
+  /**
+   * @brief Code lengths for Brotli simple prefix list `(NSYM=2)`.
+   * @note Sort the values before applying the prefix codes.
+   *   Use @link tcmplxA_fixlist_gen_codes @endlink if necessary.
+   */
+  tcmplxA_FixList_BrotliSimple2 = 2,
+  /**
+   * @brief Code lengths for Brotli simple prefix list `(NSYM=3)`.
+   * @note Sort the values before applying the prefix codes.
+   *   Use @link tcmplxA_fixlist_gen_codes @endlink if necessary.
+   */
+  tcmplxA_FixList_BrotliSimple3 = 3,
+  /**
+   * @brief Code lengths for Brotli simple prefix list
+   *   `(NSYM=4, tree-select bit 0)`.
+   * @note Sort the values before applying the prefix codes.
+   *   Use @link tcmplxA_fixlist_gen_codes @endlink if necessary.
+   */
+  tcmplxA_FixList_BrotliSimple4A = 4,
+  /**
+   * @brief Code lengths for Brotli simple prefix list
+   *   `(NSYM=4, tree-select bit 1)`.
+   * @note Sort the values before applying the prefix codes.
+   *   Use @link tcmplxA_fixlist_gen_codes @endlink if necessary.
+   */
+  tcmplxA_FixList_BrotliSimple4B = 5
 };
 /* END   prefix preset identifiers */
 
