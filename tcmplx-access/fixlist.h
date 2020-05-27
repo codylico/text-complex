@@ -12,6 +12,19 @@
 extern "C" {
 #endif /*__cplusplus*/
 
+/* BEGIN prefix preset identifiers */
+/**
+ * @brief Identifiers for prefix code list presets.
+ */
+enum tcmplxA_fix_preset {
+  /**
+   * @brief Alphabet for Brotli complex prefix codes.
+   */
+  tcmplxA_FixList_BrotliComplex = 0
+};
+/* END   prefix preset identifiers */
+
+
 /* BEGIN prefix code line */
 /**
  * @brief A single line from a prefix code list.
@@ -89,6 +102,15 @@ int tcmplxA_fixlist_copy
  */
 TCMPLX_A_API
 int tcmplxA_fixlist_gen_codes(struct tcmplxA_fixlist* dst);
+
+/**
+ * @brief Assign a prefix list with a preset code-value list.
+ * @param dst list to populate with lengths
+ * @param i preset identifier
+ * @return tcmplxA_Success on success, nonzero otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_fixlist_preset(struct tcmplxA_fixlist* dst, unsigned int i);
 /* END   prefix list */
 
 #ifdef __cplusplus

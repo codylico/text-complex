@@ -115,5 +115,22 @@ int tcmplxAtest_fixlist_lex_start
  */
 int tcmplxAtest_fixlist_lex_next(struct tcmplxAtest_fixlist_lex *x);
 
+/**
+ * @brief Like `munit_rand_int_range`, but protects against
+ *   empty intervals.
+ * @param a min
+ * @param b max
+ * @return a number
+ */
+int testfont_rand_int_range(int a, int b);
+/**
+ * @brief Like `munit_rand_int_range`, but protects against
+ *   empty intervals.
+ * @param a min
+ * @param b max
+ * @return a number
+ */
+size_t testfont_rand_size_range(size_t a, size_t b);
+
 
 #endif /*hg_TCMPLXA_TESTFONT_H_*/

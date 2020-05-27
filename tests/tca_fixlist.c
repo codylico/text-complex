@@ -16,6 +16,8 @@ static MunitResult test_fixlist_item
   (const MunitParameter params[], void* data);
 static MunitResult test_fixlist_gen_codes
   (const MunitParameter params[], void* data);
+static MunitResult test_fixlist_preset
+  (const MunitParameter params[], void* data);
 static void* test_fixlist_setup
     (const MunitParameter params[], void* user_data);
 static void* test_fixlist_gen_setup
@@ -35,6 +37,8 @@ static MunitTest tests_fixlist[] = {
     test_fixlist_setup,test_fixlist_teardown,0,NULL},
   {"gen_codes", test_fixlist_gen_codes,
     test_fixlist_gen_setup,test_fixlist_teardown,0,test_fixlist_gen_params},
+  {"preset", test_fixlist_preset,
+    test_fixlist_setup,test_fixlist_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -130,6 +134,39 @@ MunitResult test_fixlist_gen_codes
   }
   return MUNIT_OK;
 }
+
+MunitResult test_fixlist_preset
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
+  struct tcmplxA_fixline ds[2];
+  unsigned int x;
+  size_t i;
+  size_t sz;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  x = (unsigned int)testfont_rand_int_range(0,0);
+  /* generate once */{
+    munit_assert_int(tcmplxA_fixlist_preset(p, x),==,tcmplxA_Success);
+  }
+  /* */{
+    sz = tcmplxA_fixlist_size(p);
+    munit_assert_size(sz,>,0u);
+    i = testfont_rand_size_range(0,sz-1);
+    ds[0] = *tcmplxA_fixlist_at_c(p, i);
+  }
+  /* generate again */{
+    munit_assert_int(tcmplxA_fixlist_preset(p, x),==,tcmplxA_Success);
+    munit_assert_size(tcmplxA_fixlist_size(p),==,sz);
+  }
+  /* */{
+    ds[1] = *tcmplxA_fixlist_at_c(p, i);
+  }
+  munit_assert_memory_equal(sizeof(ds[0]), &ds[0],&ds[1]);
+  return MUNIT_OK;
+}
+
 
 
 int main(int argc, char **argv) {

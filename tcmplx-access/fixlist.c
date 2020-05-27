@@ -14,6 +14,25 @@ struct tcmplxA_fixlist {
   size_t n;
 };
 
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliComplex[] = {
+  {  0    /*0*/, 2u, 0 },
+  {0xe /*1110*/, 4u, 0 },
+  {0x6  /*110*/, 3u, 0 },
+  {0x1   /*01*/, 2u, 0 },
+  {0x2   /*10*/, 2u, 0 },
+  {0xf /*1111*/, 4u, 0 }
+};
+
+static
+struct {
+  size_t n;
+  struct tcmplxA_fixline const* v;
+} const tcmplxA_fixlist_ps[] = {
+  { sizeof(tcmplxA_fixlist_ps_BrotliComplex)/sizeof(struct tcmplxA_fixline),
+    tcmplxA_fixlist_ps_BrotliComplex }
+};
+
 /**
  * @brief Initialize a prefix list.
  * @param x the prefix list to initialize
@@ -166,6 +185,22 @@ int tcmplxA_fixlist_gen_codes(struct tcmplxA_fixlist* dst) {
         code_mins[len] += 1u;
       } else line->code = 0u;
     }
+  }
+  return tcmplxA_Success;
+}
+
+int tcmplxA_fixlist_preset(struct tcmplxA_fixlist* dst, unsigned int i) {
+  size_t const n = sizeof(tcmplxA_fixlist_ps)/sizeof(tcmplxA_fixlist_ps[0]);
+  if (i >= n)
+    return tcmplxA_ErrParam;
+  /* resize */{
+    size_t const sz = tcmplxA_fixlist_ps[i].n;
+    int const res =
+      tcmplxA_fixlist_resize(dst, sz);
+    if (res != tcmplxA_Success) {
+      return res;
+    }
+    memcpy(dst->p, tcmplxA_fixlist_ps[i].v, sizeof(struct tcmplxA_fixlist)*sz);
   }
   return tcmplxA_Success;
 }
