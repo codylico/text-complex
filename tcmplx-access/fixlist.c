@@ -29,8 +29,7 @@ struct {
   size_t n;
   struct tcmplxA_fixline const* v;
 } const tcmplxA_fixlist_ps[] = {
-  { sizeof(tcmplxA_fixlist_ps_BrotliComplex)/sizeof(struct tcmplxA_fixline),
-    tcmplxA_fixlist_ps_BrotliComplex }
+  { 6u, tcmplxA_fixlist_ps_BrotliComplex },
 };
 
 /**
