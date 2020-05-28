@@ -9,7 +9,7 @@
 
 /* BEGIN configurations */
 char const* tcmplxA_api_version(void) {
-  return "0.1";
+  return "0.2";
 }
 /* END   configurations */
 
