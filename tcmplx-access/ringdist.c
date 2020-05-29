@@ -178,29 +178,18 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     return out;
   } else if (dcode < x->sum_direct) {
     return (dcode - x->special_size) + 1u;
-  } else if (x->special_size)/* RFC 7932 branch */{
+  } else {
     unsigned int const xcode = dcode - x->sum_direct;
     unsigned int const bit_size = tcmplxA_ringdist_bit_count(x, dcode);
     tcmplxA_uint32 const high = (tcmplxA_uint32)(xcode>>(x->postfix));
     tcmplxA_uint32 const low = (tcmplxA_uint32)(xcode&x->postmask);
     tcmplxA_uint32 const offset = ((2u | (high&1)) << bit_size) - 4u;
-    /* possible mistake in rfc7932? */
-      tcmplxA_uint32 const out =
-        ((offset + extra)<<x->postfix) + low + x->direct_one;
+    tcmplxA_uint32 const out =
+      ((offset + extra)<<x->postfix) + low + x->direct_one;
     /* record the new flat distance */{
       x->ring[x->i] = out;
       x->i = (x->i+1u)%4u;
     }
-    return out;
-  } else/* RFC 1951 branch */{
-    unsigned int const xcode = dcode - x->sum_direct;
-    unsigned int const bit_size = tcmplxA_ringdist_bit_count(x, dcode);
-    tcmplxA_uint32 const high = (tcmplxA_uint32)(xcode>>(x->postfix));
-    tcmplxA_uint32 const low = (tcmplxA_uint32)(xcode&x->postmask);
-    tcmplxA_uint32 const offset = ((2u | (high&1)) << bit_size) - 4u;
-    /* to better match rfc1951 */
-      tcmplxA_uint32 const out =
-        ((offset + low)<<x->postfix) + extra + x->direct_one;
     return out;
   }
 }
