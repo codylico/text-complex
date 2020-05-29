@@ -223,7 +223,7 @@ MunitResult test_ringdist_1951_decode
     }
   }
   /* inspect */{
-    munit_assert_uint(
+    munit_assert_uint32(
         tcmplxA_ringdist_decode(p,decomposed_code,decomposed_extra),
           ==,back_dist
       );

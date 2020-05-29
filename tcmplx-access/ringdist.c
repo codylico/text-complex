@@ -43,6 +43,15 @@ static void tcmplxA_ringdist_close(struct tcmplxA_ringdist* x);
  */
 static void tcmplxA_ringdist_record
   (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v);
+/**
+ * @brief Retrieve a back distance from a ring buffer.
+ * @param ring the buffer
+ * @param i current buffer index
+ * @param nlast position of value to retrieve (2 for second last, ...)
+ * @return the recorded value
+ */
+static tcmplxA_uint32 tcmplxA_ringdist_retrieve
+  (tcmplxA_uint32* ring, unsigned int i, unsigned int nlast);
 
 /* BEGIN distance ring / static */
 int tcmplxA_ringdist_init
@@ -73,6 +82,12 @@ void tcmplxA_ringdist_record
   ring[xi] = v;
   (*i) = (xi+1u)%4u;
   return;
+}
+
+tcmplxA_uint32 tcmplxA_ringdist_retrieve
+  (tcmplxA_uint32* ring, unsigned int i, unsigned int nlast)
+{
+  return ring[(i+4u-nlast)%4u];
 }
 /* END   distance ring / static */
 
@@ -108,7 +123,7 @@ unsigned int tcmplxA_ringdist_bit_count
 }
 
 tcmplxA_uint32 tcmplxA_ringdist_decode
-  (struct tcmplxA_ringdist* x, unsigned int dcode, unsigned int extra)
+  (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra)
 {
   if (dcode < x->special_size) {
     tcmplxA_uint32 out;
@@ -120,7 +135,7 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     case 7:
     case 8:
     case 9:
-      out = x->ring[x->i];
+      out = tcmplxA_ringdist_retrieve(x->ring, x->i, 1u);
       break;
     case 1:
     case 10:
@@ -129,13 +144,13 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     case 13:
     case 14:
     case 15:
-      out = x->ring[(x->i+1u)%4u];
+      out = tcmplxA_ringdist_retrieve(x->ring, x->i, 2u);
       break;
     case 2:
-      out = x->ring[(x->i+2u)%4u];
+      out = tcmplxA_ringdist_retrieve(x->ring, x->i, 3u);
       break;
     case 3:
-      out = x->ring[(x->i+3u)%4u];
+      out = tcmplxA_ringdist_retrieve(x->ring, x->i, 4u);
       break;
     }
     /* adjust */switch (dcode) {

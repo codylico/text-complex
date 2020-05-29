@@ -58,7 +58,7 @@ unsigned int tcmplxA_ringdist_bit_count
  */
 TCMPLX_A_API
 tcmplxA_uint32 tcmplxA_ringdist_decode
-  (struct tcmplxA_ringdist* x, unsigned int dcode, unsigned int extra);
+  (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra);
 /* END   distance ring */
 
 #ifdef __cplusplus
