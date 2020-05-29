@@ -35,6 +35,14 @@ static int tcmplxA_ringdist_init
  * @param x the distance ring to close
  */
 static void tcmplxA_ringdist_close(struct tcmplxA_ringdist* x);
+/**
+ * @brief Record a back distance in a ring buffer.
+ * @param ring the buffer
+ * @param i index
+ * @param v the value to record
+ */
+static void tcmplxA_ringdist_record
+  (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v);
 
 /* BEGIN distance ring / static */
 int tcmplxA_ringdist_init
@@ -55,6 +63,15 @@ int tcmplxA_ringdist_init
 }
 
 void tcmplxA_ringdist_close(struct tcmplxA_ringdist* x) {
+  return;
+}
+
+void tcmplxA_ringdist_record
+  (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v)
+{
+  unsigned short int const xi = *i;
+  ring[xi] = v;
+  (*i) = (xi+1u)%4u;
   return;
 }
 /* END   distance ring / static */
@@ -172,14 +189,12 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
       } break;
     }
     if (dcode != 0u) {
-      x->ring[x->i] = out;
-      x->i = (x->i+1u)%4u;
+      tcmplxA_ringdist_record(x->ring, &x->i, out);
     }
     return out;
   } else if (dcode < x->sum_direct) {
     tcmplxA_uint32 const out = (dcode - x->special_size) + 1u;
-    x->ring[x->i] = out;
-    x->i = (x->i+1u)%4u;
+    tcmplxA_ringdist_record(x->ring, &x->i, out);
     return out;
   } else {
     unsigned int const xcode = dcode - x->sum_direct;
@@ -190,8 +205,7 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     tcmplxA_uint32 const out =
       ((offset + extra)<<x->postfix) + low + x->direct_one;
     /* record the new flat distance */{
-      x->ring[x->i] = out;
-      x->i = (x->i+1u)%4u;
+      tcmplxA_ringdist_record(x->ring, &x->i, out);
     }
     return out;
   }
