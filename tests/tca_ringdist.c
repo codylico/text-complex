@@ -7,6 +7,7 @@
 #include <string.h>
 #include "munit/munit.h"
 #include "testfont.h"
+#include <limits.h>
 
 
 struct test_ringdist_params {
@@ -45,21 +46,23 @@ static void* test_ringdist_7932_setup
 static void test_ringdist_teardown(void* fixture);
 
 static MunitParameterEnum test_ringdist_params[] = {
-  { NULL, NULL },
+  { "NDIRECT", NULL },
+  { "NPOSTFIX", NULL },
+  { NULL, NULL }
 };
 
 static MunitTest tests_ringdist[] = {
   {"cycle", test_ringdist_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,test_ringdist_params},
+    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
   {"1951/bit_count", test_ringdist_1951_bit_count,
     test_ringdist_1951_setup,test_ringdist_teardown,0,NULL},
   {"7932/bit_count", test_ringdist_7932_bit_count,
-    test_ringdist_7932_setup,test_ringdist_teardown,0,NULL},
+    test_ringdist_7932_setup,test_ringdist_teardown,0,test_ringdist_params},
   {"1951/decode", test_ringdist_1951_decode,
     test_ringdist_1951_setup,test_ringdist_teardown,0,NULL},
   {"7932/decode", test_ringdist_7932_decode,
     test_ringdist_7932_setup,test_ringdist_teardown,
-    MUNIT_TEST_OPTION_TODO,NULL},
+    MUNIT_TEST_OPTION_TODO,test_ringdist_params},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -108,8 +111,30 @@ void* test_ringdist_7932_setup
     (1,sizeof(struct test_ringdist_params));
   if (out != NULL) {
     out->special_tf = 1;
-    out->direct_count = testfont_rand_uint_range(0u,120u);
-    out->postfix_size = testfont_rand_uint_range(0u,3u);
+    /* inspect params */{
+      /* NDIRECT */{
+        char const* p = munit_parameters_get(params, "NDIRECT");
+        char* ep = NULL;
+        unsigned long int n = ~0lu;
+        if (p != NULL) {
+          n = strtoul(p,&ep,0);
+        }
+        if (ep != NULL && *ep == '\0' && n < UINT_MAX) {
+          out->direct_count = (unsigned int)n;
+        } else out->direct_count = testfont_rand_uint_range(0u,120u);
+      }
+      /* NPOSTFIX */{
+        char const* p = munit_parameters_get(params, "NPOSTFIX");
+        char* ep = NULL;
+        unsigned long int n = ~0lu;
+        if (p != NULL) {
+          n = strtoul(p,&ep,0);
+        }
+        if (ep != NULL && *ep == '\0' && n < UINT_MAX) {
+          out->postfix_size = (unsigned int)n;
+        } else out->postfix_size = testfont_rand_uint_range(0u,3u);
+      }
+    }
     out->rd = tcmplxA_ringdist_new
       (out->special_tf, out->direct_count, out->postfix_size);
     if (out->rd == NULL) {
