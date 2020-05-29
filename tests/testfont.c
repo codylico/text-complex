@@ -17,6 +17,8 @@ static
 void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data);
 static
 int testfont_clamp_size(size_t z);
+static
+int testfont_clamp_uint(unsigned int z);
 
 MunitArgument const tcmplxAtest_arglist[] = {
   { "font-path", tcmplxAtest_arg_fp_parse, tcmplxAtest_arg_fp_help },
@@ -334,10 +336,24 @@ int testfont_clamp_size(size_t z) {
   } else return (int)(z);
 }
 
+int testfont_clamp_uint(unsigned int z) {
+  if (z > (unsigned int)(INT_MAX)) {
+    return INT_MAX;
+  } else return (int)(z);
+}
+
 size_t testfont_rand_size_range(size_t a, size_t b) {
   if (a == b)
     return a;
   else return munit_rand_int_range(
       testfont_clamp_size(a), testfont_clamp_size(b)
+    );
+}
+
+unsigned int testfont_rand_uint_range(unsigned int a, unsigned int b) {
+  if (a == b)
+    return a;
+  else return munit_rand_int_range(
+      testfont_clamp_uint(a), testfont_clamp_uint(b)
     );
 }

@@ -40,6 +40,10 @@ char const* tcmplxA_api_version(void);
 
 /* BEGIN error codes */
 enum tcmplxA_api_error {
+  /** Numeric overflow produced by a distance code conversion */
+  tcmplxA_ErrRingDistOverflow = -9,
+  /** Negative distance produced by a distance code conversion */
+  tcmplxA_ErrRingDistUnderflow = -8,
   /** Prefix code lengths of same bit count were too numerous */
   tcmplxA_ErrFixCodeAlloc = -7,
   /** Prefix code lengths were too large */

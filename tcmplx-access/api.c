@@ -16,6 +16,10 @@ char const* tcmplxA_api_version(void) {
 /* BEGIN error codes */
 char const* tcmplxA_api_error_toa(int v) {
   switch (v) {
+  case tcmplxA_ErrRingDistOverflow:
+    return "Numeric overflow produced by a distance code conversion";
+  case tcmplxA_ErrRingDistUnderflow:
+    return "Numeric underflow produced by a distance code conversion";
   case tcmplxA_ErrFixCodeAlloc:
     return "Prefix code lengths of same bit count were too numerous";
   case tcmplxA_ErrFixLenRange:
