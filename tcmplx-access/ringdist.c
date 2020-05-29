@@ -177,7 +177,10 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     }
     return out;
   } else if (dcode < x->sum_direct) {
-    return (dcode - x->special_size) + 1u;
+    tcmplxA_uint32 const out = (dcode - x->special_size) + 1u;
+    x->ring[x->i] = out;
+    x->i = (x->i+1u)%4u;
+    return out;
   } else {
     unsigned int const xcode = dcode - x->sum_direct;
     unsigned int const bit_size = tcmplxA_ringdist_bit_count(x, dcode);
