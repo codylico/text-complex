@@ -59,6 +59,16 @@ unsigned int tcmplxA_ringdist_bit_count
 TCMPLX_A_API
 tcmplxA_uint32 tcmplxA_ringdist_decode
   (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra);
+
+/**
+ * @brief Copy a distance ring configuration and state
+ *   to another distance ring.
+ * @param dst ring to receive the copy
+ * @param src ring to copy
+ */
+TCMPLX_A_API
+void tcmplxA_ringdist_copy
+  (struct tcmplxA_ringdist* dst, struct tcmplxA_ringdist const* src);
 /* END   distance ring */
 
 #ifdef __cplusplus

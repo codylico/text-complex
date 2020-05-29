@@ -225,4 +225,18 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     return out;
   }
 }
+
+void tcmplxA_ringdist_copy
+  (struct tcmplxA_ringdist* dst, struct tcmplxA_ringdist const* src)
+{
+  memmove(dst->ring, src->ring, sizeof(dst->ring));
+  dst->i = src->i;
+  dst->special_size = src->special_size;
+  dst->sum_direct = src->sum_direct;
+  dst->direct_one = src->direct_one;
+  dst->postfix = src->postfix;
+  dst->bit_adjust = src->bit_adjust;
+  dst->postmask = src->postmask;
+  return;
+}
 /* END   distance ring / public */
