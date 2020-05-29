@@ -39,6 +39,8 @@ static MunitResult test_ringdist_1951_decode
   (const MunitParameter params[], void* data);
 static MunitResult test_ringdist_7932_decode
   (const MunitParameter params[], void* data);
+static MunitResult test_ringdist_encode
+  (const MunitParameter params[], void* data);
 static void* test_ringdist_1951_setup
     (const MunitParameter params[], void* user_data);
 static void* test_ringdist_7932_setup
@@ -63,6 +65,11 @@ static MunitTest tests_ringdist[] = {
   {"7932/decode", test_ringdist_7932_decode,
     test_ringdist_7932_setup,test_ringdist_teardown,
     MUNIT_TEST_OPTION_TODO,test_ringdist_params},
+  {"1951/encode", test_ringdist_encode,
+    test_ringdist_1951_setup,test_ringdist_teardown,
+    MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
+  {"7932/encode", test_ringdist_encode,
+    test_ringdist_7932_setup,test_ringdist_teardown,0,test_ringdist_params},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -267,6 +274,40 @@ MunitResult test_ringdist_7932_decode
   (void)params;
   return MUNIT_SKIP;
 }
+
+MunitResult test_ringdist_encode
+  (const MunitParameter params[], void* data)
+{
+  struct test_ringdist_params *const fixt =
+    (struct test_ringdist_params*)data;
+  struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* round-trip test */{
+    int j;
+    struct tcmplxA_ringdist* const q = tcmplxA_ringdist_new
+      (fixt->special_tf, fixt->direct_count, fixt->postfix_size);
+    if (q == NULL)
+      return MUNIT_SKIP;
+    else tcmplxA_ringdist_copy(q, p);
+    for (j = 0; j < 100; ++j) {
+      unsigned int back_dist = testfont_rand_uint_range(1u,32768u);
+      tcmplxA_uint32 decomposed_extra;
+      unsigned int decomposed_code;
+      decomposed_code =
+        tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra);
+      munit_assert_uint(decomposed_code,!=,UINT_MAX);
+      munit_assert_uint32(
+          tcmplxA_ringdist_decode(q,decomposed_code,decomposed_extra),
+            ==,back_dist
+        );
+    }
+    tcmplxA_ringdist_destroy(q);
+  }
+  return MUNIT_OK;
+}
+
 
 
 int main(int argc, char **argv) {

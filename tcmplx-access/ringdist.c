@@ -52,6 +52,12 @@ static void tcmplxA_ringdist_record
  */
 static tcmplxA_uint32 tcmplxA_ringdist_retrieve
   (tcmplxA_uint32* ring, unsigned int i, unsigned int nlast);
+/**
+ * @brief Compute the number of bits in a number.
+ * @param n this number
+ * @return a bit count
+ */
+static unsigned int tcmplxA_ringdist_bitlen(tcmplxA_uint32 n);
 
 /* BEGIN distance ring / static */
 int tcmplxA_ringdist_init
@@ -82,6 +88,15 @@ void tcmplxA_ringdist_record
   ring[xi] = v;
   (*i) = (xi+1u)%4u;
   return;
+}
+
+unsigned int tcmplxA_ringdist_bitlen(tcmplxA_uint32 n) {
+  unsigned int out = 0u;
+  while (n > 0) {
+    n >>= 1;
+    out += 1u;
+  }
+  return out;
 }
 
 tcmplxA_uint32 tcmplxA_ringdist_retrieve
@@ -223,6 +238,102 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
       tcmplxA_ringdist_record(x->ring, &x->i, out);
     }
     return out;
+  }
+}
+
+unsigned int tcmplxA_ringdist_encode
+  (struct tcmplxA_ringdist* x, unsigned int back_dist, tcmplxA_uint32 *extra)
+{
+  if (back_dist == 0u) {
+    /* zero not allowed */
+    /* ae = tcmplxA_ErrRingDistUnderflow; */
+    return ~0u;
+  } else if (back_dist >= 0xFFffFFfc) {
+    /* overflow will result in calculation */
+    /* ae = tcmplxA_ErrRingDistOverflow; */
+    return ~0u;
+  }
+  /* check special cache */if (x->special_size) {
+    unsigned int j;
+    for (j = 0u; j < 4u; ++j) {
+      if (back_dist == x->ring[j]) {
+        unsigned int const last = (x->i+3u)%4u/* == (i minus 1) mod 4 */;
+        *extra = 0u;
+        if (last != j) {
+          tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        }
+        return (last+4u-j)%4u/* == (last minus j) mod 4 */;
+      }
+    }
+    /* check proximity to last cache item */{
+      tcmplxA_uint32 const last = tcmplxA_ringdist_retrieve(x->ring, x->i, 1u);
+      tcmplxA_uint32 const last_min = ((last > 3u) ? last-3u : 1u);
+      tcmplxA_uint32 const last_max =
+        ((last < 0xFFffFFfd) ? last+3u : 0xFFffFFff);
+      if (back_dist >= last_min && back_dist < last) {
+        *extra = 0u;
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        switch (last-back_dist) {
+        case 1u: return 4u;
+        case 2u: return 6u;
+        case 3u: return 8u;
+        }
+      } else if (back_dist > last && back_dist <= last_max) {
+        *extra = 0u;
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        switch (back_dist-last) {
+        case 1u: return 5u;
+        case 2u: return 7u;
+        case 3u: return 9u;
+        }
+      }
+    }
+    /* check proximity to second cache item */{
+      tcmplxA_uint32 const second =
+        tcmplxA_ringdist_retrieve(x->ring, x->i, 2u);
+      tcmplxA_uint32 const second_min = ((second > 3u) ? second-3u : 1u);
+      tcmplxA_uint32 const second_max =
+        ((second < 0xFFffFFfd) ? second+3u : 0xFFffFFff);
+      if (back_dist >= second_min && back_dist < second) {
+        *extra = 0u;
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        switch (second-back_dist) {
+        case 1u: return 10u;
+        case 2u: return 12u;
+        case 3u: return 14u;
+        }
+      } else if (back_dist > second && back_dist <= second_max) {
+        *extra = 0u;
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        switch (back_dist-second) {
+        case 1u: return 11u;
+        case 2u: return 13u;
+        case 3u: return 15u;
+        }
+      }
+    }
+  }
+  /* check direct distances */
+  if (back_dist < x->direct_one) {
+    *extra = 0u;
+    tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+    return (back_dist-1u)+(x->special_size);
+  } else {
+    tcmplxA_uint32 const sd = back_dist - x->direct_one;
+    unsigned int const lowcode = (sd & x->postmask);
+    tcmplxA_uint32 const ox = ((sd-lowcode)>>x->postfix)+4u;
+    unsigned int const ndistbits = tcmplxA_ringdist_bitlen(ox)-2u;
+    tcmplxA_uint32 const out_extra =
+      (tcmplxA_uint32)(ox&((1ul<<ndistbits)-1u));
+    unsigned int const midcode_x = ((ox>>ndistbits)&1u)<<x->postfix;
+    unsigned int const dcode =
+        (((ndistbits-1u)<<(x->bit_adjust)) | midcode_x | lowcode)
+      + x->sum_direct;
+    /* record the new flat distance */{
+      tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+    }
+    *extra = out_extra;
+    return dcode;
   }
 }
 

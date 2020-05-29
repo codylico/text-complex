@@ -61,6 +61,20 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
   (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra);
 
 /**
+ * @brief Convert a flat backward distance to a distance code.
+ * @param back_dist backward distance to convert
+ * @param[out] extra any extra bits required by the code
+ * @param[out] ae @em error-code api_error::Success on success,
+ *   nonzero otherwise
+ * @return a distance code, or UINT_MAX on error
+ * @note On successful conversion, the distance ring buffer is advanced
+ *   as necessary.
+ */
+TCMPLX_A_API
+unsigned int tcmplxA_ringdist_encode
+  (struct tcmplxA_ringdist* x, unsigned int back_dist, tcmplxA_uint32 *extra);
+
+/**
  * @brief Copy a distance ring configuration and state
  *   to another distance ring.
  * @param dst ring to receive the copy
