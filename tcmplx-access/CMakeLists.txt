@@ -10,6 +10,7 @@ set(text_complex_access_FILES
   seq.c         seq.h
   fixlist.c     fixlist.h
   ringdist.c    ringdist.h
+  inscopy.c     inscopy.h
   )
 
 add_library(tcmplx_access ${text_complex_access_FILES})
