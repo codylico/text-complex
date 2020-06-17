@@ -27,6 +27,11 @@ static void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r);
  */
 static void tcmplxA_inscopy_7932_fill(struct tcmplxA_inscopy_row* r);
 /**
+ * @brief Fill an insert-copy table with the Brotli block code alphabet.
+ * @param r array of 26 rows
+ */
+static void tcmplxA_inscopy_7932B_fill(struct tcmplxA_inscopy_row* r);
+/**
  * @brief Initialize a insert copy table.
  * @param x the insert copy table to initialize
  * @param n desired row count
@@ -51,7 +56,8 @@ static
 struct { void (*f)(struct tcmplxA_inscopy_row*); size_t n; }
 const tcmplxA_inscopy_ps[] = {
   { tcmplxA_inscopy_1951_fill, 286u },
-  { tcmplxA_inscopy_7932_fill, 704u }
+  { tcmplxA_inscopy_7932_fill, 704u },
+  { tcmplxA_inscopy_7932B_fill, 26u }
 };
 
 
@@ -150,6 +156,25 @@ void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
     r[i].insert_first = first_insert;
     r[i].copy_first = 0;
     /* ++i; */
+  }
+  return;
+}
+
+void tcmplxA_inscopy_7932B_fill(struct tcmplxA_inscopy_row* r) {
+  size_t i;
+  unsigned short first = 1u;
+  static unsigned char const bits[26] = {
+      2,2,2,2, 3,3,3,3, 4,4,4,4, 5,5,5,5, 6,6, 7, 8, 9, 10, 11, 12, 13, 24
+    };
+  for (i = 0u; i < 26u; ++i) {
+    r[i].code = (unsigned short)i;
+    r[i].type = tcmplxA_InsCopy_BlockCount;
+    r[i].zero_distance_tf = 0;
+    r[i].insert_bits = bits[i];
+    r[i].copy_bits = 0;
+    r[i].insert_first = first;
+    r[i].copy_first = 0;
+    first = (unsigned short)(first + (1u << bits[i]));
   }
   return;
 }

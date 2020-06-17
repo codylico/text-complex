@@ -15,7 +15,7 @@ extern "C" {
 /**
  * @brief Type of insert copy table to generate.
  */
-enum tcmplxA_inscopy_preset {
+enum tcmplxA_inscp_preset {
   /**
    * @brief Select the DEFLATE 285-code literal-length alphabet.
    */
@@ -23,7 +23,11 @@ enum tcmplxA_inscopy_preset {
   /**
    * @brief Select the Brotli 704-code insert-and-copy-length alphabet.
    */
-  tcmplxA_InsCopy_Brotli = 1
+  tcmplxA_InsCopy_BrotliIC = 1,
+  /**
+   * @brief Select the Brotli 26-code block count alphabet.
+   */
+  tcmplxA_InsCopy_BrotliBlock = 2
 };
 
 /**
@@ -45,7 +49,11 @@ enum tcmplxA_inscopy_type {
   /**
    * @brief Brotli insert-copy length code.
    */
-  tcmplxA_InsCopy_InsertCopy = 3
+  tcmplxA_InsCopy_InsertCopy = 3,
+  /**
+   * @brief Brotli block count code.
+   */
+  tcmplxA_InsCopy_BlockCount = 4
 };
 
 /**

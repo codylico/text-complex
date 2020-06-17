@@ -51,9 +51,7 @@ MunitResult test_inscopy_cycle
 
 void* test_inscopy_setup(const MunitParameter params[], void* user_data) {
   enum tcmplxA_inscopy_type const t =
-      munit_rand_int_range(0,1)
-    ? tcmplxA_InsCopy_Deflate
-    : tcmplxA_InsCopy_Brotli;
+      (enum tcmplxA_inscopy_type)munit_rand_int_range(0,2);
   struct tcmplxA_inscopy *p = tcmplxA_inscopy_new(0u);
   if (p != NULL) {
     int const res = tcmplxA_inscopy_preset(p, t);
@@ -113,7 +111,7 @@ MunitResult test_inscopy_item
           row->insert_bits, row->insert_first);
       }
     }break;
-  case 704: /* Brotli */
+  case 704: /* Brotli Insert-Copy */
     {
       size_t i = testfont_rand_size_range(0,703);
       struct tcmplxA_inscopy_row* row =
@@ -127,6 +125,18 @@ MunitResult test_inscopy_item
         (unsigned int)(i),
         row->insert_bits, row->insert_first,
         row->copy_bits, row->copy_first);
+    }break;
+  case 26: /* Brotli Block Count */
+    {
+      size_t i = testfont_rand_size_range(0,25);
+      struct tcmplxA_inscopy_row* row = tcmplxA_inscopy_at(p,i);
+      munit_assert_int
+        (row->type, ==, tcmplxA_InsCopy_BlockCount);
+      munit_assert_size(row->code, ==, i);
+      munit_assert_uint(row->insert_bits, <=, 24);
+      munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
+        (unsigned int)(i),
+        row->insert_bits, row->insert_first);
     }break;
   default:
     munit_errorf("Unexpected table length %" MUNIT_SIZE_MODIFIER "u.",
@@ -170,7 +180,7 @@ MunitResult test_inscopy_item_c
           row->insert_bits, row->insert_first);
       }
     }break;
-  case 704: /* Brotli */
+  case 704: /* Brotli Insert-Copy */
     {
       size_t i = testfont_rand_size_range(0,703);
       struct tcmplxA_inscopy_row const* row =
@@ -183,6 +193,18 @@ MunitResult test_inscopy_item_c
         (unsigned int)(i),
         row->insert_bits, row->insert_first,
         row->copy_bits, row->copy_first);
+    }break;
+  case 26: /* Brotli Block Count */
+    {
+      size_t i = testfont_rand_size_range(0,25);
+      struct tcmplxA_inscopy_row const* row = tcmplxA_inscopy_at_c(p,i);
+      munit_assert_int
+        (row->type, ==, tcmplxA_InsCopy_BlockCount);
+      munit_assert_size(row->code, ==, i);
+      munit_assert_uint(row->insert_bits, <=, 24);
+      munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
+        (unsigned int)(i),
+        row->insert_bits, row->insert_first);
     }break;
   default:
     munit_errorf("Unexpected table length %" MUNIT_SIZE_MODIFIER "u.",
