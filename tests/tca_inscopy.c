@@ -73,6 +73,11 @@ MunitResult test_inscopy_item
     return MUNIT_SKIP;
   (void)params;
   (void)data;
+  /* consistency check */{
+    size_t const i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p));
+    munit_assert_ptr_equal
+      (tcmplxA_inscopy_at(p, i), tcmplxA_inscopy_at_c(p, i));
+  }
   switch (tcmplxA_inscopy_size(p)) {
   case 286: /* Deflate */
     {
