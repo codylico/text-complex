@@ -29,9 +29,10 @@ static void tcmplxA_inscopy_7932_fill(struct tcmplxA_inscopy_row* r);
 /**
  * @brief Initialize a insert copy table.
  * @param x the insert copy table to initialize
+ * @param n desired row count
  * @return zero on success, nonzero otherwise
  */
-static int tcmplxA_inscopy_init(struct tcmplxA_inscopy* x, int t);
+static int tcmplxA_inscopy_init(struct tcmplxA_inscopy* x, size_t n);
 /**
  * \brief Resize an insert copy table.
  * \param x the table to resize
@@ -46,30 +47,10 @@ static int tcmplxA_inscopy_resize(struct tcmplxA_inscopy* x, size_t sz);
 static void tcmplxA_inscopy_close(struct tcmplxA_inscopy* x);
 
 /* BEGIN insert copy table / static */
-int tcmplxA_inscopy_init(struct tcmplxA_inscopy* x, int t) {
+int tcmplxA_inscopy_init(struct tcmplxA_inscopy* x, size_t n) {
   x->p = NULL;
   x->n = 0u;
-  switch (t) {
-  case tcmplxA_InsCopy_Deflate:
-    /* */ {
-      int const resize_res = tcmplxA_inscopy_resize(x,286);
-      if (resize_res != tcmplxA_Success) {
-        return resize_res;
-      }
-      tcmplxA_inscopy_1951_fill(x->p);
-    }break;
-  case tcmplxA_InsCopy_Brotli:
-    /* */ {
-      int const resize_res = tcmplxA_inscopy_resize(x,704);
-      if (resize_res != tcmplxA_Success) {
-        return resize_res;
-      }
-      tcmplxA_inscopy_7932_fill(x->p);
-    }break;
-  default:
-    return tcmplxA_ErrParam;
-  }
-  return tcmplxA_Success;
+  return tcmplxA_inscopy_resize(x,n);
 }
 
 int tcmplxA_inscopy_resize(struct tcmplxA_inscopy* x, size_t sz) {
@@ -220,11 +201,11 @@ void tcmplxA_inscopy_7932_fill(struct tcmplxA_inscopy_row* r) {
 /* END   insert copy table / static */
 
 /* BEGIN insert copy table / public */
-struct tcmplxA_inscopy* tcmplxA_inscopy_new(int t) {
+struct tcmplxA_inscopy* tcmplxA_inscopy_new(size_t n) {
   struct tcmplxA_inscopy* out;
   out = tcmplxA_util_malloc(sizeof(struct tcmplxA_inscopy));
   if (out != NULL
-  &&  tcmplxA_inscopy_init(out, t) != tcmplxA_Success)
+  &&  tcmplxA_inscopy_init(out, n) != tcmplxA_Success)
   {
     tcmplxA_util_free(out);
     return NULL;
@@ -272,6 +253,30 @@ int tcmplxA_inscopy_copy
     return res;
   }
   memcpy(dst->p, src->p, sizeof(struct tcmplxA_inscopy_row)*dst->n);
+  return tcmplxA_Success;
+}
+
+int tcmplxA_inscopy_preset(struct tcmplxA_inscopy* x, int t) {
+  switch (t) {
+  case tcmplxA_InsCopy_Deflate:
+    /* */ {
+      int const resize_res = tcmplxA_inscopy_resize(x,286u);
+      if (resize_res != tcmplxA_Success) {
+        return resize_res;
+      }
+      tcmplxA_inscopy_1951_fill(x->p);
+    }break;
+  case tcmplxA_InsCopy_Brotli:
+    /* */ {
+      int const resize_res = tcmplxA_inscopy_resize(x,704u);
+      if (resize_res != tcmplxA_Success) {
+        return resize_res;
+      }
+      tcmplxA_inscopy_7932_fill(x->p);
+    }break;
+  default:
+    return tcmplxA_ErrParam;
+  }
   return tcmplxA_Success;
 }
 /* END   insert copy table / public */

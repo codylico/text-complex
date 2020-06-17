@@ -92,11 +92,11 @@ struct tcmplxA_inscopy;
 /* BEGIN insert copy table */
 /**
  * @brief Construct a new insert copy table.
- * @param t a @link tcmplxA_inscopy_type @endlink value
+ * @param n table row count
  * @return a pointer to the insert copy table on success, NULL otherwise
  */
 TCMPLX_A_API
-struct tcmplxA_inscopy* tcmplxA_inscopy_new(int t);
+struct tcmplxA_inscopy* tcmplxA_inscopy_new(size_t n);
 
 /**
  * @brief Destroy a insert copy table.
@@ -141,6 +141,15 @@ struct tcmplxA_inscopy_row* tcmplxA_inscopy_at
 TCMPLX_A_API
 int tcmplxA_inscopy_copy
   (struct tcmplxA_inscopy* dst, struct tcmplxA_inscopy const* src);
+
+/**
+ * @brief Assign an insert copy table with a preset code-value list.
+ * @param dst list to populate with codes
+ * @param i a @link tcmplxA_inscopy_type @endlink value
+ * @return tcmplxA_Success on success, nonzero otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_inscopy_preset(struct tcmplxA_inscopy* dst, int i);
 /* END   insert copy table */
 
 #ifdef __cplusplus

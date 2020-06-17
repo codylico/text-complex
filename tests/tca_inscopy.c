@@ -40,10 +40,7 @@ MunitResult test_inscopy_cycle
   (const MunitParameter params[], void* data)
 {
   struct tcmplxA_inscopy* ptr[1];
-  enum tcmplxA_inscopy_type const t =
-      munit_rand_int_range(0,1)
-    ? tcmplxA_InsCopy_Deflate
-    : tcmplxA_InsCopy_Brotli;
+  size_t const t = testfont_rand_size_range(0u,256u);
   (void)params;
   (void)data;
   ptr[0] = tcmplxA_inscopy_new(t);
@@ -57,7 +54,15 @@ void* test_inscopy_setup(const MunitParameter params[], void* user_data) {
       munit_rand_int_range(0,1)
     ? tcmplxA_InsCopy_Deflate
     : tcmplxA_InsCopy_Brotli;
-  return tcmplxA_inscopy_new(t);
+  struct tcmplxA_inscopy *p = tcmplxA_inscopy_new(0u);
+  if (p != NULL) {
+    int const res = tcmplxA_inscopy_preset(p, t);
+    if (res != tcmplxA_Success) {
+      tcmplxA_inscopy_destroy(p);
+      p = NULL;
+    }
+  }
+  return p;
 }
 
 void test_inscopy_teardown(void* fixture) {
