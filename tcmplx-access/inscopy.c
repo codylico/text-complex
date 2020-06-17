@@ -46,6 +46,16 @@ static int tcmplxA_inscopy_resize(struct tcmplxA_inscopy* x, size_t sz);
  */
 static void tcmplxA_inscopy_close(struct tcmplxA_inscopy* x);
 
+
+static
+struct { void (*f)(struct tcmplxA_inscopy_row*); size_t n; }
+const tcmplxA_inscopy_ps[] = {
+  { tcmplxA_inscopy_1951_fill, 286u },
+  { tcmplxA_inscopy_7932_fill, 704u }
+};
+
+
+
 /* BEGIN insert copy table / static */
 int tcmplxA_inscopy_init(struct tcmplxA_inscopy* x, size_t n) {
   x->p = NULL;
@@ -256,26 +266,18 @@ int tcmplxA_inscopy_copy
   return tcmplxA_Success;
 }
 
-int tcmplxA_inscopy_preset(struct tcmplxA_inscopy* x, int t) {
-  switch (t) {
-  case tcmplxA_InsCopy_Deflate:
-    /* */ {
-      int const resize_res = tcmplxA_inscopy_resize(x,286u);
-      if (resize_res != tcmplxA_Success) {
-        return resize_res;
-      }
-      tcmplxA_inscopy_1951_fill(x->p);
-    }break;
-  case tcmplxA_InsCopy_Brotli:
-    /* */ {
-      int const resize_res = tcmplxA_inscopy_resize(x,704u);
-      if (resize_res != tcmplxA_Success) {
-        return resize_res;
-      }
-      tcmplxA_inscopy_7932_fill(x->p);
-    }break;
-  default:
+int tcmplxA_inscopy_preset(struct tcmplxA_inscopy* dst, int t) {
+  size_t const n = sizeof(tcmplxA_inscopy_ps)/sizeof(tcmplxA_inscopy_ps[0]);
+  if (t < 0 || ((size_t)t) >= n)
     return tcmplxA_ErrParam;
+  /* resize */{
+    size_t const sz = tcmplxA_inscopy_ps[t].n;
+    int const res =
+      tcmplxA_inscopy_resize(dst, sz);
+    if (res != tcmplxA_Success) {
+      return res;
+    }
+    (*tcmplxA_inscopy_ps[t].f)(dst->p);
   }
   return tcmplxA_Success;
 }
