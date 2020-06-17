@@ -82,22 +82,25 @@ MunitResult test_inscopy_item
   case 286: /* Deflate */
     {
       /* test literals */{
-        struct tcmplxA_inscopy_row* row =
-          tcmplxA_inscopy_at(p, testfont_rand_size_range(0,255));
+        size_t const i = testfont_rand_size_range(0,255);
+        struct tcmplxA_inscopy_row* row = tcmplxA_inscopy_at(p, i);
         munit_assert_ptr_not_null(row);
         munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Literal);
+        munit_assert_size(row->code, ==, i);
       }
       /* test stop */{
         struct tcmplxA_inscopy_row* row =
           tcmplxA_inscopy_at(p, 256);
         munit_assert_ptr_not_null(row);
         munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Stop);
+        munit_assert_short(row->code, ==, 256u);
       }
       /* test length */{
         size_t i = testfont_rand_size_range(257,285);
         struct tcmplxA_inscopy_row* row =
           tcmplxA_inscopy_at(p,i);
         munit_assert_ptr_not_null(row);
+        munit_assert_size(row->code, ==, i);
         munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Insert);
         munit_assert_uint(row->insert_bits, <=, 5);
         munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
@@ -110,6 +113,7 @@ MunitResult test_inscopy_item
       size_t i = testfont_rand_size_range(0,703);
       struct tcmplxA_inscopy_row* row =
         tcmplxA_inscopy_at(p,i);
+      munit_assert_size(row->code, ==, i);
       munit_assert_int((row->zero_distance_tf!=0), ==, i<128);
       munit_assert_int
         (row->type, ==, tcmplxA_InsCopy_InsertCopy);

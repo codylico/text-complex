@@ -109,6 +109,7 @@ void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
   unsigned short first_insert = 3u;
   unsigned short bits = 0u;
   /* put literals */for (i = 0u; i < 256u; ++i) {
+    r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Literal;
     r[i].zero_distance_tf = 0;
     r[i].insert_bits = 0;
@@ -117,6 +118,7 @@ void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
     r[i].copy_first = 0;
   }
   /* put stop code */{ /* i=256; */
+    r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Stop;
     r[i].zero_distance_tf = 0;
     r[i].insert_bits = 0;
@@ -126,6 +128,7 @@ void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
     ++i;
   }
   /* put some zero-bit insert codes */for (; i < 261u; ++i) {
+    r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Insert;
     r[i].zero_distance_tf = 0;
     r[i].insert_bits = 0;
@@ -135,6 +138,7 @@ void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
     first_insert += 1u;
   }
   /* put most of the other insert codes */for (; i < 285u; ++i) {
+    r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Insert;
     r[i].zero_distance_tf = 0;
     r[i].insert_bits = bits;
@@ -147,6 +151,7 @@ void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
     }
   }
   /* put code 285 */{ /* i=285; */
+    r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Insert;
     r[i].zero_distance_tf = 0;
     r[i].insert_bits = 0;
@@ -201,6 +206,8 @@ void tcmplxA_inscopy_7932_fill(struct tcmplxA_inscopy_row* r) {
       lookup_matrix[j].insert_start + ((i>>3)&7);
     unsigned int const copy_code =
       lookup_matrix[j].copy_start + (i&7);
+    /* fill table row */
+    r[i].code = (unsigned short)(i);
     r[i].type = tcmplxA_InsCopy_InsertCopy;
     r[i].zero_distance_tf = lookup_matrix[j].zero_dist_tf;
     r[i].insert_bits = insert_tabs[insert_code].bits;
