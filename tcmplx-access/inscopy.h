@@ -119,6 +119,16 @@ struct tcmplxA_inscopy_row const* tcmplxA_inscopy_at_c
   (struct tcmplxA_inscopy const* x, size_t i);
 
 /**
+ * \brief Access a row of an insert copy table.
+ * \param x the table to access
+ * \param i an array index
+ * \return a pointer to a table row on success, NULL otherwise
+ */
+TCMPLX_A_API
+struct tcmplxA_inscopy_row* tcmplxA_inscopy_at
+  (struct tcmplxA_inscopy* x, size_t i);
+
+/**
  * \brief Copy an insert copy table.
  * \param dst destination table instance
  * \param src source table instance

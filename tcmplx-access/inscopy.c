@@ -245,6 +245,14 @@ struct tcmplxA_inscopy_row const* tcmplxA_inscopy_at_c
   else return &x->p[i];
 }
 
+struct tcmplxA_inscopy_row* tcmplxA_inscopy_at
+  (struct tcmplxA_inscopy* x, size_t i)
+{
+  if (i >= x->n)
+    return NULL;
+  else return &x->p[i];
+}
+
 int tcmplxA_inscopy_copy
   (struct tcmplxA_inscopy* dst, struct tcmplxA_inscopy const* src)
 {
