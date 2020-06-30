@@ -9,6 +9,18 @@
 #include "util.h"
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
+
+
+/**
+ * @brief Type of insert copy table row.
+ */
+enum tcmplxA_inscopy_type_ex {
+  /**
+   * @brief Match either an insert, an insert-copy, or a block count row.
+   */
+  tcmplxA_InsCopy_RowInsertAny = 255u
+};
 
 struct tcmplxA_inscopy {
   struct tcmplxA_inscopy_row* p;
@@ -65,6 +77,13 @@ static int tcmplxA_inscopy_code_cmp(void const* a, void const* b);
  * @return -1,0,+1 for `a<b`,`a==b`,`a>b`
  */
 static int tcmplxA_inscopy_length_cmp(void const* a, void const* b);
+/**
+ * @brief Compare the starting lengths for two table rows.
+ * @param k search key
+ * @param icr table insert copy row
+ * @return -1,0,+1 for `a<b`,`a==b`,`a>b`
+ */
+static int tcmplxA_inscopy_encode_cmp(void const* k, void const* icr);
 
 
 static
@@ -282,6 +301,40 @@ int tcmplxA_inscopy_length_cmp(void const* a, void const* b) {
     return +1;
   else return 0;
 }
+
+int tcmplxA_inscopy_encode_cmp(void const* k, void const* icr) {
+  /*
+   * NOTE The corresponding function in the C++ implementation
+   *   (`static ...::inscopy_encode_cmp`) has the key and table row
+   *   arguments reversed, and thus the comparison result is reversed.
+   */
+  struct tcmplxA_inscopy_row const*const key =
+    (struct tcmplxA_inscopy_row const*)k;
+  struct tcmplxA_inscopy_row const*const ic_row =
+    (struct tcmplxA_inscopy_row const*)icr;
+  int const icr_zero_tf = ic_row->zero_distance_tf ? 1 : 0;
+  if (key->zero_distance_tf < icr_zero_tf)
+    return -1;
+  else if (key->zero_distance_tf > icr_zero_tf)
+    return +1;
+  else if (key->insert_first < ic_row->insert_first)
+    return -1;
+  else {
+    unsigned long int const insert_end =
+      ic_row->insert_first + (1UL<<ic_row->insert_bits);
+    if (key->insert_first >= insert_end)
+      return +1;
+    else if (key->copy_first < ic_row->copy_first)
+      return -1;
+    else {
+      unsigned long int const copy_end =
+        ic_row->copy_first + (1UL<<ic_row->copy_bits);
+      if (key->copy_first >= copy_end)
+        return +1;
+      else return 0;
+    }
+  }
+}
 /* END   insert copy table / static */
 
 /* BEGIN insert copy table / public */
@@ -374,5 +427,24 @@ int tcmplxA_inscopy_lengthsort(struct tcmplxA_inscopy* ict) {
    *   the C++ version of this function. (See `...::inscopy_lengthsort`.)
    */
   return tcmplxA_Success;
+}
+
+size_t tcmplxA_inscopy_encode
+  ( struct tcmplxA_inscopy const* ict, unsigned long int i,
+    unsigned long int c, int z_tf)
+{
+  struct tcmplxA_inscopy_row const key = {
+      /*type=*/ tcmplxA_InsCopy_RowInsertAny,
+      /*zero_distance_tf=*/ z_tf?1u:0u,
+      /*insert_bits=*/ 0,
+      /*copy_bits=*/ 0,
+      /*insert_first=*/ i>USHRT_MAX ? USHRT_MAX : (unsigned short int)i,
+      /*copy_first=*/ c>USHRT_MAX ? USHRT_MAX : (unsigned short int)c,
+      /*code=*/ ~(unsigned short int)0u
+    };
+  struct tcmplxA_inscopy_row const* out = bsearch
+      (&key, ict->p, ict->n, sizeof(struct tcmplxA_inscopy_row),
+        tcmplxA_inscopy_encode_cmp);
+  return (out!=NULL) ? (size_t)(out - ict->p) : ~(size_t)0u;
 }
 /* END   insert copy table / public */

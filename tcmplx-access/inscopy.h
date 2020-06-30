@@ -177,6 +177,24 @@ int tcmplxA_inscopy_codesort(struct tcmplxA_inscopy* ict);
  */
 TCMPLX_A_API
 int tcmplxA_inscopy_lengthsort(struct tcmplxA_inscopy* ict);
+
+/**
+ * @brief Encode a pair of insert and copy lengths using a table.
+ * @param ict the table to read (sorted for length)
+ * @param i insert length
+ * @param c copy length, or zero if unused
+ * @param z_tf nonzero to select the zero distance variation,
+ *     zero for normal variation
+ * @return an index of a matching table row if found, SIZE_MAX otherwise
+ * @note The zero distance variation is only available for a small
+ *   subset of preset insert-copy tables. If the zero distance variation
+ *   is unavailable, try again with the default (nonzero distance)
+ *   variation instead.
+ */
+TCMPLX_A_API
+size_t tcmplxA_inscopy_encode
+  ( struct tcmplxA_inscopy const* ict, unsigned long int i,
+    unsigned long int c, int z_tf);
 /* END   insert copy table */
 
 #ifdef __cplusplus

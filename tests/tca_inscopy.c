@@ -19,9 +19,12 @@ static MunitResult test_inscopy_lengthsort
   (const MunitParameter params[], void* data);
 static MunitResult test_inscopy_codesort
   (const MunitParameter params[], void* data);
+static MunitResult test_inscopy_encode
+  (const MunitParameter params[], void* data);
 static void* test_inscopy_setup
     (const MunitParameter params[], void* user_data);
 static void test_inscopy_teardown(void* fixture);
+static unsigned long int test_inscopy_rand_length25(void);
 
 static MunitTest tests_inscopy[] = {
   {"cycle", test_inscopy_cycle,
@@ -34,6 +37,8 @@ static MunitTest tests_inscopy[] = {
     test_inscopy_setup,test_inscopy_teardown,0,NULL},
   {"codesort", test_inscopy_codesort,
     test_inscopy_setup,test_inscopy_teardown,0,NULL},
+  {"encode", test_inscopy_encode,
+    test_inscopy_setup,test_inscopy_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -41,6 +46,19 @@ static MunitSuite const suite_inscopy = {
   "access/inscopy/", tests_inscopy, NULL, 1, 0
 };
 
+
+
+
+unsigned long int test_inscopy_rand_length25(void) {
+  /*
+   * Non-uniform sampling of ranges [0,8192) | [8192,16801792)
+   */
+  unsigned long int const out = testfont_rand_uint_range(0u,16391u);
+  static unsigned long int const remap_diff = 16777216lu - 8192lu;
+  return (out >= 8192u)
+    ? ((out<<11) + testfont_rand_uint_range(0u,2047u) - remap_diff)
+    : out;
+}
 
 
 
@@ -267,6 +285,116 @@ MunitResult test_inscopy_lengthsort
     }
   }
   return MUNIT_OK;
+}
+
+MunitResult test_inscopy_encode
+  (const MunitParameter params[], void* data)
+{
+  /*
+   * DEFLATE insert max: 258
+   * Brotli insert max: 16799809
+   * Brotli copy max: 16779333
+   * Brotli block-count max: 16793840
+   */
+  size_t const not_found = ((size_t)-1);
+  struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* run length-sort */{
+    int const res = tcmplxA_inscopy_lengthsort(p);
+    if (res != tcmplxA_Success)
+      return MUNIT_SKIP;
+  }
+  switch (tcmplxA_inscopy_size(p)) {
+  case 704: /* Brotli insert-copy pairs */{
+      unsigned long int const ins_len = test_inscopy_rand_length25();
+      unsigned long int const cpy_len = test_inscopy_rand_length25();
+      int const zero_dist = (munit_rand_int_range(0,1) != 0);
+      int const expect_success =
+        (ins_len <= 16799809ul && cpy_len >= 2 && cpy_len <= 16779333ul);
+      size_t encode_index =
+        tcmplxA_inscopy_encode(p, ins_len, cpy_len, zero_dist);
+      if ((encode_index == not_found) && zero_dist) {
+        munit_log(MUNIT_LOG_DEBUG, "Retrying without zero distance.");
+        encode_index = tcmplxA_inscopy_encode(p, ins_len, cpy_len, 0);
+      }
+      if ((encode_index != not_found) == expect_success) {
+        if (expect_success) {
+          struct tcmplxA_inscopy_row const* const row =
+            tcmplxA_inscopy_at_c(p, encode_index);
+          unsigned long int const ins_extra = ins_len - row->insert_first;
+          unsigned long int const cpy_extra = cpy_len - row->copy_first;
+          munit_logf(MUNIT_LOG_DEBUG,
+            "Encode (insert: %lu, copy: %lu, zero: %s) as "
+            "<%u, %lu:%u, %lu:%u (zero: %s)>",
+            ins_len, cpy_len, zero_dist?"true":"false",
+            row->code, ins_extra, row->insert_bits, cpy_extra, row->copy_bits,
+            row->zero_distance_tf?"true":"false");
+        } else {
+          munit_logf(MUNIT_LOG_DEBUG,
+            "Encode (insert: %lu, copy: %lu, zero: %s) properly rejected.",
+            ins_len, cpy_len, zero_dist?"true":"false");
+        }
+      } else {
+        munit_errorf("Table row %" MUNIT_SIZE_MODIFIER "u selected for "
+          "%s configuration (insert: %lu, copy: %lu, zero: %s).",
+          encode_index, (expect_success?"valid":"impossible"),
+          ins_len, cpy_len, zero_dist?"true":"false");
+      }
+    }break;
+  case 286: /* DEFLATE */{
+      unsigned long int const cpy_len = testfont_rand_uint_range(0u,260u);
+      if (cpy_len >= 259) {
+        munit_log(MUNIT_LOG_DEBUG, "259 activated!");
+      }
+      int const expect_success = (cpy_len >= 3 && cpy_len <= 258);
+      size_t const encode_index = /* FIXME cpy_len should be second parameter */
+        tcmplxA_inscopy_encode(p, cpy_len, 0u, 0);
+      if ((encode_index != not_found) == expect_success) {
+        if (expect_success) {
+          struct tcmplxA_inscopy_row const* const row =
+            tcmplxA_inscopy_at_c(p, encode_index);
+          unsigned long int const cpy_extra = /* FIXME should use copy_first */
+            cpy_len - row->insert_first;
+          munit_logf(MUNIT_LOG_DEBUG,
+            "Encode (copy: %lu) as <%u, %lu:%u>",
+            cpy_len, row->code, cpy_extra,
+            row->insert_bits /* FIXME should use copy_bits */);
+        } else {
+          munit_logf(MUNIT_LOG_DEBUG,
+            "Encode (copy: %lu) properly rejected.", cpy_len);
+        }
+      } else {
+        munit_errorf("Table row %" MUNIT_SIZE_MODIFIER "u selected for "
+          "%s configuration (copy: %lu).",
+          encode_index, (expect_success?"valid":"impossible"), cpy_len);
+      }
+    }break;
+  case 26: /* Brotli block counts */{
+      unsigned long int const block_len = test_inscopy_rand_length25();
+      int const expect_success = (block_len >= 1 && block_len <= 16793840ul);
+      size_t const encode_index =
+        tcmplxA_inscopy_encode(p, block_len, 0u, 0);
+      if ((encode_index != not_found) == expect_success) {
+        if (expect_success) {
+          struct tcmplxA_inscopy_row const* const row =
+            tcmplxA_inscopy_at_c(p, encode_index);
+          unsigned long int const block_extra = block_len - row->insert_first;
+          munit_logf(MUNIT_LOG_DEBUG,
+            "Encode (block-count: %lu) as <%u, %lu:%u>",
+            block_len, row->code, block_extra, row->insert_bits);
+        } else {
+          munit_logf(MUNIT_LOG_DEBUG,
+            "Encode (block-count: %lu) properly rejected.", block_len);
+        }
+      } else {
+        munit_errorf("Table row %" MUNIT_SIZE_MODIFIER "u selected for "
+          "%s configuration (block-count: %lu).",
+          encode_index, (expect_success?"valid":"impossible"), block_len);
+      }
+    }break;
+  }
 }
 
 int main(int argc, char **argv) {
