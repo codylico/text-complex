@@ -8,6 +8,7 @@
 #include "api.h"
 #include "util.h"
 #include <string.h>
+#include <stdlib.h>
 
 struct tcmplxA_inscopy {
   struct tcmplxA_inscopy_row* p;
@@ -50,6 +51,20 @@ static int tcmplxA_inscopy_resize(struct tcmplxA_inscopy* x, size_t sz);
  * @param x the insert copy table to close
  */
 static void tcmplxA_inscopy_close(struct tcmplxA_inscopy* x);
+/**
+ * @brief Compare the codes of two table rows.
+ * @param a left insert copy row
+ * @param b right insert copy row
+ * @return -1,0,+1 for `a<b`,`a==b`,`a>b`
+ */
+static int tcmplxA_inscopy_code_cmp(void const* a, void const* b);
+/**
+ * @brief Compare the starting lengths for two table rows.
+ * @param a left insert copy row
+ * @param b right insert copy row
+ * @return -1,0,+1 for `a<b`,`a==b`,`a>b`
+ */
+static int tcmplxA_inscopy_length_cmp(void const* a, void const* b);
 
 
 static
@@ -233,6 +248,34 @@ void tcmplxA_inscopy_7932_fill(struct tcmplxA_inscopy_row* r) {
   }
   return;
 }
+
+int tcmplxA_inscopy_code_cmp(void const* a, void const* b) {
+  struct tcmplxA_inscopy_row const*const a_row =
+    (struct tcmplxA_inscopy_row const*)a;
+  struct tcmplxA_inscopy_row const*const b_row =
+    (struct tcmplxA_inscopy_row const*)b;
+  if (a_row->code < b_row->code)
+    return -1;
+  else if (a_row->code > b_row->code)
+    return +1;
+  else return 0;
+}
+
+int tcmplxA_inscopy_length_cmp(void const* a, void const* b) {
+  struct tcmplxA_inscopy_row const*const a_row =
+    (struct tcmplxA_inscopy_row const*)a;
+  struct tcmplxA_inscopy_row const*const b_row =
+    (struct tcmplxA_inscopy_row const*)b;
+  if (a_row->zero_distance_tf < b_row->zero_distance_tf)
+    return -1;
+  else if (a_row->zero_distance_tf > b_row->zero_distance_tf)
+    return +1;
+  else if (a_row->insert_first < b_row->insert_first)
+    return -1;
+  else if (a_row->insert_first > b_row->insert_first)
+    return +1;
+  else return 0;
+}
 /* END   insert copy table / static */
 
 /* BEGIN insert copy table / public */
@@ -304,6 +347,26 @@ int tcmplxA_inscopy_preset(struct tcmplxA_inscopy* dst, int t) {
     }
     (*tcmplxA_inscopy_ps[t].f)(dst->p);
   }
+  return tcmplxA_Success;
+}
+
+int tcmplxA_inscopy_codesort(struct tcmplxA_inscopy* ict) {
+  qsort(ict->p, ict->n, sizeof(struct tcmplxA_inscopy_row),
+    tcmplxA_inscopy_code_cmp);
+  /*
+   * NOTE This function has a return value to preserve consistency with
+   *   the C++ version of this function. (See `...::inscopy_codesort`.)
+   */
+  return tcmplxA_Success;
+}
+
+int tcmplxA_inscopy_lengthsort(struct tcmplxA_inscopy* ict) {
+  qsort(ict->p, ict->n, sizeof(struct tcmplxA_inscopy_row),
+    tcmplxA_inscopy_length_cmp);
+  /*
+   * NOTE This function has a return value to preserve consistency with
+   *   the C++ version of this function. (See `...::inscopy_lengthsort`.)
+   */
   return tcmplxA_Success;
 }
 /* END   insert copy table / public */

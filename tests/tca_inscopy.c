@@ -15,6 +15,10 @@ static MunitResult test_inscopy_item
   (const MunitParameter params[], void* data);
 static MunitResult test_inscopy_item_c
   (const MunitParameter params[], void* data);
+static MunitResult test_inscopy_lengthsort
+  (const MunitParameter params[], void* data);
+static MunitResult test_inscopy_codesort
+  (const MunitParameter params[], void* data);
 static void* test_inscopy_setup
     (const MunitParameter params[], void* user_data);
 static void test_inscopy_teardown(void* fixture);
@@ -25,6 +29,10 @@ static MunitTest tests_inscopy[] = {
   {"item", test_inscopy_item,
     test_inscopy_setup,test_inscopy_teardown,0,NULL},
   {"item_const", test_inscopy_item_c,
+    test_inscopy_setup,test_inscopy_teardown,0,NULL},
+  {"lengthsort", test_inscopy_lengthsort,
+    test_inscopy_setup,test_inscopy_teardown,0,NULL},
+  {"codesort", test_inscopy_codesort,
     test_inscopy_setup,test_inscopy_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -213,6 +221,53 @@ MunitResult test_inscopy_item_c
   return MUNIT_OK;
 }
 
+
+MunitResult test_inscopy_codesort
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* run code-sort */{
+    int const res = tcmplxA_inscopy_codesort(p);
+    munit_assert_int(res,==,tcmplxA_Success);
+  }
+  /* inspect */if (tcmplxA_inscopy_size(p) >= 2) {
+    size_t i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p)-2);
+    struct tcmplxA_inscopy_row const* first = tcmplxA_inscopy_at_c(p, i);
+    struct tcmplxA_inscopy_row const* second = tcmplxA_inscopy_at_c(p, i+1);
+    munit_assert_uint(first->code, <, second->code);
+  }
+  return MUNIT_OK;
+}
+
+MunitResult test_inscopy_lengthsort
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* run length-sort */{
+    int const res = tcmplxA_inscopy_lengthsort(p);
+    munit_assert_int(res,==,tcmplxA_Success);
+  }
+  /* inspect */if (tcmplxA_inscopy_size(p) >= 2) {
+    size_t i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p)-2);
+    struct tcmplxA_inscopy_row const* first = tcmplxA_inscopy_at_c(p, i);
+    struct tcmplxA_inscopy_row const* second = tcmplxA_inscopy_at_c(p, i+1);
+    if (first->zero_distance_tf != second->zero_distance_tf) {
+      munit_assert_false(first->zero_distance_tf);
+      munit_assert_true(second->zero_distance_tf);
+    } else if (first->insert_first != second->insert_first) {
+      munit_assert_uint(first->insert_first, <, second->insert_first);
+    } else {
+      munit_assert_uint(first->copy_first, <=, second->copy_first);
+    }
+  }
+  return MUNIT_OK;
+}
 
 int main(int argc, char **argv) {
   return munit_suite_main(&suite_inscopy, NULL, argc, argv);

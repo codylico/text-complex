@@ -158,6 +158,25 @@ int tcmplxA_inscopy_copy
  */
 TCMPLX_A_API
 int tcmplxA_inscopy_preset(struct tcmplxA_inscopy* dst, int i);
+
+/**
+ * @brief Sort an insert-copy table by alphabet code.
+ * @param ict list to sort
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note Useful for decoding from a compressed stream.
+ */
+TCMPLX_A_API
+int tcmplxA_inscopy_codesort(struct tcmplxA_inscopy* ict);
+
+/**
+ * @brief Sort an insert-copy table by insert length (primary)
+ *   and copy length (secondary).
+ * @param ict list to sort
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note Useful for encoding to a compressed stream.
+ */
+TCMPLX_A_API
+int tcmplxA_inscopy_lengthsort(struct tcmplxA_inscopy* ict);
 /* END   insert copy table */
 
 #ifdef __cplusplus
