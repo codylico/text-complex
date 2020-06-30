@@ -266,9 +266,15 @@ int tcmplxA_inscopy_length_cmp(void const* a, void const* b) {
     (struct tcmplxA_inscopy_row const*)a;
   struct tcmplxA_inscopy_row const*const b_row =
     (struct tcmplxA_inscopy_row const*)b;
-  if (a_row->zero_distance_tf < b_row->zero_distance_tf)
+  int const a_zero_tf = a_row->zero_distance_tf ? 1 : 0;
+  int const b_zero_tf = b_row->zero_distance_tf ? 1 : 0;
+  if (a_row->type < b_row->type)
     return -1;
-  else if (a_row->zero_distance_tf > b_row->zero_distance_tf)
+  else if (a_row->type > b_row->type)
+    return +1;
+  else if (a_zero_tf < b_zero_tf)
+    return -1;
+  else if (a_zero_tf > b_zero_tf)
     return +1;
   else if (a_row->insert_first < b_row->insert_first)
     return -1;
