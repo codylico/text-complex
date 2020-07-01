@@ -17,7 +17,7 @@ extern "C" {
  */
 enum tcmplxA_inscp_preset {
   /**
-   * @brief Select the DEFLATE 285-code literal-length alphabet.
+   * @brief Select the DEFLATE 286-code literal-length alphabet.
    */
   tcmplxA_InsCopy_Deflate = 0,
   /**
