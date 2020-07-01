@@ -130,7 +130,7 @@ MunitResult test_inscopy_item
           tcmplxA_inscopy_at(p,i);
         munit_assert_ptr_not_null(row);
         munit_assert_size(row->code, ==, i);
-        munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Insert);
+        munit_assert_uint(row->type&127, ==, tcmplxA_InsCopy_Copy);
         munit_assert_uint(row->insert_bits, <=, 5);
         munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
           (unsigned int)i,
@@ -199,7 +199,7 @@ MunitResult test_inscopy_item_c
         struct tcmplxA_inscopy_row const* row =
           tcmplxA_inscopy_at_c(p,i);
         munit_assert_ptr_not_null(row);
-        munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Insert);
+        munit_assert_uint(row->type&127, ==, tcmplxA_InsCopy_Copy);
         munit_assert_uint(row->insert_bits, <=, 5);
         munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
           (unsigned int)i,
@@ -345,22 +345,17 @@ MunitResult test_inscopy_encode
     }break;
   case 286: /* DEFLATE */{
       unsigned long int const cpy_len = testfont_rand_uint_range(0u,260u);
-      if (cpy_len >= 259) {
-        munit_log(MUNIT_LOG_DEBUG, "259 activated!");
-      }
       int const expect_success = (cpy_len >= 3 && cpy_len <= 258);
-      size_t const encode_index = /* FIXME cpy_len should be second parameter */
-        tcmplxA_inscopy_encode(p, cpy_len, 0u, 0);
+      size_t const encode_index =
+        tcmplxA_inscopy_encode(p, 0u, cpy_len, 0);
       if ((encode_index != not_found) == expect_success) {
         if (expect_success) {
           struct tcmplxA_inscopy_row const* const row =
             tcmplxA_inscopy_at_c(p, encode_index);
-          unsigned long int const cpy_extra = /* FIXME should use copy_first */
-            cpy_len - row->insert_first;
+          unsigned long int const cpy_extra = cpy_len - row->copy_first;
           munit_logf(MUNIT_LOG_DEBUG,
             "Encode (copy: %lu) as <%u, %lu:%u>",
-            cpy_len, row->code, cpy_extra,
-            row->insert_bits /* FIXME should use copy_bits */);
+            cpy_len, row->code, cpy_extra, row->copy_bits);
         } else {
           munit_logf(MUNIT_LOG_DEBUG,
             "Encode (copy: %lu) properly rejected.", cpy_len);

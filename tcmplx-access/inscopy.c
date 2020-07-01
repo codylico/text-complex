@@ -137,58 +137,62 @@ void tcmplxA_inscopy_close(struct tcmplxA_inscopy* x) {
 
 void tcmplxA_inscopy_1951_fill(struct tcmplxA_inscopy_row* r) {
   size_t i;
-  unsigned short first_insert = 3u;
+  unsigned short first_copy = 3u;
   unsigned short bits = 0u;
   /* put literals */for (i = 0u; i < 256u; ++i) {
     r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Literal;
     r[i].zero_distance_tf = 0;
-    r[i].insert_bits = 0;
     r[i].copy_bits = 0;
-    r[i].insert_first = 0;
+    r[i].insert_bits = 0;
     r[i].copy_first = 0;
+    r[i].insert_first = 0;
   }
   /* put stop code */{ /* i=256; */
     r[i].code = (unsigned short)i;
     r[i].type = tcmplxA_InsCopy_Stop;
     r[i].zero_distance_tf = 0;
-    r[i].insert_bits = 0;
     r[i].copy_bits = 0;
-    r[i].insert_first = 0;
+    r[i].insert_bits = 0;
     r[i].copy_first = 0;
+    r[i].insert_first = 0;
     ++i;
   }
   /* put some zero-bit insert codes */for (; i < 261u; ++i) {
     r[i].code = (unsigned short)i;
-    r[i].type = tcmplxA_InsCopy_Insert;
+    r[i].type = tcmplxA_InsCopy_Copy;
     r[i].zero_distance_tf = 0;
-    r[i].insert_bits = 0;
     r[i].copy_bits = 0;
-    r[i].insert_first = first_insert;
-    r[i].copy_first = 0;
-    first_insert += 1u;
+    r[i].insert_bits = 0;
+    r[i].copy_first = first_copy;
+    r[i].insert_first = 0;
+    first_copy += 1u;
   }
   /* put most of the other insert codes */for (; i < 285u; ++i) {
     r[i].code = (unsigned short)i;
-    r[i].type = tcmplxA_InsCopy_Insert;
+    r[i].type = tcmplxA_InsCopy_Copy;
     r[i].zero_distance_tf = 0;
-    r[i].insert_bits = bits;
-    r[i].copy_bits = 0;
-    r[i].insert_first = first_insert;
-    r[i].copy_first = 0;
-    first_insert += (1u<<bits);
+    r[i].copy_bits = bits;
+    r[i].insert_bits = 0;
+    r[i].copy_first = first_copy;
+    r[i].insert_first = 0;
+    first_copy += (1u<<bits);
     if ((i%4) == 0) {
       bits += 1u;
     }
   }
+  /* adjust 284 */{
+    r[284].type = tcmplxA_InsCopy_CopyMinus1;
+    first_copy -= 1u;
+  }
   /* put code 285 */{ /* i=285; */
     r[i].code = (unsigned short)i;
-    r[i].type = tcmplxA_InsCopy_Insert;
+    r[i].type = tcmplxA_InsCopy_Copy;
     r[i].zero_distance_tf = 0;
-    r[i].insert_bits = 0;
     r[i].copy_bits = 0;
-    r[i].insert_first = first_insert;
-    r[i].copy_first = 0;
+    r[i].insert_bits = 0;
+    r[i].copy_first = first_copy;
+    r[i].insert_first = 0;
     /* ++i; */
   }
   return;
@@ -287,9 +291,11 @@ int tcmplxA_inscopy_length_cmp(void const* a, void const* b) {
     (struct tcmplxA_inscopy_row const*)b;
   int const a_zero_tf = a_row->zero_distance_tf ? 1 : 0;
   int const b_zero_tf = b_row->zero_distance_tf ? 1 : 0;
-  if (a_row->type < b_row->type)
+  unsigned int const a_type = a_row->type&127u;
+  unsigned int const b_type = b_row->type&127u;
+  if (a_type < b_type)
     return -1;
-  else if (a_row->type > b_row->type)
+  else if (a_type > b_type)
     return +1;
   else if (a_zero_tf < b_zero_tf)
     return -1;
@@ -328,7 +334,8 @@ int tcmplxA_inscopy_encode_cmp(void const* k, void const* icr) {
       return -1;
     else {
       unsigned long int const copy_end =
-        ic_row->copy_first + (1UL<<ic_row->copy_bits);
+          ic_row->copy_first + (1UL<<ic_row->copy_bits)
+        - ((ic_row->type&128u) ? 1u : 0u);
       if (key->copy_first >= copy_end)
         return +1;
       else return 0;

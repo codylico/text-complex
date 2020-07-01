@@ -43,9 +43,9 @@ enum tcmplxA_inscopy_type {
    */
   tcmplxA_InsCopy_Stop = 1,
   /**
-   * @brief DEFLATE insert length.
+   * @brief DEFLATE copy length.
    */
-  tcmplxA_InsCopy_Insert = 2,
+  tcmplxA_InsCopy_Copy = 2,
   /**
    * @brief Brotli insert-copy length code.
    */
@@ -53,7 +53,15 @@ enum tcmplxA_inscopy_type {
   /**
    * @brief Brotli block count code.
    */
-  tcmplxA_InsCopy_BlockCount = 4
+  tcmplxA_InsCopy_BlockCount = 4,
+  /**
+   * @brief DEFLATE copy length, minus one valid value in the extra bits.
+   * @note DEFLATE code 284 is in this category, accepting one less than
+   *   the proper five-bit extra range (i.e. 227-258) according to RFC1951.
+   * @note This type compares as equal to @link tcmplxA_InsCopy_Copy @endlink
+   *   for length-based sorting.
+   */
+  tcmplxA_InsCopy_CopyMinus1 = 130
 };
 
 /**
