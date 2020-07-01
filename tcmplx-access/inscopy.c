@@ -319,7 +319,9 @@ int tcmplxA_inscopy_encode_cmp(void const* k, void const* icr) {
   struct tcmplxA_inscopy_row const*const ic_row =
     (struct tcmplxA_inscopy_row const*)icr;
   int const icr_zero_tf = ic_row->zero_distance_tf ? 1 : 0;
-  if (key->zero_distance_tf < icr_zero_tf)
+  if (tcmplxA_InsCopy_Copy > ic_row->type)
+    return +1;
+  else if (key->zero_distance_tf < icr_zero_tf)
     return -1;
   else if (key->zero_distance_tf > icr_zero_tf)
     return +1;
@@ -452,6 +454,14 @@ size_t tcmplxA_inscopy_encode
   struct tcmplxA_inscopy_row const* out = bsearch
       (&key, ict->p, ict->n, sizeof(struct tcmplxA_inscopy_row),
         tcmplxA_inscopy_encode_cmp);
-  return (out!=NULL) ? (size_t)(out - ict->p) : ~(size_t)0u;
+  /* range check */if (out != NULL) {
+    if (key.zero_distance_tf != (out->zero_distance_tf!=0)
+    ||  i < out->insert_first
+    ||  i >= out->insert_first+(1UL<<out->insert_bits)
+    ||  c < out->copy_first
+    ||  c >= out->copy_first+(1UL<<out->copy_bits))
+      return ~(size_t)0u;
+    else return (size_t)(out - ict->p);
+  } else return ~(size_t)0u;
 }
 /* END   insert copy table / public */
