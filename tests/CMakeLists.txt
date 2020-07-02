@@ -50,4 +50,10 @@ target_link_libraries(tcmplx_access_testfont mmaptwo munit)
   target_link_libraries(tcmplx_access_test_inscopy
     tcmplx_access_testfont munit tcmplx_access)
 #END   InsCopy test
+
+#BEGIN CtxtMap test
+  add_executable(tcmplx_access_test_ctxtmap tca_ctxtmap.c)
+  target_link_libraries(tcmplx_access_test_ctxtmap
+    tcmplx_access_testfont munit tcmplx_access)
+#END   CtxtMap test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
