@@ -18,6 +18,16 @@ extern "C" {
  */
 struct tcmplxA_ctxtmap;
 
+/**
+ * @brief Literal context modes.
+ */
+enum tcmplxA_ctxtmap_mode {
+  tcmplxA_CtxtMap_LSB6 = 0,
+  tcmplxA_CtxtMap_MSB6 = 1,
+  tcmplxA_CtxtMap_UTF8 = 2,
+  tcmplxA_CtxtMap_Signed = 3
+};
+
 /* BEGIN context map */
 /**
  * @brief Construct a new context map.
@@ -82,6 +92,25 @@ int tcmplxA_ctxtmap_get(struct tcmplxA_ctxtmap const* x, size_t i, size_t j);
  */
 TCMPLX_A_API
 void tcmplxA_ctxtmap_set(struct tcmplxA_ctxtmap* x, size_t i, size_t j, int v);
+
+/**
+ * @brief Calculate a distance context from a copy length.
+ * @param copylen a copy length
+ * @return a distance context on success, negative otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_ctxtmap_distance_context(unsigned long int copylen);
+
+/**
+ * @brief Calculate a literal context from recent history.
+ * @param mode a context map mode
+ * @param p1 most recent byte
+ * @param p2 the byte before the most recent
+ * @return a literal context on success, negative otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_ctxtmap_literal_context
+  (int mode, unsigned int p1, unsigned int p2);
 /* END   context map */
 
 #ifdef __cplusplus
