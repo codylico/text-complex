@@ -17,10 +17,16 @@ static MunitResult test_ctxtmap_distcontext
   (const MunitParameter params[], void* data);
 static MunitResult test_ctxtmap_litcontext
   (const MunitParameter params[], void* data);
+static MunitResult test_ctxtmap_imtf
+  (const MunitParameter params[], void* data);
+static MunitResult test_ctxtmap_mtf
+  (const MunitParameter params[], void* data);
 static void* test_ctxtmap_setup
     (const MunitParameter params[], void* user_data);
 static void test_ctxtmap_teardown(void* fixture);
 
+/* NOTE from RFC7932 */
+static void InverseMoveToFrontTransform(munit_uint8_t* v, int len);
 
 static MunitTest tests_ctxtmap[] = {
   {"cycle", test_ctxtmap_cycle,
@@ -31,12 +37,35 @@ static MunitTest tests_ctxtmap[] = {
     NULL,NULL,0,NULL},
   {"literal_context", test_ctxtmap_litcontext,
     NULL,NULL,0,NULL},
+  {"imtf", test_ctxtmap_imtf,
+    test_ctxtmap_setup,test_ctxtmap_teardown,0,NULL},
+  {"mtf", test_ctxtmap_mtf,
+    test_ctxtmap_setup,test_ctxtmap_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
 static MunitSuite const suite_ctxtmap = {
   "access/ctxtmap/", tests_ctxtmap, NULL, 1, 0
 };
+
+
+/* NOTE from RFC7932 */
+void InverseMoveToFrontTransform(munit_uint8_t* v, int v_len) {
+  munit_uint8_t mtf[256];
+  int i;
+  for (i = 0; i < 256; ++i) {
+    mtf[i] = (munit_uint8_t)i;
+  }
+  for (i = 0; i < v_len; ++i) {
+    munit_uint8_t index = v[i];
+    munit_uint8_t value = mtf[index];
+    v[i] = value;
+    for (; index; --index) {
+       mtf[index] = mtf[index - 1];
+    }
+    mtf[0] = value;
+  }
+}
 
 
 
@@ -137,6 +166,59 @@ MunitResult test_ctxtmap_litcontext
       break;
     }
   }
+  return MUNIT_OK;
+}
+
+MunitResult test_ctxtmap_imtf
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
+  munit_uint8_t* mem;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* */{
+    size_t const isize =
+      tcmplxA_ctxtmap_contexts(p) * tcmplxA_ctxtmap_block_types(p);
+    unsigned char* const data = tcmplxA_ctxtmap_data(p);
+    mem = malloc(isize*sizeof(unsigned char));
+    if (mem == NULL)
+      return MUNIT_SKIP;
+    munit_rand_memory(isize, data);
+    memcpy(mem, data, isize*sizeof(unsigned char));
+    /* apply the inverse transform */{
+      tcmplxA_ctxtmap_revert_movetofront(p);
+      InverseMoveToFrontTransform(mem, isize);
+    }
+    munit_assert_memory_equal(isize, data, mem);
+  }
+  free(mem);
+  return MUNIT_OK;
+}
+MunitResult test_ctxtmap_mtf
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
+  munit_uint8_t* mem;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* */{
+    size_t const isize =
+      tcmplxA_ctxtmap_contexts(p) * tcmplxA_ctxtmap_block_types(p);
+    unsigned char* const data = tcmplxA_ctxtmap_data(p);
+    mem = malloc(isize*sizeof(unsigned char));
+    if (mem == NULL)
+      return MUNIT_SKIP;
+    munit_rand_memory(isize, data);
+    memcpy(mem, data, isize*sizeof(unsigned char));
+    /* apply the inverse transform */{
+      tcmplxA_ctxtmap_apply_movetofront(p);
+      InverseMoveToFrontTransform(data, isize);
+    }
+    munit_assert_memory_equal(isize, data, mem);
+  }
+  free(mem);
   return MUNIT_OK;
 }
 

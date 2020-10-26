@@ -111,6 +111,22 @@ int tcmplxA_ctxtmap_distance_context(unsigned long int copylen);
 TCMPLX_A_API
 int tcmplxA_ctxtmap_literal_context
   (int mode, unsigned int p1, unsigned int p2);
+
+/**
+ * @brief Apply a move-to-front transform to the map.
+ * @param x the map to modify
+ * @note This function intends to reverse the inverse
+ *   move-to-front transform described in RFC 7932 section 7.3.
+ */
+TCMPLX_A_API
+void tcmplxA_ctxtmap_apply_movetofront(struct tcmplxA_ctxtmap* x);
+/**
+ * @brief Apply the Brotli inverse move-to-front transform to the map.
+ * @param x the map to modify
+ * @see RFC 7932 section 7.3.
+ */
+TCMPLX_A_API
+void tcmplxA_ctxtmap_revert_movetofront(struct tcmplxA_ctxtmap* x);
 /* END   context map */
 
 #ifdef __cplusplus
