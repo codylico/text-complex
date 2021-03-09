@@ -60,16 +60,16 @@ size_t tcmplxA_ctxtmap_block_types(struct tcmplxA_ctxtmap const* x);
 TCMPLX_A_API
 size_t tcmplxA_ctxtmap_contexts(struct tcmplxA_ctxtmap const* x);
 /**
- * @brief Inspect the number of contexts for a context map.
+ * @brief Access the contiguous storage for this map.
  * @param x the context map to inspect
- * @return a context count
+ * @return a pointer to entry zero-zero in the map
  */
 TCMPLX_A_API
 unsigned char* tcmplxA_ctxtmap_data(struct tcmplxA_ctxtmap* x);
 /**
- * @brief Inspect the number of contexts for a context map.
+ * @brief Access the contiguous storage for this map.
  * @param x the context map to inspect
- * @return a context count
+ * @return a pointer to entry zero-zero in the map
  */
 TCMPLX_A_API
 unsigned char const* tcmplxA_ctxtmap_data_c(struct tcmplxA_ctxtmap const* x);
