@@ -12,6 +12,13 @@ set(text_complex_access_FILES
   ringdist.c
   inscopy.c
   ctxtmap.c
+
+  bdict_p.h
+  bdict04.c  bdict05.c  bdict06.c  bdict07.c  bdict08.c
+  bdict09.c  bdict10.c  bdict11.c  bdict12.c  bdict13.c
+  bdict14.c  bdict15.c  bdict16.c  bdict17.c  bdict18.c
+  bdict19.c  bdict20.c  bdict21.c  bdict22.c  bdict23.c
+  bdict24.c
   )
 set(text_complex_access_HEADERS
   ../include/text-complex/access/api.h
