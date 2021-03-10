@@ -1,12 +1,12 @@
 /**
  * @brief Test program for distance ring
  */
-#include "../tcmplx-access/ringdist.h"
+#include "testfont.h"
+#include "text-complex/access/ringdist.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
-#include "testfont.h"
 #include <limits.h>
 
 

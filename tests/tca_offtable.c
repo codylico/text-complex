@@ -1,9 +1,9 @@
 
-#include "../tcmplx-access/offtable.h"
+#include "text-complex/access/offtable.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
 
 #ifndef NDEBUG
 #  define test_sharp2(s) #s

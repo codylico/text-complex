@@ -1,12 +1,12 @@
 /**
  * @brief Test program for context map
  */
-#include "../tcmplx-access/ctxtmap.h"
+#include "testfont.h"
+#include "text-complex/access/ctxtmap.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
-#include "testfont.h"
 
 
 static MunitResult test_ctxtmap_cycle

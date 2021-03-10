@@ -4,13 +4,13 @@
  * @author Cody Licorish (svgmovement@gmail.com)
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
-#include "woff2.h"
-#include "api.h"
-#include "util.h"
+#include "text-complex/access/woff2.h"
+#include "text-complex/access/api.h"
+#include "text-complex/access/util.h"
+#include "text-complex/access/seq.h"
+#include "text-complex/access/offtable.h"
 #include "mmaptwo/mmaptwo.h"
 #include <string.h>
-#include "seq.h"
-#include "offtable.h"
 #include <stdlib.h>
 
 

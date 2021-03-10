@@ -1,12 +1,12 @@
 /**
  * @brief Test program for insert copy table
  */
-#include "../tcmplx-access/inscopy.h"
+#include "testfont.h"
+#include "text-complex/access/inscopy.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
-#include "testfont.h"
 
 
 static MunitResult test_inscopy_cycle

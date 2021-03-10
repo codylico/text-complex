@@ -4,9 +4,9 @@
  * @author Cody Licorish (svgmovement@gmail.com)
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
-#include "seq.h"
-#include "api.h"
-#include "util.h"
+#include "text-complex/access/seq.h"
+#include "text-complex/access/api.h"
+#include "text-complex/access/util.h"
 #include "mmaptwo/mmaptwo.h"
 #include <limits.h>
 

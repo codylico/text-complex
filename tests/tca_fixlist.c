@@ -1,13 +1,13 @@
 /**
  * @brief Test program for prefix list
  */
-#include "../tcmplx-access/fixlist.h"
+#include "testfont.h"
+#include "text-complex/access/fixlist.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
 #include <limits.h>
-#include "testfont.h"
 
 
 static MunitResult test_fixlist_cycle

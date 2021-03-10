@@ -4,12 +4,12 @@
  * \author Cody Licorish (svgmovement@gmail.com)
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
-#include "api.h"
+#include "text-complex/access/api.h"
 #include <stddef.h>
 
 /* BEGIN configurations */
 char const* tcmplxA_api_version(void) {
-  return "0.3.3-alpha";
+  return "0.3.4-alpha";
 }
 /* END   configurations */
 
