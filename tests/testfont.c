@@ -3,9 +3,9 @@
  * @brief Test fonts.
  */
 #include "testfont.h"
+#include "mmaptwo/mmaptwo.h"
 #include <limits.h>
 #include <stdlib.h>
-#include "../mmaptwo/mmaptwo.h"
 #include "munit/munit.h"
 #include <stdio.h>
 

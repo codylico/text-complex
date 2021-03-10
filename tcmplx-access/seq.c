@@ -7,8 +7,8 @@
 #include "seq.h"
 #include "api.h"
 #include "util.h"
+#include "mmaptwo/mmaptwo.h"
 #include <limits.h>
-#include "../mmaptwo/mmaptwo.h"
 
 struct tcmplxA_seq {
   struct mmaptwo_i *fh;

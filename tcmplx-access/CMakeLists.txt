@@ -16,6 +16,9 @@ set(text_complex_access_FILES
 
 add_library(tcmplx_access ${text_complex_access_FILES})
 target_link_libraries(tcmplx_access mmaptwo)
+target_include_directories(tcmplx_access
+    PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../deps>")
+
 if (WIN32 AND BUILD_SHARED_LIBS)
   target_compile_definitions(tcmplx_access
     PUBLIC "TCMPLX_A_WIN32_DLL")

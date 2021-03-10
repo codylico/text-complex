@@ -7,8 +7,8 @@
 #include "woff2.h"
 #include "api.h"
 #include "util.h"
+#include "mmaptwo/mmaptwo.h"
 #include <string.h>
-#include "../mmaptwo/mmaptwo.h"
 #include "seq.h"
 #include "offtable.h"
 #include <stdlib.h>
