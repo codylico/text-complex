@@ -16,6 +16,8 @@ char const* tcmplxA_api_version(void) {
 /* BEGIN error codes */
 char const* tcmplxA_api_error_toa(int v) {
   switch (v) {
+  case tcmplxA_ErrOutOfRange:
+    return "Array index out of range";
   case tcmplxA_ErrRingDistOverflow:
     return "Numeric overflow produced by a distance code conversion";
   case tcmplxA_ErrRingDistUnderflow:

@@ -62,4 +62,10 @@ target_include_directories(tcmplx_access_testfont
   target_link_libraries(tcmplx_access_test_ctxtmap
     tcmplx_access_testfont munit tcmplx_access)
 #END   CtxtMap test
+
+#BEGIN BDict test
+  add_executable(tcmplx_access_test_bdict tca_bdict.c)
+  target_link_libraries(tcmplx_access_test_bdict
+    tcmplx_access_testfont munit tcmplx_access)
+#END   BDict test
 endif (TCMPLX_ACCESS_BUILD_TESTS)

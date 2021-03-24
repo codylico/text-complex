@@ -40,6 +40,8 @@ char const* tcmplxA_api_version(void);
 
 /* BEGIN error codes */
 enum tcmplxA_api_error {
+  /** Array index out of range */
+  tcmplxA_ErrOutOfRange = -10,
   /** Numeric overflow produced by a distance code conversion */
   tcmplxA_ErrRingDistOverflow = -9,
   /** Negative distance produced by a distance code conversion */
