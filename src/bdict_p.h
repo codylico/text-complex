@@ -10,6 +10,44 @@
 extern "C" {
 #endif /*__cplusplus*/
 
+/* BEGIN built-in dictionary / transform */
+enum tcmplxA_bdict_cb {
+  tcmplxA_BDict_Identity = 0u,
+  tcmplxA_BDict_FermentFirst = 1u,
+  tcmplxA_BDict_FermentAll = 2u,
+  tcmplxA_BDict_OmitFirst1 = 3u,
+  tcmplxA_BDict_OmitFirst2 = 4u,
+  tcmplxA_BDict_OmitFirst3 = 5u,
+  tcmplxA_BDict_OmitFirst4 = 6u,
+  tcmplxA_BDict_OmitFirst5 = 7u,
+  tcmplxA_BDict_OmitFirst6 = 8u,
+  tcmplxA_BDict_OmitFirst7 = 9u,
+  tcmplxA_BDict_OmitFirst8 = 10u,
+  tcmplxA_BDict_OmitFirst9 = 11u,
+  tcmplxA_BDict_OmitLast1 = 12u,
+  tcmplxA_BDict_OmitLast2 = 13u,
+  tcmplxA_BDict_OmitLast3 = 14u,
+  tcmplxA_BDict_OmitLast4 = 15u,
+  tcmplxA_BDict_OmitLast5 = 16u,
+  tcmplxA_BDict_OmitLast6 = 17u,
+  tcmplxA_BDict_OmitLast7 = 18u,
+  tcmplxA_BDict_OmitLast8 = 19u,
+  tcmplxA_BDict_OmitLast9 = 20u
+};
+
+/**
+ * @internal
+ * @brief Perform a word transform and add to an output buffer.
+ * @param[out] dst output buffer
+ * @param[in,out] dstlen write position
+ * @param src source word
+ * @param srclen length of source word
+ */
+void tcmplxA_bdict_cb_do
+  ( unsigned char* dst, unsigned int* dstlen,
+    unsigned char const* src, unsigned int srclen, unsigned int k);
+/* END   built-in dictionary / transform */
+
 /* BEGIN built-in dictionary / access */
 /**
  * @brief Access the 4-length section of the dictionary.
