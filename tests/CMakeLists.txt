@@ -68,4 +68,9 @@ target_include_directories(tcmplx_access_testfont
   target_link_libraries(tcmplx_access_test_bdict
     tcmplx_access_testfont munit tcmplx_access)
 #END   BDict test
+
+#BEGIN ZUtil test
+  add_executable(tcmplx_access_test_zutil tca_zutil.c)
+  target_link_libraries(tcmplx_access_test_zutil munit tcmplx_access)
+#END   ZUtil test
 endif (TCMPLX_ACCESS_BUILD_TESTS)

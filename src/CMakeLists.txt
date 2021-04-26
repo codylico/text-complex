@@ -19,6 +19,8 @@ set(text_complex_access_FILES
   bdict14.c  bdict15.c  bdict16.c  bdict17.c  bdict18.c
   bdict19.c  bdict20.c  bdict21.c  bdict22.c  bdict23.c
   bdict24.c
+
+  zutil.c
   )
 set(text_complex_access_HEADERS
   ../include/text-complex/access/api.h
