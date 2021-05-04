@@ -543,6 +543,19 @@ int tcmplxA_fixlist_gen_lengths
           dst->p[i].len = 0u;
         }
       }
+      if (node_count <= 2u) {
+        if (max_bits > 0u) {
+          for (i = 0u; i < node_count; ++i)
+            dst->p[nodes[i].index].len = 1u;
+          tcmplxA_util_free(heap);
+          tcmplxA_util_free(nodes);
+          return tcmplxA_Success;
+        } else {
+          tcmplxA_util_free(heap);
+          tcmplxA_util_free(nodes);
+          return tcmplxA_Success;
+        }
+      }
       qsort(nodes, node_count, sizeof(struct tcmplxA_fixlist_ref),
           &tcmplxA_fixlist_ref_cmp);
     }

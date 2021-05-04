@@ -193,6 +193,7 @@ MunitResult test_fixlist_gen_lengths
   /* inspect the new code lengths */{
     size_t i;
     size_t const len = tcmplxA_fixlist_size(p);
+    size_t nonzero_count = 0u;
     unsigned long int sum = 0u;
     munit_logf(MUNIT_LOG_DEBUG,
       "total %" MUNIT_SIZE_MODIFIER "u", len);
@@ -205,11 +206,16 @@ MunitResult test_fixlist_gen_lengths
         munit_assert_uint(line->len, >, 0u);
         munit_assert_uint(line->len, <=, 15u);
         sum += (32768u>>(line->len));
+        nonzero_count += 1u;
       } else {
         munit_assert_uint(line->len, ==, 0u);
       }
     }
-    munit_assert_ulong(sum, ==, 32768u);
+    if (nonzero_count == 0u) {
+      munit_assert_ulong(sum, ==, 0u);
+    } else if (nonzero_count == 1u) {
+      munit_assert_ulong(sum, ==, 16384u);
+    } else munit_assert_ulong(sum, ==, 32768u);
   }
   free(ph);
   return MUNIT_OK;
