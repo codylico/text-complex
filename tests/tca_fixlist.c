@@ -16,17 +16,26 @@ static MunitResult test_fixlist_item
   (const MunitParameter params[], void* data);
 static MunitResult test_fixlist_gen_codes
   (const MunitParameter params[], void* data);
+static MunitResult test_fixlist_gen_lengths
+  (const MunitParameter params[], void* data);
 static MunitResult test_fixlist_preset
   (const MunitParameter params[], void* data);
 static void* test_fixlist_setup
     (const MunitParameter params[], void* user_data);
 static void* test_fixlist_gen_setup
     (const MunitParameter params[], void* user_data);
+static void* test_fixlist_len_setup
+    (const MunitParameter params[], void* user_data);
 static void test_fixlist_teardown(void* fixture);
 
 
 static MunitParameterEnum test_fixlist_gen_params[] = {
   { "prefixes", NULL },
+  { NULL, NULL },
+};
+
+static MunitParameterEnum test_fixlist_len_params[] = {
+  { "frequencies", NULL },
   { NULL, NULL },
 };
 
@@ -39,6 +48,8 @@ static MunitTest tests_fixlist[] = {
     test_fixlist_gen_setup,test_fixlist_teardown,0,test_fixlist_gen_params},
   {"preset", test_fixlist_preset,
     test_fixlist_setup,test_fixlist_teardown,0,NULL},
+  {"gen_lengths", test_fixlist_gen_lengths,
+    test_fixlist_len_setup,test_fixlist_teardown,0,test_fixlist_len_params},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -75,6 +86,33 @@ void* test_fixlist_gen_setup(const MunitParameter params[], void* user_data) {
   }
   out = tcmplxA_fixlist_new(lex.total);
   if (out != NULL) {
+    size_t i;
+    for (i = 0; i < lex.total; ++i) {
+      tcmplxA_fixlist_at(out, i)->len = tcmplxAtest_fixlist_lex_next(&lex);
+      tcmplxA_fixlist_at(out, i)->value = (unsigned int)i;
+    }
+  }
+  return out;
+}
+
+void* test_fixlist_len_setup(const MunitParameter params[], void* user_data) {
+  struct tcmplxAtest_fixlist_lex lex;
+  struct tcmplxA_fixlist* out;
+  int const start_res = tcmplxAtest_fixlist_lex_start
+    (&lex, munit_parameters_get(params, "frequencies"));
+  out = tcmplxA_fixlist_new
+    (start_res==0 ? lex.total : munit_rand_int_range(2,384));
+  if (out == NULL)
+    return out;
+  else if (start_res != 0) {
+    size_t const len = tcmplxA_fixlist_size(out);
+    size_t i;
+    /* generate random */
+    for (i = 0; i < len; ++i) {
+      tcmplxA_fixlist_at(out, i)->len = munit_rand_int_range(0,32);
+      tcmplxA_fixlist_at(out, i)->value = (unsigned int)i;
+    }
+  } else {
     size_t i;
     for (i = 0; i < lex.total; ++i) {
       tcmplxA_fixlist_at(out, i)->len = tcmplxAtest_fixlist_lex_next(&lex);
@@ -132,6 +170,48 @@ MunitResult test_fixlist_gen_codes
       munit_assert_uint((line->code>>(line->len)), ==, 0u);
     }
   }
+  return MUNIT_OK;
+}
+
+MunitResult test_fixlist_gen_lengths
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
+  tcmplxA_uint32* ph;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* extract the histogram */{
+    size_t const sz = tcmplxA_fixlist_size(p);
+    size_t i;
+    ph = calloc(sz, sizeof(tcmplxA_uint32));
+    for (i = 0; i < sz; ++i) {
+      ph[i] = tcmplxA_fixlist_at_c(p,i)->len;
+    }
+  }
+  munit_assert_int(tcmplxA_fixlist_gen_lengths(p,ph,15),==, tcmplxA_Success);
+  /* inspect the new code lengths */{
+    size_t i;
+    size_t const len = tcmplxA_fixlist_size(p);
+    unsigned long int sum = 0u;
+    munit_logf(MUNIT_LOG_DEBUG,
+      "total %" MUNIT_SIZE_MODIFIER "u", len);
+    for (i = 0; i < len; ++i) {
+      struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(p,i);
+      munit_logf(MUNIT_LOG_DEBUG,
+        "  [%" MUNIT_SIZE_MODIFIER "u] = {-, l %u, v %lu}",
+        i, line->len, line->value);
+      if (ph[i] > 0) {
+        munit_assert_uint(line->len, >, 0u);
+        munit_assert_uint(line->len, <=, 15u);
+        sum += (32768u>>(line->len));
+      } else {
+        munit_assert_uint(line->len, ==, 0u);
+      }
+    }
+    munit_assert_ulong(sum, ==, 32768u);
+  }
+  free(ph);
   return MUNIT_OK;
 }
 

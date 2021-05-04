@@ -143,6 +143,20 @@ int tcmplxA_fixlist_gen_codes(struct tcmplxA_fixlist* dst);
  */
 TCMPLX_A_API
 int tcmplxA_fixlist_preset(struct tcmplxA_fixlist* dst, unsigned int i);
+
+/**
+ * @brief Generate prefix code lengths given a prefix list and
+ *   histogram of code frequencies.
+ * @param dst list to populate with code lengths
+ * @param table frequency histogram, flat array as long as number
+ *   of prefixes in the list
+ * @param max_bits maximum output length
+ * @return tcmplxA_Success on success, nonzero otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_fixlist_gen_lengths
+  ( struct tcmplxA_fixlist* dst, tcmplxA_uint32 const* table,
+    unsigned int max_bits);
 /* END   prefix list */
 
 #ifdef __cplusplus
