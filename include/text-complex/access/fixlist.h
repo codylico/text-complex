@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/fixlist.h
+ * @file text-complex/access/fixlist.h
  * @brief Prefix code list
  * @author Cody Licorish (svgmovement@gmail.com)
  */
@@ -62,8 +62,11 @@ enum tcmplxA_fix_preset {
  * @brief A single line from a prefix code list.
  */
 struct tcmplxA_fixline {
+  /** @brief Alphabet code for a prefix. */
   unsigned short int code;
+  /** @brief Length of prefix in bits. */
   unsigned short int len;
+  /** @brief Prefix bits. */
   unsigned long int value;
 };
 /* END   prefix code line */
@@ -129,6 +132,9 @@ int tcmplxA_fixlist_copy
 
 /**
  * @brief Generate prefix codes given a prefix list.
+ *
+ * This function fills in the bit strings of each prefix code,
+ *   using the corresponding @link tcmplxA_fixline#len @endlink values.
  * @param dst list to populate with codes
  * @return tcmplxA_Success on success, nonzero otherwise
  */
