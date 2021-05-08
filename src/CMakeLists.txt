@@ -21,6 +21,7 @@ set(text_complex_access_FILES
   bdict24.c
 
   zutil.c
+  ringslide.c
   )
 set(text_complex_access_HEADERS
   ../include/text-complex/access/api.h
@@ -33,6 +34,7 @@ set(text_complex_access_HEADERS
   ../include/text-complex/access/inscopy.h
   ../include/text-complex/access/ctxtmap.h
   ../include/text-complex/access/bdict.h
+  ../include/text-complex/access/ringslide.h
   )
 
 add_library(tcmplx_access ${text_complex_access_FILES}

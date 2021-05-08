@@ -73,4 +73,9 @@ target_include_directories(tcmplx_access_testfont
   add_executable(tcmplx_access_test_zutil tca_zutil.c)
   target_link_libraries(tcmplx_access_test_zutil munit tcmplx_access)
 #END   ZUtil test
+
+#BEGIN RingSlide test
+  add_executable(tcmplx_access_test_ringslide tca_ringslide.c)
+  target_link_libraries(tcmplx_access_test_ringslide munit tcmplx_access)
+#END   RingSlide test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
