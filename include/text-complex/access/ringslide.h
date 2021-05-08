@@ -39,6 +39,33 @@ void tcmplxA_ringslide_destroy(struct tcmplxA_ringslide* x);
  */
 TCMPLX_A_API
 tcmplxA_uint32 tcmplxA_ringslide_extent(struct tcmplxA_ringslide const* x);
+
+/**
+ * @brief Add the most recent byte.
+ * @param x the slide ring to update
+ * @param v the byte to add
+ * @return tcmplxA_Success on success, nonzero otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_ringslide_add(struct tcmplxA_ringslide* x, unsigned int v);
+
+/**
+ * @brief Query the number of bytes held by the sliding window.
+ * @param x the slide ring to inspect
+ * @return the count of past bytes in the window
+ */
+TCMPLX_A_API
+tcmplxA_uint32 tcmplxA_ringslide_size(struct tcmplxA_ringslide const* x);
+
+/**
+ * @brief Query a past byte.
+ * @param x the slide ring to inspect
+ * @param i number of bytes to go back; zero is most recent
+ * @return a reference to the byte at the given index
+ */
+TCMPLX_A_API
+unsigned int tcmplxA_ringslide_peek
+  (struct tcmplxA_ringslide const* x, tcmplxA_uint32 i);
 /* END   slide ring */
 
 #ifdef __cplusplus
