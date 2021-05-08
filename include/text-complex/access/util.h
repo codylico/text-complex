@@ -1,7 +1,7 @@
-/*
- * \file tcmplx-access/util.h
- * \brief Utility functions for `text-complex`
- * \author Cody Licorish (svgmovement@gmail.com)
+/**
+ * @file text-complex/access/util.h
+ * @brief Utility functions for `text-complex`
+ * @author Cody Licorish (svgmovement@gmail.com)
  */
 #ifndef hg_TextComplexAccess_Util_H_
 #define hg_TextComplexAccess_Util_H_

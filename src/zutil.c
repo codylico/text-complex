@@ -1,5 +1,5 @@
-/*
- * @file tcmplx-access/api.c
+/**
+ * @file text-complex/access/zutil.c
  * @brief Tools for DEFLATE
  * @author Cody Licorish (svgmovement@gmail.com)
  */

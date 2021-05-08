@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/seq.c
+ * @file text-complex/access/seq.c
  * @brief Adapter providing sequential access to bytes from a mmaptwo
  * @author Cody Licorish (svgmovement@gmail.com)
  */

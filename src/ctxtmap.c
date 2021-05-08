@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/ctxtmap.c
+ * @file text-complex/access/ctxtmap.c
  * @brief Context map for compressed streams
  * @author Cody Licorish (svgmovement@gmail.com)
  */

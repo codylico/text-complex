@@ -1,7 +1,7 @@
-/*
- * \file tcmplx-access/api.h
- * \brief API-wide declarations for text-complex
- * \author Cody Licorish (svgmovement@gmail.com)
+/**
+ * @file text-complex/access/api.h
+ * @brief API-wide declarations for text-complex
+ * @author Cody Licorish (svgmovement@gmail.com)
  */
 #ifndef hg_TextComplexAccess_api_H_
 #define hg_TextComplexAccess_api_H_
@@ -24,21 +24,24 @@ extern "C" {
 #endif /*__cplusplus*/
 
 #if UINT_MAX >= 0xFFffFFff
+/** @brief Primitive 32-bit unsigned integer. */
 typedef unsigned int tcmplxA_uint32;
 #else
+/** @brief Primitive 32-bit unsigned integer. */
 typedef unsigned long int tcmplxA_uint32;
 #endif /*UINT_MAX*/
 
 /* BEGIN configurations */
 /**
- * \brief Check the library's version.
- * \return a version string
+ * @brief Check the library's version.
+ * @return a version string
  */
 TCMPLX_A_API
 char const* tcmplxA_api_version(void);
 /* END   configurations */
 
 /* BEGIN error codes */
+/** @brief Library error codes. */
 enum tcmplxA_api_error {
   /** Array index out of range */
   tcmplxA_ErrOutOfRange = -10,

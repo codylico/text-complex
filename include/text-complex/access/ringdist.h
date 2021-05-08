@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/ringdist.h
+ * @file text-complex/access/ringdist.h
  * @brief Distance ring buffer
  * @author Cody Licorish (svgmovement@gmail.com)
  */
@@ -39,6 +39,7 @@ void tcmplxA_ringdist_destroy(struct tcmplxA_ringdist* x);
 
 /**
  * @brief Compute the number of extra bits for a distance code.
+ * @param x the distance ring
  * @param dcode distance code to check
  * @return a bit count
  * @note This function does not advance the ring buffer. It also does
@@ -50,6 +51,7 @@ unsigned int tcmplxA_ringdist_bit_count
 
 /**
  * @brief Convert a distance code to a flat backward distance.
+ * @param x the distance ring
  * @param dcode distance code to convert
  * @param extra any extra bits required by the code
  * @return a flat distance, or zero on conversion error
@@ -62,10 +64,9 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
 
 /**
  * @brief Convert a flat backward distance to a distance code.
+ * @param x the distance ring
  * @param back_dist backward distance to convert
  * @param[out] extra any extra bits required by the code
- * @param[out] ae @em error-code api_error::Success on success,
- *   nonzero otherwise
  * @return a distance code, or UINT_MAX on error
  * @note On successful conversion, the distance ring buffer is advanced
  *   as necessary.

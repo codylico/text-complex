@@ -1,5 +1,5 @@
-/*
- * \file tcmplx-access/util.c
+/**
+ * \file text-complex/access/util.c
  * \brief Utility functions for `text-complex`
  * \author Cody Licorish (svgmovement@gmail.com)
  */

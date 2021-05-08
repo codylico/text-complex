@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/inscopy.h
+ * @file text-complex/access/inscopy.h
  * @brief table for insert and copy lengths
  * @author Cody Licorish (svgmovement@gmail.com)
  */

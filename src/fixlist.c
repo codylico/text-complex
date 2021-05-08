@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/fixlist.c
+ * @file text-complex/access/fixlist.c
  * @brief Prefix code list
  * @author Cody Licorish (svgmovement@gmail.com)
  */

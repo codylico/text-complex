@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/ringdist.c
+ * @file text-complex/access/ringdist.c
  * @brief Distance ring buffer
  * @author Cody Licorish (svgmovement@gmail.com)
  */

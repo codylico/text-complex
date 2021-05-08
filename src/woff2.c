@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/woff2.c
+ * @file text-complex/access/woff2.c
  * @brief WOFF2 file utility API
  * @author Cody Licorish (svgmovement@gmail.com)
  */

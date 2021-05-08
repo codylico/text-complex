@@ -1,5 +1,5 @@
-/*
- * \file tcmplx-access/api.c
+/**
+ * \file text-complex/access/api.c
  * \brief API-wide declarations for text-complex
  * \author Cody Licorish (svgmovement@gmail.com)
  */

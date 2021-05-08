@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/woff2.h
+ * @file text-complex/access/woff2.h
  * @brief WOFF2 file utility API
  * @author Cody Licorish (svgmovement@gmail.com)
  */
@@ -27,7 +27,7 @@ unsigned int tcmplxA_woff2_tag_toi(unsigned char const* s);
 
 /**
  * @brief Convert a WOFF2 table type to a tag.
- * @param s the tag to convert
+ * @param x the tag to convert
  * @return a tag name, or NULL if no tag name matches the given value
  * @note Only checks the 6 least significant bits.
  */

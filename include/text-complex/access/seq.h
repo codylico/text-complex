@@ -1,5 +1,5 @@
 /**
- * @file tcmplx-access/seq.h
+ * @file text-complex/access/seq.h
  * @brief Adapter providing sequential access to bytes from a mmaptwo
  * @author Cody Licorish (svgmovement@gmail.com)
  */
@@ -64,6 +64,7 @@ size_t tcmplxA_seq_get_pos(struct tcmplxA_seq const* x);
 
 /**
  * @brief Configure the read position.
+ * @param x the sequential to configure
  * @param i a read position
  * @return the new position, ~0 otherwise
  */
@@ -72,6 +73,7 @@ size_t tcmplxA_seq_set_pos(struct tcmplxA_seq* x, size_t i);
 
 /**
  * @brief Configure the read position.
+ * @param x the sequential to configure
  * @param i a read position
  * @param whence a @link tcmplxA_seq_whence @endlink value
  * @return the new position on success, -1 if the position is too

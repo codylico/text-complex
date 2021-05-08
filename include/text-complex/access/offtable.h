@@ -1,5 +1,5 @@
-/*
- * \file tcmplx-access/offtable.h
+/**
+ * \file text-complex/access/offtable.h
  * \brief Access point for TrueType files
  * \author Cody Licorish (svgmovement@gmail.com)
  */
