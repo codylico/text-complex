@@ -78,4 +78,9 @@ target_include_directories(tcmplx_access_testfont
   add_executable(tcmplx_access_test_ringslide tca_ringslide.c)
   target_link_libraries(tcmplx_access_test_ringslide munit tcmplx_access)
 #END   RingSlide test
+
+#BEGIN HashChain test
+  add_executable(tcmplx_access_test_hashchain tca_hashchain.c)
+  target_link_libraries(tcmplx_access_test_hashchain munit tcmplx_access)
+#END   HashChain test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
