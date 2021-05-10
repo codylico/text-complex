@@ -21,7 +21,7 @@ set(text_complex_access_FILES
   bdict24.c
 
   zutil.c
-  ringslide.c
+  ringslide.c ringslide_p.h
   )
 set(text_complex_access_HEADERS
   ../include/text-complex/access/api.h

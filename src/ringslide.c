@@ -3,33 +3,15 @@
  * @brief Sliding window of past bytes
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
+#include "ringslide_p.h"
 #include "text-complex/access/ringslide.h"
 #include "text-complex/access/api.h"
 #include "text-complex/access/util.h"
 #include <string.h>
 
-struct tcmplxA_ringslide {
-  tcmplxA_uint32 n;
-  tcmplxA_uint32 pos;
-  tcmplxA_uint32 cap;
-  tcmplxA_uint32 sz;
-  unsigned char* p;
-};
 
-/**
- * @brief Initialize a slide ring.
- * @param x the slide ring to initialize
- * @return zero on success, nonzero otherwise
- */
-static int tcmplxA_ringslide_init
-  (struct tcmplxA_ringslide* x, tcmplxA_uint32 n);
-/**
- * @brief Close a slide ring.
- * @param x the slide ring to close
- */
-static void tcmplxA_ringslide_close(struct tcmplxA_ringslide* x);
 
-/* BEGIN slide ring / static */
+/* BEGIN slide ring / private */
 int tcmplxA_ringslide_init(struct tcmplxA_ringslide* x, tcmplxA_uint32 n) {
   if (n > 0x1000000)
     return tcmplxA_ErrParam;
@@ -52,7 +34,7 @@ void tcmplxA_ringslide_close(struct tcmplxA_ringslide* x) {
   x->n = 0u;
   return;
 }
-/* END   slide ring / static */
+/* END   slide ring / private */
 
 /* BEGIN slide ring / public */
 struct tcmplxA_ringslide* tcmplxA_ringslide_new(tcmplxA_uint32 n) {
