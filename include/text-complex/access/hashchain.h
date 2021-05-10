@@ -68,6 +68,19 @@ tcmplxA_uint32 tcmplxA_hashchain_size(struct tcmplxA_hashchain const* x);
 TCMPLX_A_API
 unsigned int tcmplxA_hashchain_peek
   (struct tcmplxA_hashchain const* x, tcmplxA_uint32 i);
+
+/**
+ * @brief Search for a byte sequence.
+ * @param x the slide ring to inspect
+ * @param b three byte sequence for which to look
+ * @param i number of bytes to go back; zero is most recent
+ * @return a backward distance where to find the three-byte
+ *   sequence, or `(tcmplxA_uint32)-1` if not found
+ */
+TCMPLX_A_API
+tcmplxA_uint32 tcmplxA_hashchain_find
+  ( struct tcmplxA_hashchain const* x, unsigned char const* b,
+    tcmplxA_uint32 pos);
 /* END   hash chain */
 
 #ifdef __cplusplus

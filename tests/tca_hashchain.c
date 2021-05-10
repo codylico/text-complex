@@ -17,6 +17,8 @@ static MunitResult test_hashchain_add
   (const MunitParameter params[], void* data);
 static MunitResult test_hashchain_addring
   (const MunitParameter params[], void* data);
+static MunitResult test_hashchain_find
+  (const MunitParameter params[], void* data);
 static void* test_hashchain_setup
     (const MunitParameter params[], void* user_data);
 static void* test_hashchain_setupsmall
@@ -35,6 +37,8 @@ static MunitTest tests_hashchain[] = {
   {"add", test_hashchain_add,
     test_hashchain_setup,test_hashchain_teardown,0,NULL},
   {"add/ring", test_hashchain_addring,
+    test_hashchain_setupsmall,test_hashchain_teardown,0,NULL},
+  {"find", test_hashchain_find,
     test_hashchain_setupsmall,test_hashchain_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -161,6 +165,50 @@ MunitResult test_hashchain_addring
     for (j = 0; j < add_count; ++j) {
       int const i = add_count-j-1;
       munit_assert_uchar(tcmplxA_hashchain_peek(p, i),==,buf[j]);
+    }
+  }
+  return MUNIT_OK;
+}
+
+MunitResult test_hashchain_find
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_hashchain* const p = (struct tcmplxA_hashchain*)data;
+  int const add_count = munit_rand_int_range(3,64);
+  unsigned int seed = munit_rand_int_range(1,255);
+  uint32_t const extent = tcmplxA_hashchain_extent(p);
+  uint32_t const skip_count = extent - munit_rand_int_range(1,64);
+  unsigned char buf[64];
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* fill the buffer */{
+    int i;
+    for (i = 0; i < add_count; ++i) {
+      buf[i] = (unsigned char)(seed++);
+    }
+  }
+  /* skip some items */{
+    uint32_t i;
+    for (i = 0; i < skip_count; ++i) {
+      tcmplxA_hashchain_add(p, 0u);
+    }
+  }
+  /* add the items */{
+    int i;
+    for (i = 0; i < add_count; ++i) {
+      int const res = tcmplxA_hashchain_add(p, buf[i]);
+      munit_assert_int(res,==,tcmplxA_Success);
+    }
+  }
+  /* search for the stored bytes */{
+    int j;
+    for (j = 0; j < add_count-2; ++j) {
+      uint32_t const i = (uint32_t)(add_count-j-1);
+      uint32_t const k = tcmplxA_hashchain_find(p, buf+j, 0u);
+      if (k == ((uint32_t)-1) && j < add_count-3)
+        continue;
+      munit_assert_uint32(k,==,i);
     }
   }
   return MUNIT_OK;
