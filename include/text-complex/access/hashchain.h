@@ -73,7 +73,7 @@ unsigned int tcmplxA_hashchain_peek
  * @brief Search for a byte sequence.
  * @param x the slide ring to inspect
  * @param b three byte sequence for which to look
- * @param i number of bytes to go back; zero is most recent
+ * @param pos number of bytes to go back; zero is most recent
  * @return a backward distance where to find the three-byte
  *   sequence, or `(tcmplxA_uint32)-1` if not found
  */
