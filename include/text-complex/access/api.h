@@ -43,6 +43,8 @@ char const* tcmplxA_api_version(void);
 /* BEGIN error codes */
 /** @brief Library error codes. */
 enum tcmplxA_api_error {
+  /** Block buffer may overflow */
+  tcmplxA_ErrBlockOverflow = -11,
   /** Array index out of range */
   tcmplxA_ErrOutOfRange = -10,
   /** Numeric overflow produced by a distance code conversion */
