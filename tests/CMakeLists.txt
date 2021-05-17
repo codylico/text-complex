@@ -83,4 +83,10 @@ target_include_directories(tcmplx_access_testfont
   add_executable(tcmplx_access_test_hashchain tca_hashchain.c)
   target_link_libraries(tcmplx_access_test_hashchain munit tcmplx_access)
 #END   HashChain test
+
+#BEGIN BlockBuf test
+  add_executable(tcmplx_access_test_blockbuf tca_blockbuf.c)
+  target_link_libraries(tcmplx_access_test_blockbuf
+    tcmplx_access_testfont munit tcmplx_access)
+#END   BlockBuf test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
