@@ -389,6 +389,7 @@ MunitResult test_inscopy_encode
       }
     }break;
   }
+  return MUNIT_OK;
 }
 
 int main(int argc, char **argv) {
