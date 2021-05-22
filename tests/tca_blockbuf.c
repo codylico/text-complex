@@ -17,6 +17,8 @@ static MunitResult test_blockbuf_gen
   (const MunitParameter params[], void* data);
 static MunitResult test_blockbuf_bypass
   (const MunitParameter params[], void* data);
+static MunitResult test_blockbuf_add
+  (const MunitParameter params[], void* data);
 static void* test_blockbuf_setup
     (const MunitParameter params[], void* user_data);
 static void test_blockbuf_teardown(void* fixture);
@@ -33,6 +35,8 @@ static MunitTest tests_blockbuf[] = {
   {"gen", test_blockbuf_gen,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
   {"bypass", test_blockbuf_bypass,
+    test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
+  {"add", test_blockbuf_add,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -216,6 +220,33 @@ MunitResult test_blockbuf_bypass
   }
   return MUNIT_OK;
 }
+
+MunitResult test_blockbuf_add
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_blockbuf* const p = (struct tcmplxA_blockbuf*)data;
+  int const add_count = munit_rand_int_range(1,64);
+  unsigned char buf[64];
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* fill the buffer */{
+    munit_rand_memory(add_count, (munit_uint8_t*)buf);
+  }
+  /* add to slide ring */{
+    size_t const bypass_count = tcmplxA_blockbuf_bypass(p, buf, add_count);
+    munit_assert_size(bypass_count, ==, add_count);
+  }
+  /* check the stored bytes */{
+    int j;
+    for (j = 0; j < add_count; ++j) {
+      int const i = add_count-j-1;
+      munit_assert_uchar(tcmplxA_blockbuf_peek(p, i),==,buf[j]);
+    }
+  }
+  return MUNIT_OK;
+}
+
 
 
 int main(int argc, char **argv) {

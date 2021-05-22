@@ -156,6 +156,16 @@ tcmplxA_uint32 tcmplxA_blockbuf_capacity(struct tcmplxA_blockbuf const* x);
 TCMPLX_A_API
 size_t tcmplxA_blockbuf_bypass
   (struct tcmplxA_blockbuf* x, unsigned char const* buf, size_t sz);
+
+/**
+ * @brief Query a past byte.
+ * @param x the block buffer to inspect
+ * @param i number of bytes to go back; zero is most recent
+ * @return the byte at the given index
+ */
+TCMPLX_A_API
+unsigned int tcmplxA_blockbuf_peek
+  (struct tcmplxA_blockbuf const* x, tcmplxA_uint32 i);
 /* END   block buffer */
 
 #ifdef __cplusplus

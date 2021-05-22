@@ -475,4 +475,10 @@ size_t tcmplxA_blockbuf_bypass
   }
   return i;
 }
+
+unsigned int tcmplxA_blockbuf_peek
+  (struct tcmplxA_blockbuf const* x, tcmplxA_uint32 i)
+{
+  return tcmplxA_hashchain_peek(x->chain, i);
+}
 /* END   block buffer / public */
