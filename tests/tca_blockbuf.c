@@ -15,6 +15,8 @@ static MunitResult test_blockbuf_item
   (const MunitParameter params[], void* data);
 static MunitResult test_blockbuf_gen
   (const MunitParameter params[], void* data);
+static MunitResult test_blockbuf_bypass
+  (const MunitParameter params[], void* data);
 static void* test_blockbuf_setup
     (const MunitParameter params[], void* user_data);
 static void test_blockbuf_teardown(void* fixture);
@@ -29,6 +31,8 @@ static MunitTest tests_blockbuf[] = {
   {"item", test_blockbuf_item,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
   {"gen", test_blockbuf_gen,
+    test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
+  {"bypass", test_blockbuf_bypass,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -166,6 +170,49 @@ MunitResult test_blockbuf_gen
   /* clear */{
     tcmplxA_blockbuf_clear_output(p);
     munit_assert_uint32(tcmplxA_blockbuf_output_size(p), ==, 0);
+  }
+  return MUNIT_OK;
+}
+
+MunitResult test_blockbuf_bypass
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_blockbuf* const p = (struct tcmplxA_blockbuf*)data;
+  size_t const count = tcmplxA_blockbuf_capacity(p);
+  unsigned char buf[3];
+  if (p == NULL || count < 3)
+    return MUNIT_SKIP;
+  (void)params;
+  /* build the text */{
+    size_t i;
+    munit_rand_memory(3, (munit_uint8_t*)buf);
+    for (i = 0; i < 3; ++i) {
+      buf[i] = (buf[i]&3u)|80u;
+    }
+  }
+  /* add to slide ring */{
+    size_t const bypass_count = tcmplxA_blockbuf_bypass(p, buf, 3);
+    munit_assert_uint32(tcmplxA_blockbuf_input_size(p), ==, 0u);
+    munit_assert_size(bypass_count, ==, 3);
+  }
+  /* add to input */{
+    int res;
+    res = tcmplxA_blockbuf_write(p, buf, 3);
+    munit_assert_int(res, ==, tcmplxA_Success);
+    munit_assert_uint32(tcmplxA_blockbuf_input_size(p), ==, 3u);
+  }
+  /* */{
+    int const res = tcmplxA_blockbuf_gen_block(p);
+    munit_assert_int(res, ==, tcmplxA_Success);
+    munit_assert_uint32(tcmplxA_blockbuf_input_size(p), ==, 0);
+  }
+  /* inspect */{
+    unsigned char const copy_cmd[] = {131u, 128u, 2u};
+    unsigned char const* const output = tcmplxA_blockbuf_output_data(p);
+    tcmplxA_uint32 const len = tcmplxA_blockbuf_output_size(p);
+    munit_assert_uint32(len, ==, 3u);
+    munit_assert_ptr_not_null(output);
+    munit_assert_memory_equal(3, output, copy_cmd);
   }
   return MUNIT_OK;
 }

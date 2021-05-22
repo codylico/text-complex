@@ -92,12 +92,17 @@ tcmplxA_uint32 tcmplxA_blockbuf_output_size(struct tcmplxA_blockbuf const* x);
   The 30-bit distance can be extracted from a four-byte sequence:
     [R][S1][S2][S3]
   as ((R&63)<<24) + ((S1&255)<<16) + ((S2&255)<<8) + (S3&255) + 16384.
+  Note that both the 14-bit and 30-bit distances start with
+  zero (0) representing the most recent previous byte. Both Brotli
+  and DEFLATE instead use one (1) to represent the most recent
+  previous byte.
  @endverbatim
  *
  * @note Examples (values in hexadecimal): @verbatim
  (03)(41)(62)(63)         -> "Abc"
  (83)(80)(01)             -> copy 3 bytes, distance 1
- (01)(54)(83)(80)(01)     -> "TTTT"
+ (01)(54)(83)(80)(00)     -> "TTTT"
+ (01)(54)(51)(83)(80)(01) -> "TQTTT"
  (C0)(05)(90)(02)         -> copy 69 bytes, distance 4098
  (C0)(06)(C0)(00)(00)(03) -> copy 70 bytes, distance 16387
  (84)(05)(00)(02)         -> "life the " (bdict length 4 filter 5 word 2)
@@ -140,6 +145,17 @@ tcmplxA_uint32 tcmplxA_blockbuf_input_size(struct tcmplxA_blockbuf const* x);
  */
 TCMPLX_A_API
 tcmplxA_uint32 tcmplxA_blockbuf_capacity(struct tcmplxA_blockbuf const* x);
+
+/**
+ * @brief Add some bytes to the slide ring, bypassing the input buffer.
+ * @param x the block buffer to do the processing
+ * @param buf data to add to the slide ring
+ * @param sz size of the added data
+ * @return how much data successfully added
+ */
+TCMPLX_A_API
+size_t tcmplxA_blockbuf_bypass
+  (struct tcmplxA_blockbuf* x, unsigned char const* buf, size_t sz);
 /* END   block buffer */
 
 #ifdef __cplusplus

@@ -464,4 +464,15 @@ void tcmplxA_blockbuf_clear_output(struct tcmplxA_blockbuf* x) {
   x->output.sz = 0u;
   return;
 }
+
+size_t tcmplxA_blockbuf_bypass
+  (struct tcmplxA_blockbuf* x, unsigned char const* buf, size_t sz)
+{
+  int chain_ae = tcmplxA_Success;
+  size_t i;
+  for (i = 0u; i < sz && chain_ae == tcmplxA_Success; ++i) {
+    chain_ae = tcmplxA_hashchain_add(x->chain, buf[i]);
+  }
+  return i;
+}
 /* END   block buffer / public */
