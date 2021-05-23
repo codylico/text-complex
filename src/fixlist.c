@@ -9,6 +9,7 @@
 #include "text-complex/access/util.h"
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 
 /**
@@ -67,6 +68,10 @@ struct tcmplxA_fixlist {
   size_t n;
 };
 
+enum tcmplxA_fixlist_uconst {
+  /** @internal @brief Code comparison maximum length difference. */
+  tcmplxA_FixList_CodeCmpMax = (CHAR_BIT)*sizeof(unsigned short)
+};
 
 
 static
@@ -219,6 +224,17 @@ tcmplxA_uint32 tcmplxA_fixlist_min_frac(tcmplxA_uint32 x);
  */
 static int tcmplxA_fixlist_heap_packable
   ( struct tcmplxA_fixlist_heapitem* h, size_t n, tcmplxA_uint32 frac);
+/**
+ * @internal
+ * @brief Compare two prefix lines by bit code.
+ * @param a one line
+ * @param b another line
+ * @return positive if `a`'s code is "less" than `b`'s,
+ *   zero if the codes are equal,
+ *   negative otherwise
+ */
+static
+int tcmplxA_fixline_codecmp(void const* a, void const* b);
 
 
 
@@ -390,6 +406,25 @@ int tcmplxA_fixlist_heap_packable
     else if (n < 3u)
       return 0;
     else return (h[2].total_frac <= frac);
+  }
+}
+
+int tcmplxA_fixline_codecmp(void const* pa, void const* pb) {
+  struct tcmplxA_fixline const* const a =
+    (struct tcmplxA_fixline const*)pa;
+  struct tcmplxA_fixline const* const b =
+    (struct tcmplxA_fixline const*)pb;
+  int const a_shorter = a->len < b->len;
+  unsigned short int const diff =
+    a_shorter ? b->len - a->len : a->len - b->len;
+  if (diff >= tcmplxA_FixList_CodeCmpMax)
+    return a_shorter ? -1 : +1;
+  else {
+    unsigned short int a_code = (a_shorter ? a->code : (a->code>>diff));
+    unsigned short int b_code = (a_shorter ? (b->code>>diff) : b->code);
+    if (a_code < b_code)
+      return -1;
+    else return (a_code > b_code);
   }
 }
 /* END   prefix list / static */
@@ -713,6 +748,27 @@ int tcmplxA_fixlist_gen_lengths
     tcmplxA_util_free(heap);
     tcmplxA_util_free(nodes);
     return tcmplxA_Success;
+  }
+}
+
+int tcmplxA_fixlist_codesort(struct tcmplxA_fixlist* dst) {
+  qsort
+    ( dst->p, dst->n,
+      sizeof(struct tcmplxA_fixline), tcmplxA_fixline_codecmp);
+  return tcmplxA_Success;
+}
+
+size_t tcmplxA_fixlist_codebsearch
+  (struct tcmplxA_fixlist const* dst, unsigned int n, unsigned int bits)
+{
+  struct tcmplxA_fixline key;
+  key.len = (unsigned short)n;
+  key.code = (unsigned short)bits;
+  /* */{
+    struct tcmplxA_fixline* x = bsearch
+      ( &key, dst->p, dst->n, sizeof(struct tcmplxA_fixline),
+        tcmplxA_fixline_codecmp);
+    return x!=NULL ? (size_t)(x-dst->p) : ((size_t)-1);
   }
 }
 /* END   prefix list / public */

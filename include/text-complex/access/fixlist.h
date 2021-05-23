@@ -163,6 +163,27 @@ TCMPLX_A_API
 int tcmplxA_fixlist_gen_lengths
   ( struct tcmplxA_fixlist* dst, tcmplxA_uint32 const* table,
     unsigned int max_bits);
+
+/**
+ * @brief Sort a prefix list by Huffman code.
+ * @param dst list to sort
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note Useful for decoding from a compressed stream.
+ */
+TCMPLX_A_API
+int tcmplxA_fixlist_codesort(struct tcmplxA_fixlist* dst);
+
+/**
+ * @brief Binary search a prefix list by Huffman code.
+ * @param dst list sorted by Huffman code
+ * @param n length of bit string
+ * @param bits bit string
+ * @return index if found, SIZE_MAX otherwise
+ * @note Useful for decoding from a compressed stream.
+ */
+TCMPLX_A_API
+size_t tcmplxA_fixlist_codebsearch
+  (struct tcmplxA_fixlist const* dst, unsigned int n, unsigned int bits);
 /* END   prefix list */
 
 #ifdef __cplusplus

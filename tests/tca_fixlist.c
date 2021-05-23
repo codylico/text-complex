@@ -16,6 +16,8 @@ static MunitResult test_fixlist_item
   (const MunitParameter params[], void* data);
 static MunitResult test_fixlist_gen_codes
   (const MunitParameter params[], void* data);
+static MunitResult test_fixlist_codesort
+  (const MunitParameter params[], void* data);
 static MunitResult test_fixlist_gen_lengths
   (const MunitParameter params[], void* data);
 static MunitResult test_fixlist_preset
@@ -50,6 +52,8 @@ static MunitTest tests_fixlist[] = {
     test_fixlist_setup,test_fixlist_teardown,0,NULL},
   {"gen_lengths", test_fixlist_gen_lengths,
     test_fixlist_len_setup,test_fixlist_teardown,0,test_fixlist_len_params},
+  {"codesort", test_fixlist_codesort,
+    test_fixlist_gen_setup,test_fixlist_teardown,0,test_fixlist_gen_params},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -168,6 +172,48 @@ MunitResult test_fixlist_gen_codes
         "  [%" MUNIT_SIZE_MODIFIER "u] = {%#x, l %u, v %lu}",
         i, line->code, line->len, line->value);
       munit_assert_uint((line->code>>(line->len)), ==, 0u);
+    }
+  }
+  return MUNIT_OK;
+}
+
+MunitResult test_fixlist_codesort
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  munit_assert_int(tcmplxA_fixlist_gen_codes(p),==, tcmplxA_Success);
+  munit_assert_int(tcmplxA_fixlist_codesort(p),==, tcmplxA_Success);
+  /* inspect the new codes */if (tcmplxA_fixlist_size(p) > 1) {
+    size_t i;
+    size_t const len = tcmplxA_fixlist_size(p)-1;
+    for (i = 0; i < len; ++i) {
+      struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(p,i);
+      struct tcmplxA_fixline const* const b_line = tcmplxA_fixlist_at_c(p,i+1);
+      munit_assert_uint(line->len, <=, b_line->len);
+      munit_assert_uint(
+          (line->code<<(15-line->len)), <=, (b_line->code<<(15-b_line->len))
+        );
+    }
+  }
+  /* binary search */{
+    size_t i;
+    size_t const len = tcmplxA_fixlist_size(p);
+    for (i = 0; i < len; ++i) {
+      unsigned int n;
+      unsigned int bits;
+      size_t j;
+      /* */{
+        struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(p,i);
+        n = line->len;
+        bits = line->code;
+      }
+      if (n == 0)
+        continue;
+      j = tcmplxA_fixlist_codebsearch(p, n, bits);
+      munit_assert_size(j, ==, i);
     }
   }
   return MUNIT_OK;
