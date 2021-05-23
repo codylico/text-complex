@@ -62,11 +62,11 @@ enum tcmplxA_fix_preset {
  * @brief A single line from a prefix code list.
  */
 struct tcmplxA_fixline {
-  /** @brief Alphabet code for a prefix. */
+  /** @brief Prefix bits. */
   unsigned short int code;
   /** @brief Length of prefix in bits. */
   unsigned short int len;
-  /** @brief Prefix bits. */
+  /** @brief Alphabet code for a prefix. */
   unsigned long int value;
 };
 /* END   prefix code line */

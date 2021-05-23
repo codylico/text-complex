@@ -161,7 +161,7 @@ int tcmplxA_inscopy_copy
 /**
  * @brief Assign an insert copy table with a preset code-value list.
  * @param dst list to populate with codes
- * @param i a @link tcmplxA_inscopy_type @endlink value
+ * @param i a @link tcmplxA_inscp_preset @endlink value
  * @return tcmplxA_Success on success, nonzero otherwise
  */
 TCMPLX_A_API
