@@ -414,18 +414,13 @@ int tcmplxA_fixline_codecmp(void const* pa, void const* pb) {
     (struct tcmplxA_fixline const*)pa;
   struct tcmplxA_fixline const* const b =
     (struct tcmplxA_fixline const*)pb;
-  int const a_shorter = a->len < b->len;
-  unsigned short int const diff =
-    a_shorter ? b->len - a->len : a->len - b->len;
-  if (diff >= tcmplxA_FixList_CodeCmpMax)
-    return a_shorter ? -1 : +1;
-  else {
-    unsigned short int a_code = (a_shorter ? a->code : (a->code>>diff));
-    unsigned short int b_code = (a_shorter ? (b->code>>diff) : b->code);
-    if (a_code < b_code)
-      return -1;
-    else return (a_code > b_code);
-  }
+  if (a->len < b->len)
+    return -1;
+  else if (a->len > b->len)
+    return +1;
+  else if (a->code < b->code)
+    return -1;
+  else return (a->code > b->code);
 }
 /* END   prefix list / static */
 
