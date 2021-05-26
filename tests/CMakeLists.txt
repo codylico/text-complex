@@ -89,4 +89,10 @@ target_include_directories(tcmplx_access_testfont
   target_link_libraries(tcmplx_access_test_blockbuf
     tcmplx_access_testfont munit tcmplx_access)
 #END   BlockBuf test
+
+#BEGIN ZCvt test
+  add_executable(tcmplx_access_test_zcvt tca_zcvt.c)
+  target_link_libraries(tcmplx_access_test_zcvt
+    tcmplx_access_testfont munit tcmplx_access)
+#END   ZCvt test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
