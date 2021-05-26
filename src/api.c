@@ -16,6 +16,10 @@ char const* tcmplxA_api_version(void) {
 /* BEGIN error codes */
 char const* tcmplxA_api_error_toa(int v) {
   switch (v) {
+  case tcmplxA_ErrPartial:
+    return "Partial output";
+  case tcmplxA_ErrZDictionary:
+    return "Expecting a ZLIB dictionary";
   case tcmplxA_ErrBlockOverflow:
     return "Block buffer may overflow";
   case tcmplxA_ErrOutOfRange:
@@ -38,6 +42,8 @@ char const* tcmplxA_api_error_toa(int v) {
     return "Initialization error";
   case tcmplxA_Success:
     return "Success";
+  case tcmplxA_EOF:
+    return "End of stream";
   default:
     return NULL;
   }

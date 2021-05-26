@@ -43,6 +43,8 @@ char const* tcmplxA_api_version(void);
 /* BEGIN error codes */
 /** @brief Library error codes. */
 enum tcmplxA_api_error {
+  /** Expecting a ZLIB dictionary */
+  tcmplxA_ErrZDictionary = -12,
   /** Block buffer may overflow */
   tcmplxA_ErrBlockOverflow = -11,
   /** Array index out of range */
@@ -66,7 +68,11 @@ enum tcmplxA_api_error {
   /** Initialization error */
   tcmplxA_ErrInit = -1,
   /** Success code */
-  tcmplxA_Success = 0
+  tcmplxA_Success = 0,
+  /** End of stream */
+  tcmplxA_EOF = 1,
+  /** Partial output */
+  tcmplxA_ErrPartial = 2
 };
 
 /**
