@@ -78,12 +78,13 @@ struct tcmplxA_inscopy_row {
    */
   unsigned char zero_distance_tf;
   /**
-   * @brief Number of extra bits for the (Brotli) insert code or
-   *   the (DEFLATE) length code.
+   * @brief Number of extra bits for the (Brotli) insert code.
+   *   Zero for DEFLATE.
    */
   unsigned char insert_bits;
   /**
-   * @brief Number of extra bits for the copy code. Zero for DEFLATE.
+   * @brief Number of extra bits for the (Brotli) copy code or
+   *   the (DEFLATE) length code.
    */
   unsigned char copy_bits;
   /**

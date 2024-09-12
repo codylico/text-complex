@@ -235,6 +235,17 @@ static int tcmplxA_fixlist_heap_packable
  */
 static
 int tcmplxA_fixline_codecmp(void const* a, void const* b);
+/**
+ * @internal
+ * @brief Compare two prefix lines by alphabet value.
+ * @param a one line
+ * @param b another line
+ * @return positive if `a`'s value is "less" than `b`'s,
+ *   zero if the value are equal,
+ *   negative otherwise
+ */
+static
+int tcmplxA_fixline_valuecmp(void const* a, void const* b);
 
 
 
@@ -421,6 +432,16 @@ int tcmplxA_fixline_codecmp(void const* pa, void const* pb) {
   else if (a->code < b->code)
     return -1;
   else return (a->code > b->code);
+}
+
+int tcmplxA_fixline_valuecmp(void const* pa, void const* pb) {
+  struct tcmplxA_fixline const* const a =
+    (struct tcmplxA_fixline const*)pa;
+  struct tcmplxA_fixline const* const b =
+    (struct tcmplxA_fixline const*)pb;
+  if (a->value < b->value)
+    return -1;
+  else return (a->value > b->value);
 }
 /* END   prefix list / static */
 
@@ -763,6 +784,26 @@ size_t tcmplxA_fixlist_codebsearch
     struct tcmplxA_fixline* x = bsearch
       ( &key, dst->p, dst->n, sizeof(struct tcmplxA_fixline),
         tcmplxA_fixline_codecmp);
+    return x!=NULL ? (size_t)(x-dst->p) : ((size_t)-1);
+  }
+}
+
+int tcmplxA_fixlist_valuesort(struct tcmplxA_fixlist* dst) {
+  qsort
+    ( dst->p, dst->n,
+      sizeof(struct tcmplxA_fixline), tcmplxA_fixline_valuecmp);
+  return tcmplxA_Success;
+}
+
+size_t tcmplxA_fixlist_valuebsearch
+  (struct tcmplxA_fixlist const* dst, unsigned long int value)
+{
+  struct tcmplxA_fixline key;
+  key.value = value;
+  /* */{
+    struct tcmplxA_fixline* x = bsearch
+      ( &key, dst->p, dst->n, sizeof(struct tcmplxA_fixline),
+        tcmplxA_fixline_valuecmp);
     return x!=NULL ? (size_t)(x-dst->p) : ((size_t)-1);
   }
 }

@@ -9,13 +9,15 @@
 
 /* BEGIN configurations */
 char const* tcmplxA_api_version(void) {
-  return "0.3.6-alpha";
+  return "0.3.7-alpha";
 }
 /* END   configurations */
 
 /* BEGIN error codes */
 char const* tcmplxA_api_error_toa(int v) {
   switch (v) {
+  case tcmplxA_ErrInsCopyMissing:
+    return "An expected insert-copy code is missing";
   case tcmplxA_ErrPartial:
     return "Partial output";
   case tcmplxA_ErrZDictionary:

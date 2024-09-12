@@ -47,6 +47,28 @@ TCMPLX_A_API
 int tcmplxA_blockbuf_gen_block(struct tcmplxA_blockbuf* x);
 
 /**
+ * @brief Process the current block of input bytes.
+ * @param x the block buffer to do the processing
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note The input buffer is retained.
+ */
+TCMPLX_A_API
+int tcmplxA_blockbuf_try_block(struct tcmplxA_blockbuf* x);
+
+/**
+ * @brief Copy input bytes to output without processing.
+ * @param x the block buffer to do the processing
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note The input buffer is retained.
+ *
+ * @warning The output buffer will @em not follow the output
+ *   format. The bytes are copied "directly" to output
+ *   as is.
+ */
+TCMPLX_A_API
+int tcmplxA_blockbuf_noconv_block(struct tcmplxA_blockbuf* x);
+
+/**
  * @brief Look at the output.
  * @param x the block buffer to do the processing
  * @return the number of bytes in the output buffer
@@ -166,6 +188,28 @@ size_t tcmplxA_blockbuf_bypass
 TCMPLX_A_API
 unsigned int tcmplxA_blockbuf_peek
   (struct tcmplxA_blockbuf const* x, tcmplxA_uint32 i);
+
+/**
+ * @brief Query the slide ring window size.
+ * @return a window size in bytes
+ */
+TCMPLX_A_API
+tcmplxA_uint32 tcmplxA_blockbuf_extent(struct tcmplxA_blockbuf const* x);
+
+/**
+ * @brief Query the number of bytes held by the sliding window.
+ * @param x the block buffer owning the slide ring
+ * @return the count of past bytes in the window
+ */
+TCMPLX_A_API
+tcmplxA_uint32 tcmplxA_blockbuf_ring_size(struct tcmplxA_blockbuf const* x);
+
+/**
+ * @brief Clear the input buffer.
+ * @param x the block buffer to edit
+ */
+TCMPLX_A_API
+void tcmplxA_blockbuf_clear_input(struct tcmplxA_blockbuf* x);
 /* END   block buffer */
 
 #ifdef __cplusplus

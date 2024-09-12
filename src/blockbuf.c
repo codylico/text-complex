@@ -3,6 +3,7 @@
  * @brief DEFLATE block buffer
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
+#include "blockbuf_p.h"
 #include "text-complex/access/blockbuf.h"
 #include "text-complex/access/hashchain.h"
 #include "text-complex/access/api.h"
@@ -69,12 +70,6 @@ enum tcmplxA_blockstr_uconst {
   tcmplxA_BlockBuf_MaxOutCode = 16447u
 };
 
-struct tcmplxA_blockstr {
-  unsigned char* p;
-  tcmplxA_uint32 sz;
-  tcmplxA_uint32 cap;
-};
-
 struct tcmplxA_blockbuf {
   struct tcmplxA_hashchain* chain;
   struct tcmplxA_blockstr input;
@@ -83,35 +78,6 @@ struct tcmplxA_blockbuf {
   tcmplxA_uint32 input_block_size;
 };
 
-/**
- * @brief Initialize a block string.
- * @param x the block string to initialize
- * @return zero on success, nonzero otherwise
- */
-static int tcmplxA_blockstr_init
-  (struct tcmplxA_blockstr* x, tcmplxA_uint32 cap);
-/**
- * @brief Close a block string.
- * @param x the block string to close
- */
-static void tcmplxA_blockstr_close(struct tcmplxA_blockstr* x);
-/**
- * @brief Close a block string.
- * @param x the block string to extend
- * @param sz new capacity
- * @return tcmplxA_Success on success
- */
-static int tcmplxA_blockstr_reserve
-  (struct tcmplxA_blockstr* x, tcmplxA_uint32 sz);
-/**
- * @brief Close a block string.
- * @param x the block string to close
- * @param buf bytes to add
- * @param n number of bytes to add
- * @return tcmplxA_Success on success
- */
-static int tcmplxA_blockstr_append
-  (struct tcmplxA_blockstr* x, unsigned char const* buf, size_t n);
 /**
  * @brief Add a copy command to an output buffer.
  * @param x the output buffer
@@ -338,6 +304,17 @@ void tcmplxA_blockbuf_destroy(struct tcmplxA_blockbuf* x) {
 }
 
 int tcmplxA_blockbuf_gen_block(struct tcmplxA_blockbuf* x) {
+  int const ae = tcmplxA_blockbuf_try_block(x);
+  if (ae == tcmplxA_Success)
+    tcmplxA_blockbuf_clear_input(x);
+  return ae;
+}
+
+int tcmplxA_blockbuf_noconv_block(struct tcmplxA_blockbuf* x) {
+  return tcmplxA_blockstr_append(&x->output, x->input.p, x->input.sz);
+}
+
+int tcmplxA_blockbuf_try_block(struct tcmplxA_blockbuf* x) {
   int res = tcmplxA_Success;
   tcmplxA_uint32 const n = 51u;
   tcmplxA_uint32 j = x->output.sz;
@@ -429,8 +406,6 @@ int tcmplxA_blockbuf_gen_block(struct tcmplxA_blockbuf* x) {
     /* close the match */
     res = tcmplxA_blockstr_add_copy(&x->output, match_size, v);
   }
-  if (res == tcmplxA_Success)
-    x->input.sz = 0u;
   return tcmplxA_Success;
 }
 
@@ -480,5 +455,18 @@ unsigned int tcmplxA_blockbuf_peek
   (struct tcmplxA_blockbuf const* x, tcmplxA_uint32 i)
 {
   return tcmplxA_hashchain_peek(x->chain, i);
+}
+
+tcmplxA_uint32 tcmplxA_blockbuf_extent(struct tcmplxA_blockbuf const* x) {
+  return tcmplxA_hashchain_extent(x->chain);
+}
+
+tcmplxA_uint32 tcmplxA_blockbuf_ring_size(struct tcmplxA_blockbuf const* x) {
+  return tcmplxA_hashchain_size(x->chain);
+}
+
+void tcmplxA_blockbuf_clear_input(struct tcmplxA_blockbuf* x) {
+  x->input.sz = 0u;
+  return;
 }
 /* END   block buffer / public */

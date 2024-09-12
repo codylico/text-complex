@@ -43,6 +43,8 @@ char const* tcmplxA_api_version(void);
 /* BEGIN error codes */
 /** @brief Library error codes. */
 enum tcmplxA_api_error {
+  /** An expected insert-copy code is missing */
+  tcmplxA_ErrInsCopyMissing = -13,
   /** Expecting a ZLIB dictionary */
   tcmplxA_ErrZDictionary = -12,
   /** Block buffer may overflow */

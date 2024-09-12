@@ -184,6 +184,26 @@ int tcmplxA_fixlist_codesort(struct tcmplxA_fixlist* dst);
 TCMPLX_A_API
 size_t tcmplxA_fixlist_codebsearch
   (struct tcmplxA_fixlist const* dst, unsigned int n, unsigned int bits);
+
+/**
+ * @brief Sort a prefix list by alphabet value.
+ * @param dst list to sort
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note Useful for encoding to a compressed stream.
+ */
+TCMPLX_A_API
+int tcmplxA_fixlist_valuesort(struct tcmplxA_fixlist* dst);
+
+/**
+ * @brief Binary search a prefix list by alphabet value.
+ * @param dst list sorted by alphabet value
+ * @param value alphabet value
+ * @return index if found, SIZE_MAX otherwise
+ * @note Useful for encoding to a compressed stream.
+ */
+TCMPLX_A_API
+size_t tcmplxA_fixlist_valuebsearch
+  (struct tcmplxA_fixlist const* dst, unsigned long int value);
 /* END   prefix list */
 
 #ifdef __cplusplus

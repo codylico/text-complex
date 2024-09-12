@@ -15,6 +15,8 @@ static MunitResult test_blockbuf_item
   (const MunitParameter params[], void* data);
 static MunitResult test_blockbuf_gen
   (const MunitParameter params[], void* data);
+static MunitResult test_blockbuf_noconv
+  (const MunitParameter params[], void* data);
 static MunitResult test_blockbuf_bypass
   (const MunitParameter params[], void* data);
 static MunitResult test_blockbuf_add
@@ -33,6 +35,8 @@ static MunitTest tests_blockbuf[] = {
   {"item", test_blockbuf_item,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
   {"gen", test_blockbuf_gen,
+    test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
+  {"noconv", test_blockbuf_noconv,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
   {"bypass", test_blockbuf_bypass,
     test_blockbuf_setup,test_blockbuf_teardown,0,NULL},
@@ -62,6 +66,7 @@ MunitResult test_blockbuf_cycle
     (block_size, window_size, chain_length, bdict_tf);
   munit_assert_not_null(ptr[0]);
   munit_assert_uint32(tcmplxA_blockbuf_capacity(ptr[0]),==,block_size);
+  munit_assert_uint32(tcmplxA_blockbuf_extent(ptr[0]),==,window_size);
   tcmplxA_blockbuf_destroy(ptr[0]);
   return MUNIT_OK;
 }
@@ -174,6 +179,44 @@ MunitResult test_blockbuf_gen
   /* clear */{
     tcmplxA_blockbuf_clear_output(p);
     munit_assert_uint32(tcmplxA_blockbuf_output_size(p), ==, 0);
+  }
+  return MUNIT_OK;
+}
+
+MunitResult test_blockbuf_noconv
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_blockbuf* const p = (struct tcmplxA_blockbuf*)data;
+  size_t const count = tcmplxA_blockbuf_capacity(p);
+  unsigned char buf[128];
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  /* build the text */{
+    size_t i;
+    munit_rand_memory(count, (munit_uint8_t*)buf);
+    for (i = 0; i < count; ++i) {
+      buf[i] = (buf[i]&3u)|80u;
+    }
+  }
+  /* add to input */{
+    int res;
+    res = tcmplxA_blockbuf_write(p, buf, count);
+    munit_assert_int(res, ==, tcmplxA_Success);
+    munit_assert_uint32(tcmplxA_blockbuf_input_size(p), ==, count);
+  }
+  /* */{
+    int const res = tcmplxA_blockbuf_noconv_block(p);
+    munit_assert_int(res, ==, tcmplxA_Success);
+    tcmplxA_blockbuf_clear_input(p);
+    munit_assert_uint32(tcmplxA_blockbuf_input_size(p), ==, 0);
+  }
+  /* inspect */{
+    unsigned char const* const output = tcmplxA_blockbuf_output_data(p);
+    tcmplxA_uint32 const len = tcmplxA_blockbuf_output_size(p);
+    munit_assert_uint32(len, >, 0u);
+    munit_assert_ptr_not_null(output);
+    munit_assert_memory_equal(len, output, buf);
   }
   return MUNIT_OK;
 }
