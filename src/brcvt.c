@@ -75,7 +75,7 @@ struct tcmplxA_brcvt {
   unsigned short checksum
   __attribute__((__deprecated__))
   ;
-  /** @brief Which value to use for WBITS. */  
+  /** @brief Which value to use for WBITS. */
   unsigned char wbits_select;
   /** @brief Output internal bit count. */
   tcmplxA_uint32 bit_cap;
