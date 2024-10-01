@@ -52,7 +52,11 @@ enum tcmplxA_fix_preset {
    * @note Sort the values before applying the prefix codes.
    *   Use @link tcmplxA_fixlist_gen_codes @endlink if necessary.
    */
-  tcmplxA_FixList_BrotliSimple4B = 5
+  tcmplxA_FixList_BrotliSimple4B = 5,
+  /**
+   * @brief Code lengths for Brotli window bits.
+   */
+  tcmplxA_FixList_BrotliWBits = 6
 };
 /* END   prefix preset identifiers */
 

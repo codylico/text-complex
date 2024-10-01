@@ -112,6 +112,25 @@ struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliS4B[] = {
   {0x6  /*110*/, 3u, 0 },
   {0x7  /*111*/, 3u, 0 }
 };
+static
+struct tcmplxA_fixline const tcmplxA_fixlist_ps_BrotliWBits[] = {
+  {   0        /*0*/, 1u, 16 },
+  {0x40  /*1000000*/, 7u, 17 },
+  {0x41  /*1000001*/, 7u, 12 },
+  {0x42  /*1000010*/, 7u, 10 },
+  {0x43  /*1000011*/, 7u, 14 },
+  /* - */
+  {0x45  /*1000101*/, 7u, 13 },
+  {0x46  /*1000110*/, 7u, 11 },
+  {0x47  /*1000111*/, 7u, 15 },
+  { 0x9     /*1001*/, 4u, 21 },
+  { 0xA     /*1010*/, 4u, 19 },
+  { 0xB     /*1011*/, 4u, 23 },
+  { 0xC     /*1100*/, 4u, 18 },
+  { 0xD     /*1101*/, 4u, 22 },
+  { 0xE     /*1110*/, 4u, 20 },
+  { 0xF     /*1111*/, 4u, 24 },
+};
 
 static
 struct {
@@ -123,7 +142,8 @@ struct {
   { 2u, tcmplxA_fixlist_ps_BrotliS2 },
   { 3u, tcmplxA_fixlist_ps_BrotliS3 },
   { 4u, tcmplxA_fixlist_ps_BrotliS4A },
-  { 4u, tcmplxA_fixlist_ps_BrotliS4B }
+  { 4u, tcmplxA_fixlist_ps_BrotliS4B },
+  {16u, tcmplxA_fixlist_ps_BrotliWBits }
 };
 
 /**
