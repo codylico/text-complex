@@ -179,7 +179,7 @@ int tcmplxA_brcvt_init
   else {
     x->wbits_select = 24;
     for (unsigned char i = 10; i < 24; ++i) {
-      if (n <= (((tcmplxA_uint32)1)<<i)-16) {
+      if (n <= (1ul<<i)-16) {
         x->wbits_select = i;
         break;
       }
@@ -191,7 +191,7 @@ int tcmplxA_brcvt_init
       res = tcmplxA_ErrMemory;
   }
   /* window size Huffman codes */{
-    x->wbits = tcmplxA_fixlist_new(16);
+    x->wbits = tcmplxA_fixlist_new(15);
     if (x->wbits == NULL)
       res = tcmplxA_ErrMemory;
     else
@@ -308,7 +308,7 @@ int tcmplxA_brcvt_zsrtostr_bits
   for (i = ps->bit_index; i < 8u && ae == tcmplxA_Success; ++i) {
     unsigned int x = (y>>i)&1u;
     switch (ps->state) {
-    case 0:
+    case 0: /* WBITS */
       if (ps->bit_length == 0) {
         tcmplxA_fixlist_codesort(ps->wbits);
       }
@@ -903,7 +903,7 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->count += 1u;
       }
       if (ps->count > ps->bit_length) {
-        ps->state = 1;
+        ps->state = 7;
         ps->bit_length = 0;
         ae = tcmplxA_EOF;
       }

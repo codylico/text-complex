@@ -143,7 +143,7 @@ struct {
   { 3u, tcmplxA_fixlist_ps_BrotliS3 },
   { 4u, tcmplxA_fixlist_ps_BrotliS4A },
   { 4u, tcmplxA_fixlist_ps_BrotliS4B },
-  {16u, tcmplxA_fixlist_ps_BrotliWBits }
+  {15u, tcmplxA_fixlist_ps_BrotliWBits }
 };
 
 /**

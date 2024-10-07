@@ -12,7 +12,7 @@ extern "C" {
 #endif /*__cplusplus*/
 
 /**
- * @brief zlib conversion state.
+ * @brief Brotli conversion state.
  */
 struct tcmplxA_brcvt;
 
