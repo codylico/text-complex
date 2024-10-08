@@ -29,6 +29,14 @@ enum tcmplxA_brcvt_uconst {
     + tcmplxA_brcvt_SeqHistoSize
 };
 
+enum tcmplxA_brcvt_istate {
+  tcmplxA_BrCvt_WBits = 0,
+  tcmplxA_BrCvt_MetaStart = 1,
+  tcmplxA_BrCvt_MetaLength = 2,
+  tcmplxA_BrCvt_MetaText = 3,
+  tcmplxA_BrCvt_Done = 7,
+};
+
 struct tcmplxA_brcvt {
   /**
    * @brief ...
@@ -82,6 +90,10 @@ struct tcmplxA_brcvt {
   tcmplxA_uint32 bit_cap;
   /** @brief Nonzero metadata block storage. */
   struct tcmplxA_brmeta* metadata;
+  /** @brief Number of metadata posted so far. */
+  size_t meta_index;
+  /** @brief Text of current metadata to post. */
+  unsigned char* metatext;
 };
 
 unsigned char tcmplxA_brcvt_clen[19] =
@@ -170,6 +182,11 @@ static int tcmplxA_brcvt_post_sequence
 static int tcmplxA_brcvt_strrtozs_bits
   ( struct tcmplxA_brcvt* x, unsigned char* y,
     unsigned char const** src, unsigned char const* src_end);
+/**
+ * @brief Start the next block of output.
+ * @param ps Brotli state
+ */
+static void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -269,12 +286,14 @@ int tcmplxA_brcvt_init
   } else {
     x->bits = 0u;
     x->bit_length = 0u;
-    x->state = 0u;
+    x->state = tcmplxA_BrCvt_WBits;
     x->bit_index = 0u;
     x->backward = 0u;
     x->count = 0u;
     x->checksum = 0u;
     x->bit_cap = 0u;
+    x->meta_index = 0u;
+    x->metatext = NULL;
     return tcmplxA_Success;
   }
 }
@@ -292,6 +311,8 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_fixlist_destroy(x->wbits);
   tcmplxA_blockbuf_destroy(x->buffer);
 #ifndef NDEBUG
+  x->metatext = NULL;
+  x->meta_index = 0u;
   x->checksum = 0u;
   x->count = 0u;
   x->backward = 0u;
@@ -870,6 +891,16 @@ int tcmplxA_brcvt_post_sequence
   }
 }
 
+
+void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps) {
+  if (ps->meta_index < tcmplxA_brmeta_size(ps->metadata))
+    ps->state = tcmplxA_BrCvt_MetaStart;
+  else if (ps->h_end)
+    ps->state = tcmplxA_BrCvt_Done; /* TODO emit end-of-stream mark */
+  else
+    ps->state = tcmplxA_BrCvt_Done; /* TODO output data */
+}
+
 int tcmplxA_brcvt_strrtozs_bits
   ( struct tcmplxA_brcvt* ps, unsigned char* y,
     unsigned char const** src, unsigned char const* src_end)
@@ -894,7 +925,7 @@ int tcmplxA_brcvt_strrtozs_bits
       else ps->checksum = tcmplxA_zutil_adler32(min_count, p, ps->checksum);
     }
     switch (ps->state) {
-    case 0: /* WBITS */
+    case tcmplxA_BrCvt_WBits: /* WBITS */
       if (ps->bit_length == 0u) {
         struct tcmplxA_fixlist* const wbits = ps->wbits;
         tcmplxA_fixlist_valuesort(wbits);
@@ -912,12 +943,65 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->count += 1u;
       }
       if (ps->count > ps->bit_length) {
-        ps->state = 7;
+        if (ps->meta_index < tcmplxA_brmeta_size(ps->metadata))
+          ps->state = tcmplxA_BrCvt_MetaStart;
+        else
+          ps->state = tcmplxA_BrCvt_Done;
         ps->bit_length = 0;
         ae = tcmplxA_EOF;
       }
       break;
-    case 7: /* end of stream */
+    case tcmplxA_BrCvt_MetaStart:
+      if (ps->bit_length == 0u) {
+        size_t const sz = tcmplxA_brmeta_itemsize(ps->metadata, ps->meta_index);
+        ps->metatext = tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index);
+        ps->bits = 12;
+        ps->count = 0;
+        ps->bit_length = 7;
+        ps->backward = (tcmplxA_uint32)sz;
+        if (sz > 65536)
+          ps->bits |= 96;
+        else if (sz > 256)
+          ps->bits |= 64;
+        else if (sz > 0)
+          ps->bits |= 32;
+      }
+      if (ps->count < 7) {
+        x = (ps->bits>>ps->count)&1u;
+        ps->count += 1u;
+      }
+      if (ps->count >= 7) {
+        if (ps->backward)
+          ps->state = tcmplxA_BrCvt_MetaLength;
+        else if (i == 7)
+          tcmplxA_brcvt_next_block(ps);
+        else
+          ps->state = tcmplxA_BrCvt_MetaText;
+        ps->bit_length = 0;
+      }
+      break;
+    case tcmplxA_BrCvt_MetaLength:
+      if (ps->bit_length == 0u) {
+        ps->bit_length = (ps->bits>>5)*8;
+        ps->backward -= 1;
+        ps->count = 0;
+      }
+      if (ps->count < ps->bit_length) {
+        x = (ps->backward>>ps->count)&1;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->state = tcmplxA_BrCvt_MetaText;
+        ps->backward += 1;
+        ps->count = 0;
+      }
+      break;
+    case tcmplxA_BrCvt_MetaText:
+      x = 0;
+      if (i == 7 && !ps->backward)
+          tcmplxA_brcvt_next_block(ps);
+      break;
+    case tcmplxA_BrCvt_Done: /* end of stream */
       x = 0;
       ae = tcmplxA_EOF;
       break;
@@ -1064,13 +1148,20 @@ int tcmplxA_brcvt_strrtozs
   unsigned char const *p = *src;
   for (ret_out = 0u; ret_out < dstsz && ae == tcmplxA_Success; ++ret_out) {
     switch (ps->state) {
-    case 0: /* initial state */
+    case tcmplxA_BrCvt_WBits: /* initial state */
+    case tcmplxA_BrCvt_MetaStart:
+    case tcmplxA_BrCvt_MetaLength:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
-    case 2: /* check dictionary checksum */
-    case 3: /* block start */
-      ps->state = 3u;
-      ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
+    case tcmplxA_BrCvt_MetaText:
+      assert(ps->metatext);
+      if (ps->count < ps->backward)
+        dst[ret_out++] = ps->metatext[ps->count++];
+      ae = tcmplxA_Success;
+      if (ps->count >= ps->backward) {
+        tcmplxA_brcvt_next_block(ps);
+        ps->bit_length = 0;
+      }
       break;
     case 4: /* no compression: LEN and NLEN */
       if (ps->count == 0u) {
@@ -1115,7 +1206,7 @@ int tcmplxA_brcvt_strrtozs
         ps->state = 7u;
         ps->count = 0u;
       } break;
-    case 7:
+    case tcmplxA_BrCvt_Done:
       ae = tcmplxA_EOF;
       break;
     case 8: /* encode */
