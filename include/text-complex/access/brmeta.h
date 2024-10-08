@@ -23,6 +23,7 @@ struct tcmplxA_brmeta;
  * @param cap initial capacity (or zero for fully empty)
  * @return a metadata store on success, `NULL` otherwise
  */
+TCMPLX_A_API
 struct tcmplxA_brmeta* tcmplxA_brmeta_new(size_t cap);
 
 /**
@@ -31,6 +32,7 @@ struct tcmplxA_brmeta* tcmplxA_brmeta_new(size_t cap);
  * @param n length of metadata line in bytes
  * @return Success on success, nonzero otherwise
  */
+TCMPLX_A_API
 int tcmplxA_brmeta_emplace(struct tcmplxA_brmeta* b, size_t n);
 
 /**
@@ -38,6 +40,7 @@ int tcmplxA_brmeta_emplace(struct tcmplxA_brmeta* b, size_t n);
  * @param b storage to inspect
  * @return a line count
  */
+TCMPLX_A_API
 size_t tcmplxA_brmeta_size(struct tcmplxA_brmeta const* b);
 
 /**
@@ -46,6 +49,7 @@ size_t tcmplxA_brmeta_size(struct tcmplxA_brmeta const* b);
  * @param i array index of item to inspect
  * @return a byte count
  */
+TCMPLX_A_API
 size_t tcmplxA_brmeta_itemsize(struct tcmplxA_brmeta const* b, size_t i);
 
 /**
@@ -55,6 +59,7 @@ size_t tcmplxA_brmeta_itemsize(struct tcmplxA_brmeta const* b, size_t i);
  * @return a pointer to the start of the byte array on success,
  *   `NULL` on out-of-bounds
  */
+TCMPLX_A_API
 unsigned char const* tcmplxA_brmeta_itemdata_c
     (struct tcmplxA_brmeta const* b, size_t i);
 
@@ -65,6 +70,7 @@ unsigned char const* tcmplxA_brmeta_itemdata_c
  * @return a pointer to the start of the byte array on success,
  *   `NULL` on out-of-bounds
  */
+TCMPLX_A_API
 unsigned char* tcmplxA_brmeta_itemdata
     (struct tcmplxA_brmeta const* b, size_t i);
 
@@ -72,6 +78,7 @@ unsigned char* tcmplxA_brmeta_itemdata
  * @brief Destroy a metadata store.
  * @param p (optional) a metadata store to destroy
  */
+TCMPLX_A_API
 void tcmplxA_brmeta_destroy(struct tcmplxA_brmeta* p);
 /* END   brmeta */
 
