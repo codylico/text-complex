@@ -896,7 +896,7 @@ int tcmplxA_brcvt_strrtozs_bits
     switch (ps->state) {
     case 0: /* WBITS */
       if (ps->bit_length == 0u) {
-        struct tcmplxA_fixlist const* const wbits = ps->wbits;
+        struct tcmplxA_fixlist* const wbits = ps->wbits;
         tcmplxA_fixlist_valuesort(wbits);
         assert(ps->wbits_select >= 10 && ps->wbits_select <= 24);
         {
