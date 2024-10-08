@@ -95,4 +95,9 @@ target_include_directories(tcmplx_access_testfont
   target_link_libraries(tcmplx_access_test_zcvt
     tcmplx_access_testfont munit tcmplx_access)
 #END   ZCvt test
+
+#BEGIN BrMeta test
+  add_executable(tcmplx_access_test_brmeta tca_brmeta.c)
+  target_link_libraries(tcmplx_access_test_brmeta munit tcmplx_access)
+#END   BrMeta test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
