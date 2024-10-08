@@ -12,6 +12,7 @@
 #include "text-complex/access/inscopy.h"
 #include "text-complex/access/ringdist.h"
 #include "text-complex/access/zutil.h"
+#include "text-complex/access/brmeta.h"
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
@@ -79,6 +80,8 @@ struct tcmplxA_brcvt {
   unsigned char wbits_select;
   /** @brief Output internal bit count. */
   tcmplxA_uint32 bit_cap;
+  /** @brief Nonzero metadata block storage. */
+  struct tcmplxA_brmeta* metadata;
 };
 
 unsigned char tcmplxA_brcvt_clen[19] =
@@ -195,6 +198,11 @@ int tcmplxA_brcvt_init
     else
       tcmplxA_fixlist_preset(x->wbits, tcmplxA_FixList_BrotliWBits);
   }
+  /* metadata storage */{
+    x->metadata = tcmplxA_brmeta_new(0);
+    if (x->metadata == NULL)
+      res = tcmplxA_ErrMemory;
+  }
   /* literals */{
     x->literals = tcmplxA_fixlist_new(288u);
     if (x->literals == NULL)
@@ -254,6 +262,7 @@ int tcmplxA_brcvt_init
     tcmplxA_fixlist_destroy(x->sequence);
     tcmplxA_fixlist_destroy(x->distances);
     tcmplxA_fixlist_destroy(x->literals);
+    tcmplxA_brmeta_destroy(x->metadata);
     tcmplxA_fixlist_destroy(x->wbits);
     tcmplxA_blockbuf_destroy(x->buffer);
     return res;
@@ -279,6 +288,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_fixlist_destroy(x->sequence);
   tcmplxA_fixlist_destroy(x->distances);
   tcmplxA_fixlist_destroy(x->literals);
+  tcmplxA_brmeta_destroy(x->metadata);
   tcmplxA_fixlist_destroy(x->wbits);
   tcmplxA_blockbuf_destroy(x->buffer);
 #ifndef NDEBUG
@@ -1127,5 +1137,15 @@ int tcmplxA_brcvt_delimrtozs
   unsigned char const* tmp_src = tmp;
   /* set the end flag: */ps->h_end |= 2u;
   return tcmplxA_brcvt_strrtozs(ps, ret, dst, dstsz, &tmp_src, tmp);
+}
+
+
+struct tcmplxA_brmeta* tcmplxA_brcvt_metadata(struct tcmplxA_brcvt* ps) {
+  return ps->metadata;
+}
+struct tcmplxA_brmeta const* tcmplxA_brcvt_metadata_c
+  (struct tcmplxA_brcvt const* ps)
+{
+  return ps->metadata;
 }
 /* END   zcvt state / public */

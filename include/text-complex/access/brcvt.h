@@ -11,6 +11,8 @@
 extern "C" {
 #endif /*__cplusplus*/
 
+struct tcmplxA_brmeta;
+
 /**
  * @brief Brotli conversion state.
  */
@@ -97,6 +99,23 @@ int tcmplxA_brcvt_strrtozs
 TCMPLX_A_API
 int tcmplxA_brcvt_delimrtozs
   (struct tcmplxA_brcvt* ps, size_t* ret, unsigned char* dst, size_t dstsz);
+
+/**
+ * @brief Access the metadata storage.
+ * @param ps the Brotli conversion state to use
+ * @return a pointer to the storage instance
+ */
+TCMPLX_A_API
+struct tcmplxA_brmeta* tcmplxA_brcvt_metadata(struct tcmplxA_brcvt* ps);
+
+/**
+ * @brief Access the metadata storage.
+ * @param ps the Brotli conversion state to use
+ * @return a pointer to the storage instance
+ */
+TCMPLX_A_API
+struct tcmplxA_brmeta const* tcmplxA_brcvt_metadata_c
+  (struct tcmplxA_brcvt const* ps);
 /* END   brcvt state */
 
 #ifdef __cplusplus
