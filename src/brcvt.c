@@ -175,14 +175,12 @@ int tcmplxA_brcvt_init
 {
   int res = tcmplxA_Success;
   if (n > 16777200u)
-    return tcmplxA_ErrParam;
-  else {
-    x->wbits_select = 24;
-    for (unsigned char i = 10; i < 24; ++i) {
-      if (n <= (1ul<<i)-16) {
-        x->wbits_select = i;
-        break;
-      }
+    n = 16777200u;
+  x->wbits_select = 24;
+  for (unsigned char i = 10; i < 24; ++i) {
+    if (n <= (1ul<<i)-16) {
+      x->wbits_select = i;
+      break;
     }
   }
   /* buffer */{
@@ -256,6 +254,7 @@ int tcmplxA_brcvt_init
     tcmplxA_fixlist_destroy(x->sequence);
     tcmplxA_fixlist_destroy(x->distances);
     tcmplxA_fixlist_destroy(x->literals);
+    tcmplxA_fixlist_destroy(x->wbits);
     tcmplxA_blockbuf_destroy(x->buffer);
     return res;
   } else {
