@@ -26,7 +26,8 @@ enum tcmplxA_brcvt_uconst {
   tcmplxA_brcvt_HistogramSize =
       tcmplxA_brcvt_LitHistoSize
     + tcmplxA_brcvt_DistHistoSize
-    + tcmplxA_brcvt_SeqHistoSize
+    + tcmplxA_brcvt_SeqHistoSize,
+  tcmplxA_brcvt_MetaHeaderLen = 6,
 };
 
 enum tcmplxA_brcvt_istate {
@@ -34,6 +35,7 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_MetaStart = 1,
   tcmplxA_BrCvt_MetaLength = 2,
   tcmplxA_BrCvt_MetaText = 3,
+  tcmplxA_BrCvt_LastCheck = 4,
   tcmplxA_BrCvt_Done = 7,
 };
 
@@ -74,6 +76,8 @@ struct tcmplxA_brcvt {
   unsigned char state;
   /** @brief Bit position in the stream. */
   unsigned char bit_index;
+  /** @brief Maximum metadatum length to store aside. */
+  tcmplxA_uint32 max_len_meta;
   /** @brief Backward distance value. */
   tcmplxA_uint32 backward;
   /** @brief Byte count for the active state. */
@@ -284,7 +288,9 @@ int tcmplxA_brcvt_init
     tcmplxA_blockbuf_destroy(x->buffer);
     return res;
   } else {
+    x->max_len_meta = 1024;
     x->bits = 0u;
+    x->h_end = 0;
     x->bit_length = 0u;
     x->state = tcmplxA_BrCvt_WBits;
     x->bit_index = 0u;
@@ -320,6 +326,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->state = 0u;
   x->bit_length = 0u;
   x->bits = 0u;
+  x->h_end = 0;
   x->sequence = NULL;
   x->distances = NULL;
   x->literals = NULL;
@@ -338,7 +345,7 @@ int tcmplxA_brcvt_zsrtostr_bits
   for (i = ps->bit_index; i < 8u && ae == tcmplxA_Success; ++i) {
     unsigned int x = (y>>i)&1u;
     switch (ps->state) {
-    case 0: /* WBITS */
+    case tcmplxA_BrCvt_WBits: /* WBITS */
       if (ps->bit_length == 0) {
         tcmplxA_fixlist_codesort(ps->wbits);
       }
@@ -351,7 +358,8 @@ int tcmplxA_brcvt_zsrtostr_bits
         if (j < 16) {
           ps->wbits_select =
             (unsigned char)tcmplxA_fixlist_at(ps->wbits, j)->value;
-          ps->state = 7;
+          ps->state = tcmplxA_BrCvt_LastCheck;
+          ps->bit_length = 0;
           break;
         }
       }
@@ -359,58 +367,79 @@ int tcmplxA_brcvt_zsrtostr_bits
         ae = tcmplxA_ErrSanitize;
       }
       break;
-    case 7: /* end of stream */
-      ae = tcmplxA_EOF;
-      break;
-    case 3:
-      if (ps->count < 3u) {
-        ps->bits |= (x<<ps->count);
-        ps->count += 1u;
+    case tcmplxA_BrCvt_LastCheck:
+      if (ps->bit_length == 0) {
+        ps->h_end = (x!=0);
+        ps->bit_length = x?4:3;
+        ps->count = 0;
+        ps->bits = 0;
       }
-      if (ps->count >= 3u) {
-        unsigned int const end = ps->bits&1u;
-        unsigned int const btype = (ps->bits>>1)&3u;
-        if (btype == 3u) {
-          ae = tcmplxA_ErrSanitize;
+      if (ps->count == 1 && ps->h_end) {
+        if (x) {
+          ps->state = tcmplxA_BrCvt_Done;
+          ae = tcmplxA_EOF;
+        }
+      } else if (ps->count >= ps->bit_length-2) {
+        ps->bits |= (x<<(ps->count-2));
+      }
+      if (ps->count < ps->bit_length)
+        ps->count += 1;
+      if (ps->count >= ps->bit_length) {
+        if (ps->bits == 3) {
+          ps->state = tcmplxA_BrCvt_MetaStart;
+          ps->bit_length = 0;
         } else {
-          ps->h_end = end;
-          if (btype == 0u) {
-            ps->state = 4;
-          } else if (btype == 1u) {
-            ps->state = 8;
-            /* fixed Huffman codes */{
-              size_t i;
-              for (i = 0u; i < 288u; ++i) {
-                struct tcmplxA_fixline *const line =
-                  tcmplxA_fixlist_at(ps->literals, i);
-                line->value = (unsigned long)i;
-                if (i < 144u)
-                  line->len = 8u;
-                else if (i < 256u)
-                  line->len = 9u;
-                else if (i < 280u)
-                  line->len = 7u;
-                else line->len = 8u;
-              }
-              for (i = 0u; i < 32u; ++i) {
-                struct tcmplxA_fixline *const line =
-                  tcmplxA_fixlist_at(ps->distances, i);
-                line->code = (unsigned short)i;
-                line->len = 5u;
-                line->value = (unsigned long int)i;
-              }
-              tcmplxA_fixlist_gen_codes(ps->literals);
-              tcmplxA_fixlist_codesort(ps->literals);
-            }
-          } else ps->state = 13;
-          ps->count = 0u;
-          ps->bits = 0u;
-          ps->backward = 0u;
-          ps->bit_length = 0u;
+          ps->bit_length = (ps->bits+4)*4;
+          ps->state = 99; /* TODO handle data */
         }
       }
       break;
-    case 4: /* no compression: LEN and NLEN */
+    case tcmplxA_BrCvt_MetaStart:
+      if (ps->bit_length == 0) {
+        if (x != 0)
+         ae = tcmplxA_ErrSanitize;
+        else {
+          ps->count = 4;
+          ps->bit_length = tcmplxA_brcvt_MetaHeaderLen;
+          ps->bits = 0;
+        }
+      } else if (ps->count < tcmplxA_brcvt_MetaHeaderLen) {
+        ps->bits |= (x << (ps->count-4));
+        ps->count += 1;
+      }
+      if (ps->count >= tcmplxA_brcvt_MetaHeaderLen) {
+        ps->bit_length = ps->bits*8;
+        ps->state = (ps->bits
+          ? tcmplxA_BrCvt_MetaLength : tcmplxA_BrCvt_MetaText);
+        ps->count = 0;
+        ps->backward = 0;
+      }
+      break;
+    case tcmplxA_BrCvt_MetaLength:
+      if (ps->count < ps->bit_length) {
+        ps->backward |= (((tcmplxA_uint32)x&1u)<<ps->count);
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        if (!(ps->backward>>(ps->count-8)))
+          ae = tcmplxA_ErrSanitize;
+        ps->count = 0;
+        ps->state = tcmplxA_BrCvt_MetaText;
+      }
+      break;
+    case tcmplxA_BrCvt_MetaText:
+      if (x)
+        ae = tcmplxA_ErrSanitize;
+      else if (ps->backward == 0 && i == 7) {
+        ps->state = (ps->h_end
+          ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
+        if (ps->h_end)
+          ae = tcmplxA_EOF;
+      }
+      break;
+    case tcmplxA_BrCvt_Done: /* end of stream */
+      ae = tcmplxA_EOF;
+      break;
     case 6: /* */
       break;
     case 19: /* generate code trees */
@@ -955,22 +984,22 @@ int tcmplxA_brcvt_strrtozs_bits
       if (ps->bit_length == 0u) {
         size_t const sz = tcmplxA_brmeta_itemsize(ps->metadata, ps->meta_index);
         ps->metatext = tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index);
-        ps->bits = 12;
+        ps->bits = 6;
         ps->count = 0;
-        ps->bit_length = 7;
+        ps->bit_length = tcmplxA_brcvt_MetaHeaderLen;
         ps->backward = (tcmplxA_uint32)sz;
         if (sz > 65536)
-          ps->bits |= 96;
+          ps->bits |= 48;
         else if (sz > 256)
-          ps->bits |= 64;
-        else if (sz > 0)
           ps->bits |= 32;
+        else if (sz > 0)
+          ps->bits |= 16;
       }
-      if (ps->count < 7) {
+      if (ps->count < tcmplxA_brcvt_MetaHeaderLen) {
         x = (ps->bits>>ps->count)&1u;
         ps->count += 1u;
       }
-      if (ps->count >= 7) {
+      if (ps->count >= tcmplxA_brcvt_MetaHeaderLen) {
         if (ps->backward)
           ps->state = tcmplxA_BrCvt_MetaLength;
         else if (i == 7)
@@ -1049,25 +1078,38 @@ int tcmplxA_brcvt_zsrtostr
   size_t ret_out = 0u;
   for (p = *src; p < src_end && ae == tcmplxA_Success; ++p) {
     switch (ps->state) {
-    case 0: /* initial state */
+    case tcmplxA_BrCvt_WBits: /* initial state */
+    case tcmplxA_BrCvt_LastCheck:
+    case tcmplxA_BrCvt_MetaStart:
+    case tcmplxA_BrCvt_MetaLength:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
-    case 2: /* check dictionary checksum */
-    case 3: /* block start */
-      if (ps->state == 2) {
-        if (ps->backward != ps->checksum) {
-          ae = tcmplxA_ErrSanitize;
+    case tcmplxA_BrCvt_MetaText:
+      if (ps->count == 0) {
+        /* allocate */
+        size_t const use_backward = (ps->backward >= ps->max_len_meta)
+          ? ps->max_len_meta : ps->backward;
+        ps->meta_index = tcmplxA_brmeta_size(ps->metadata);
+        ae = tcmplxA_brmeta_emplace(ps->metadata, ps->backward);
+        if (ae != tcmplxA_Success)
           break;
-        } else {
-          ps->state = 3;
-          ps->count = 0u;
-          ps->bits = 0u;
-          ps->checksum = 1u;
-        }
+        ps->metatext = tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index);
+        ps->index = tcmplxA_brmeta_itemsize(ps->metadata, ps->meta_index);
       }
-      ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
+      if (ps->count < ps->backward) {
+        if (ps->count < ps->index)
+          ps->metatext[ps->count] = (*p);
+        ps->count += 1;
+      }
+      if (ps->count >= ps->backward) {
+        ps->metatext = NULL;
+        ps->state = (ps->h_end
+          ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
+        if (ps->h_end)
+          ae = tcmplxA_EOF;
+      }
       break;
-    case 4: /* no compression: LEN and NLEN */
+    case 9904: /* no compression: LEN and NLEN */
       if (ps->count < 4u) {
         ps->backward = (ps->backward<<8) | (*p);
         ps->count += 1u;
@@ -1159,6 +1201,7 @@ int tcmplxA_brcvt_strrtozs
         dst[ret_out++] = ps->metatext[ps->count++];
       ae = tcmplxA_Success;
       if (ps->count >= ps->backward) {
+        ps->metatext = NULL;
         tcmplxA_brcvt_next_block(ps);
         ps->bit_length = 0;
       }
