@@ -1090,7 +1090,7 @@ int tcmplxA_brcvt_zsrtostr
         size_t const use_backward = (ps->backward >= ps->max_len_meta)
           ? ps->max_len_meta : ps->backward;
         ps->meta_index = tcmplxA_brmeta_size(ps->metadata);
-        ae = tcmplxA_brmeta_emplace(ps->metadata, ps->backward);
+        ae = tcmplxA_brmeta_emplace(ps->metadata, use_backward);
         if (ae != tcmplxA_Success)
           break;
         ps->metatext = tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index);
@@ -1198,7 +1198,7 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_MetaText:
       assert(ps->metatext);
       if (ps->count < ps->backward)
-        dst[ret_out++] = ps->metatext[ps->count++];
+        dst[ret_out] = ps->metatext[ps->count++];
       ae = tcmplxA_Success;
       if (ps->count >= ps->backward) {
         ps->metatext = NULL;
