@@ -930,10 +930,10 @@ void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps) {
     ps->state = tcmplxA_BrCvt_MetaStart;
   else if (ps->emptymeta)
     ps->state = tcmplxA_BrCvt_MetaStart;
-  else if (ps->h_end)
-    ps->state = tcmplxA_BrCvt_Done; /* TODO emit end-of-stream mark */
-  else
+  else if (!ps->h_end)
     ps->state = tcmplxA_BrCvt_Done; /* TODO output data */
+  else
+    ps->state = tcmplxA_BrCvt_LastCheck;
 }
 
 int tcmplxA_brcvt_strrtozs_bits
@@ -1043,6 +1043,21 @@ int tcmplxA_brcvt_strrtozs_bits
       x = 0;
       if (i == 7 && !ps->backward)
           tcmplxA_brcvt_next_block(ps);
+      break;
+    case tcmplxA_BrCvt_LastCheck:
+      if (ps->bit_length == 0u) {
+        ps->bit_length = 2;
+        ps->count = 0;
+      }
+      if (ps->count < ps->bit_length) {
+        x = 1;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->state = tcmplxA_BrCvt_Done;
+        ps->bit_length = 0;
+        ae = tcmplxA_EOF;
+      }
       break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       x = 0;
