@@ -101,6 +101,23 @@ int tcmplxA_brcvt_delimrtozs
   (struct tcmplxA_brcvt* ps, size_t* ret, unsigned char* dst, size_t dstsz);
 
 /**
+ * @brief Flush a Brotli stream to a byte using an empty metadata block.
+ * @param ps the Brotli conversion state to use
+ * @param[out] ret number of (deflated) destination bytes written
+ * @param dst destination buffer
+ * @param dstsz size of destination buffer
+ * @return tcmplxA_Success on success, nonzero otherwise
+ * @note The conversion state referred to by `ps` is updated based
+ *   on the conversion result, whether successful or failed.
+ *
+ * @note Any bytes remaining in the conversion state will
+ *   be processed before outputting the metadata block.
+ */
+TCMPLX_A_API
+int tcmplxA_brcvt_flush
+  (struct tcmplxA_brcvt* ps, size_t* ret, unsigned char* dst, size_t dstsz);
+
+/**
  * @brief Access the metadata storage.
  * @param ps the Brotli conversion state to use
  * @return a pointer to the storage instance

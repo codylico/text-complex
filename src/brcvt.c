@@ -90,6 +90,8 @@ struct tcmplxA_brcvt {
   ;
   /** @brief Which value to use for WBITS. */
   unsigned char wbits_select;
+  /** @brief Whether to insert an empty metadata block. */
+  unsigned char emptymeta;
   /** @brief Output internal bit count. */
   tcmplxA_uint32 bit_cap;
   /** @brief Nonzero metadata block storage. */
@@ -298,6 +300,7 @@ int tcmplxA_brcvt_init
     x->count = 0u;
     x->checksum = 0u;
     x->bit_cap = 0u;
+    x->emptymeta = 0u;
     x->meta_index = 0u;
     x->metatext = NULL;
     return tcmplxA_Success;
@@ -319,6 +322,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
 #ifndef NDEBUG
   x->metatext = NULL;
   x->meta_index = 0u;
+  x->emptymeta = 0u;
   x->checksum = 0u;
   x->count = 0u;
   x->backward = 0u;
@@ -924,6 +928,8 @@ int tcmplxA_brcvt_post_sequence
 void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps) {
   if (ps->meta_index < tcmplxA_brmeta_size(ps->metadata))
     ps->state = tcmplxA_BrCvt_MetaStart;
+  else if (ps->emptymeta)
+    ps->state = tcmplxA_BrCvt_MetaStart;
   else if (ps->h_end)
     ps->state = tcmplxA_BrCvt_Done; /* TODO emit end-of-stream mark */
   else
@@ -972,7 +978,8 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->count += 1u;
       }
       if (ps->count > ps->bit_length) {
-        if (ps->meta_index < tcmplxA_brmeta_size(ps->metadata))
+        if (ps->meta_index < tcmplxA_brmeta_size(ps->metadata)
+        ||  ps->emptymeta)
           ps->state = tcmplxA_BrCvt_MetaStart;
         else
           ps->state = tcmplxA_BrCvt_Done;
@@ -982,8 +989,15 @@ int tcmplxA_brcvt_strrtozs_bits
       break;
     case tcmplxA_BrCvt_MetaStart:
       if (ps->bit_length == 0u) {
-        size_t const sz = tcmplxA_brmeta_itemsize(ps->metadata, ps->meta_index);
-        ps->metatext = tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index);
+        int const actual_meta =
+          ps->meta_index < tcmplxA_brmeta_size(ps->metadata);
+        size_t const sz = actual_meta
+          ? tcmplxA_brmeta_itemsize(ps->metadata, ps->meta_index)
+          : 0;
+        ps->metatext = actual_meta
+          ? tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index)
+          : NULL;
+        ps->emptymeta = 0;
         ps->bits = 6;
         ps->count = 0;
         ps->bit_length = tcmplxA_brcvt_MetaHeaderLen;
@@ -1272,6 +1286,15 @@ int tcmplxA_brcvt_delimrtozs
   /* set the end flag: */ps->h_end |= 2u;
   return tcmplxA_brcvt_strrtozs(ps, ret, dst, dstsz, &tmp_src, tmp);
 }
+int tcmplxA_brcvt_flush
+  (struct tcmplxA_brcvt* ps, size_t* ret, unsigned char* dst, size_t dstsz)
+{
+  unsigned char const tmp[1] = {0u};
+  unsigned char const* tmp_src = tmp;
+  /* set the flush flag: */ps->emptymeta = 1;
+  return tcmplxA_brcvt_strrtozs(ps, ret, dst, dstsz, &tmp_src, tmp);
+}
+
 
 
 struct tcmplxA_brmeta* tcmplxA_brcvt_metadata(struct tcmplxA_brcvt* ps) {

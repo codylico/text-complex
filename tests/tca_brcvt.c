@@ -21,6 +21,8 @@ static MunitResult test_brcvt_metadata_cycle
   (const MunitParameter params[], void* data);
 static MunitResult test_brcvt_zsrtostr_none
   (const MunitParameter params[], void* data);
+static MunitResult test_brcvt_flush
+  (const MunitParameter params[], void* data);
 static void* test_brcvt_setup
     (const MunitParameter params[], void* user_data);
 static void test_brcvt_teardown(void* fixture);
@@ -39,6 +41,8 @@ static MunitTest tests_brcvt[] = {
   {"metadata_cycle", test_brcvt_metadata_cycle,
     test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,test_brcvt_params},
   {"in/none", test_brcvt_zsrtostr_none,
+    test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,NULL},
+  {"flush", test_brcvt_flush,
     test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -190,6 +194,66 @@ MunitResult test_brcvt_zsrtostr_none
     munit_assert_size(src-buf, ==, total);
     munit_assert_memory_equal(len, to_buf, buf+7);
   }
+  return MUNIT_OK;
+}
+
+MunitResult test_brcvt_flush
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
+  struct tcmplxA_brcvt* const q = tcmplxA_brcvt_new(4096,4096,4096);
+  unsigned char text[16] = {0};
+  int const text_len = munit_rand_int_range(3,16);
+  int const flush_len = munit_rand_int_range(1,text_len-1);
+  unsigned char buf[256] = {0};
+  size_t buf_len = 0;
+  munit_rand_memory(sizeof(text), &text[0]);
+  if (p == NULL || q == NULL) {
+    tcmplxA_brcvt_destroy(q);
+    return MUNIT_SKIP;
+  }
+  (void)params;
+  /* encode */
+  {
+    unsigned char const *text_p = text;
+    size_t exbuf_len = 0;
+    int res;
+    res = tcmplxA_brcvt_strrtozs(p, &buf_len, buf, sizeof(buf),
+      &text_p, text+flush_len);
+    munit_assert(res == tcmplxA_Success);
+    munit_assert(buf_len <= sizeof(buf));
+    res = tcmplxA_brcvt_flush(p, &exbuf_len,
+      buf+buf_len, sizeof(buf)-buf_len);
+    munit_assert(res == tcmplxA_Success);
+    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    buf_len += exbuf_len;
+    exbuf_len = 0;
+    res = tcmplxA_brcvt_strrtozs(p,
+      &exbuf_len, buf+buf_len, sizeof(buf)-buf_len,
+      &text_p, text+text_len);
+    munit_assert(res == tcmplxA_Success);
+    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    buf_len += exbuf_len;
+    exbuf_len = 0;
+    res = tcmplxA_brcvt_delimrtozs(p, &exbuf_len,
+      buf+buf_len, sizeof(buf)-buf_len);
+    munit_assert(res >= tcmplxA_Success);
+    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    buf_len += exbuf_len;
+  }
+  /* decode */
+  {
+    unsigned char dummy[16] = {0};
+    size_t dummy_len = 0;
+    int res;
+    unsigned char const* buf_ptr = buf;
+    res = tcmplxA_brcvt_zsrtostr(q, &dummy_len, dummy, sizeof(dummy),
+      &buf_ptr, buf+buf_len);
+    munit_assert(res >= tcmplxA_Success);
+    munit_assert(dummy_len == text_len);
+    munit_assert_memory_equal(text_len, dummy, text);
+  }
+  tcmplxA_brcvt_destroy(q);
   return MUNIT_OK;
 }
 
