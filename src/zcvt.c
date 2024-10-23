@@ -160,6 +160,11 @@ static int tcmplxA_zcvt_post_sequence
 static int tcmplxA_zcvt_strrtozs_bits
   ( struct tcmplxA_zcvt* x, unsigned char* y,
     unsigned char const** src, unsigned char const* src_end);
+/**
+ * @brief Move from an output noconvert block to next state.
+ * @param ps the zcvt state to update
+ */
+static void tcmplxA_zcvt_noconv_next(struct tcmplxA_zcvt* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_zcvt_init
@@ -821,7 +826,7 @@ int tcmplxA_zcvt_strrtozs_bits
   for (i = ps->bit_index; i < 8u && ae == tcmplxA_Success; ++i) {
     unsigned int x = 0u;
     if ((!(ps->h_end&1u))/* if end marker not activated yet */
-    &&  (ps->state == 3)/* and not inside a block */)
+    &&  (ps->state == 3 && ps->count == 0u)/* and not inside a block */)
     {
       tcmplxA_uint32 const input_space =
           tcmplxA_blockbuf_capacity(ps->buffer)
@@ -832,7 +837,8 @@ int tcmplxA_zcvt_strrtozs_bits
       ae = tcmplxA_blockbuf_write(ps->buffer, p, min_count);
       if (ae != tcmplxA_Success)
         break;
-      else ps->checksum = tcmplxA_zutil_adler32(min_count, p, ps->checksum);
+      ps->checksum = tcmplxA_zutil_adler32(min_count, p, ps->checksum);
+      p += min_count;
     }
     switch (ps->state) {
     case 3: /* block start */
@@ -878,7 +884,7 @@ int tcmplxA_zcvt_strrtozs_bits
             tcmplxA_uint32 x_i;
             for (x_i = 0u; x_i < x_size; ++x_i) {
               unsigned char const byt = x[x_i];
-              int const insert_flag = ((byt&128u) ? 1 : 0);
+              int const insert_flag = ((byt&128u) == 0u);
               unsigned short len;
               unsigned short j;
               if (byt&64u) {
@@ -1010,6 +1016,7 @@ int tcmplxA_zcvt_strrtozs_bits
               dynamic_flag = 1;
             } else {
               dynamic_flag = 0;
+              tcmplxA_blockbuf_clear_output(ps->buffer);
               ae = tcmplxA_blockbuf_noconv_block(ps->buffer);
             }
           }
@@ -1031,7 +1038,7 @@ int tcmplxA_zcvt_strrtozs_bits
           ps->bits = 0u;
         } else {
           ps->state = 4u;
-          ps->backward = tcmplxA_blockbuf_input_size(ps->buffer);
+          ps->backward = tcmplxA_blockbuf_output_size(ps->buffer);
           ps->index = 0u;
           ps->count = 0u;
           ps->bit_index = 0u;
@@ -1256,6 +1263,20 @@ int tcmplxA_zcvt_strrtozs_bits
   *src = p;
   return ae;
 }
+
+
+void tcmplxA_zcvt_noconv_next(struct tcmplxA_zcvt* ps) {
+  if (ps->index < ps->backward) {
+    ps->state = 4u;
+  } else if (ps->h_end & 1u) {
+    ps->state = 6u;
+  } else {
+    ps->state = 3u;
+    ps->bits = 0u;
+  }
+  ps->count = 0u;
+  return;
+}
 /* END   zcvt state / static */
 
 /* BEGIN zcvt state / public */
@@ -1466,7 +1487,7 @@ int tcmplxA_zcvt_strrtozs
       }
       if (ps->count < 2u) {
         dst[ret_out] = (unsigned char)(
-              (ps->backward>>(16u-ps->count*8u))&255u
+              (ps->backward>>(8u-ps->count*8u))&255u
             );
         ps->count += 1u;
       }
@@ -1514,6 +1535,8 @@ int tcmplxA_zcvt_strrtozs
       }
       if (ps->count == 4u) {
         ps->state = 5u;
+        if (ps->extra_length == 0u)
+          tcmplxA_zcvt_noconv_next(ps);
       } break;
     case 5: /* no compression: copy bytes */
       if (ps->extra_length > 0u) {
@@ -1522,19 +1545,11 @@ int tcmplxA_zcvt_strrtozs
         ps->index += 1u;
       }
       if (ps->extra_length == 0u) {
-        if (ps->index < ps->backward) {
-          ps->state = 4u;
-        } else if (ps->h_end & 1u) {
-          ps->state = 6u;
-        } else {
-          ps->state = 3u;
-          ps->bits = 0u;
-        }
-        ps->count = 0u;
+        tcmplxA_zcvt_noconv_next(ps);
       } break;
     case 6: /* end-of-stream checksum */
       if (ps->count < 4u) {
-        dst[ret_out] = (ps->checksum>>(8u*ps->count));
+        dst[ret_out] = (ps->checksum>>(24u-8u*ps->count));
         ps->count += 1u;
       }
       if (ps->count >= 4u) {
