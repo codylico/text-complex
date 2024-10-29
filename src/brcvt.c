@@ -70,7 +70,10 @@ struct tcmplxA_brcvt {
   unsigned short int extra_length;
   /** @brief ... */
   unsigned char bit_length;
-  /** @brief End indicator. */
+  /**
+   * @brief End indicator.
+   * @note AND 2 = requested; AND 1 = granted.
+   */
   unsigned char h_end;
   /** @brief ... */
   unsigned char state;
