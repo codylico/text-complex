@@ -36,7 +36,11 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_MetaLength = 2,
   tcmplxA_BrCvt_MetaText = 3,
   tcmplxA_BrCvt_LastCheck = 4,
+  tcmplxA_BrCvt_Nibbles = 5,
+  tcmplxA_BrCvt_InputLength = 6,
   tcmplxA_BrCvt_Done = 7,
+  tcmplxA_BrCvt_CompressCheck = 8,
+  tcmplxA_BrCvt_Uncompress = 9,
 };
 
 struct tcmplxA_brcvt {
@@ -91,6 +95,8 @@ struct tcmplxA_brcvt {
   unsigned short checksum
   __attribute__((__deprecated__))
   ;
+  /** @brief Partial byte stored aside for later. */
+  unsigned char write_scratch;
   /** @brief Which value to use for WBITS. */
   unsigned char wbits_select;
   /** @brief Whether to insert an empty metadata block. */
@@ -196,6 +202,12 @@ static int tcmplxA_brcvt_strrtozs_bits
  * @param ps Brotli state
  */
 static void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps);
+/**
+ * @brief Determine if it's safe to add input.
+ * @param ps compressor state to check
+ * @return nonzero if safe, zero if unsafe
+ */
+static int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -302,6 +314,7 @@ int tcmplxA_brcvt_init
     x->backward = 0u;
     x->count = 0u;
     x->checksum = 0u;
+    x->write_scratch = 0u;
     x->bit_cap = 0u;
     x->emptymeta = 0u;
     x->meta_index = 0u;
@@ -933,10 +946,21 @@ void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps) {
     ps->state = tcmplxA_BrCvt_MetaStart;
   else if (ps->emptymeta)
     ps->state = tcmplxA_BrCvt_MetaStart;
-  else if (!ps->h_end)
-    ps->state = tcmplxA_BrCvt_Done; /* TODO output data */
-  else
+  else if (!(ps->h_end&1u))
+    ps->state = tcmplxA_BrCvt_Nibbles;
+  else {
     ps->state = tcmplxA_BrCvt_LastCheck;
+    ps->h_end |= 1u;
+  }
+}
+
+int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps) {
+  if (ps->h_end&1u)
+    return 0;
+  else if (ps->state == tcmplxA_BrCvt_Nibbles)
+    return ps->bit_length == 0;
+  else return (ps->state >= tcmplxA_BrCvt_MetaStart)
+    && (ps->state <= tcmplxA_BrCvt_MetaText);
 }
 
 int tcmplxA_brcvt_strrtozs_bits
@@ -946,11 +970,13 @@ int tcmplxA_brcvt_strrtozs_bits
   unsigned char const* p = *src;
   unsigned int i;
   int ae = tcmplxA_Success;
+  /* restore in-progress byte */
+  *y = ps->write_scratch;
+  ps->write_scratch = 0u;
+  /* iterate through remaining bits */
   for (i = ps->bit_index; i < 8u && ae == tcmplxA_Success; ++i) {
     unsigned int x = 0u;
-    if ((!(ps->h_end&1u))/* if end marker not activated yet */
-    &&  (ps->state == 3)/* and not inside a block */)
-    {
+    if (tcmplxA_brcvt_can_add_input(ps)) {
       tcmplxA_uint32 const input_space =
           tcmplxA_blockbuf_capacity(ps->buffer)
         - tcmplxA_blockbuf_input_size(ps->buffer);
@@ -960,7 +986,7 @@ int tcmplxA_brcvt_strrtozs_bits
       ae = tcmplxA_blockbuf_write(ps->buffer, p, min_count);
       if (ae != tcmplxA_Success)
         break;
-      else ps->checksum = tcmplxA_zutil_adler32(min_count, p, ps->checksum);
+      p += min_count;
     }
     switch (ps->state) {
     case tcmplxA_BrCvt_WBits: /* WBITS */
@@ -981,13 +1007,8 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->count += 1u;
       }
       if (ps->count > ps->bit_length) {
-        if (ps->meta_index < tcmplxA_brmeta_size(ps->metadata)
-        ||  ps->emptymeta)
-          ps->state = tcmplxA_BrCvt_MetaStart;
-        else
-          ps->state = tcmplxA_BrCvt_Done;
+        tcmplxA_brcvt_next_block(ps);
         ps->bit_length = 0;
-        ae = tcmplxA_EOF;
       }
       break;
     case tcmplxA_BrCvt_MetaStart:
@@ -1055,20 +1076,95 @@ int tcmplxA_brcvt_strrtozs_bits
       if (ps->count < ps->bit_length) {
         x = 1;
         ps->count += 1;
-      }
-      if (ps->count >= ps->bit_length) {
+      } else x = 0;
+      if (ps->count >= ps->bit_length && i==7) {
         ps->state = tcmplxA_BrCvt_Done;
         ps->bit_length = 0;
-        ae = tcmplxA_EOF;
       }
+      break;
+    case tcmplxA_BrCvt_Nibbles:
+      if (ps->bit_length == 0u) {
+        size_t const input_len = tcmplxA_blockbuf_input_size(ps->buffer);
+        if (input_len < tcmplxA_blockbuf_capacity(ps->buffer)
+        &&  !(ps->h_end&2u))
+        {
+          ae = tcmplxA_ErrPartial;
+          break;
+        }
+        ps->bit_length = 3;
+        ps->backward = (tcmplxA_uint32)input_len-1u;
+        if (input_len > 1048576)
+          ps->bits = 4;
+        else if (input_len > 65536)
+          ps->bits = 2;
+        else if (input_len > 0)
+          ps->bits = 0;
+        else if (ps->h_end&2u) { /* convert to end block */
+          ps->bits = 3;
+          ps->h_end |= 1u;
+          ps->state = tcmplxA_BrCvt_LastCheck;
+          ps->bit_length = 2;
+        } else { /* convert to metadata block*/
+          ps->bits = 6;
+          ps->state = tcmplxA_BrCvt_MetaStart;
+          ps->bit_length = tcmplxA_brcvt_MetaHeaderLen;
+          ps->backward = 0;
+        }
+        ps->count = 0;
+      }
+      if (ps->count < ps->bit_length) {
+        x = (ps->bits>>ps->count)&1u;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->state = tcmplxA_BrCvt_InputLength; /* TODO */
+        ps->bit_length = (((ps->bits>>1)&3u)|4u)<<2;
+        ps->count = 0;
+      }
+      break;
+    case tcmplxA_BrCvt_InputLength:
+      if (ps->count < ps->bit_length) {
+        x = (ps->backward>>ps->count)&1u;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->state = tcmplxA_BrCvt_CompressCheck; /* TODO */
+        ps->bit_length = 0;
+        ps->count = 0;
+      }
+      break;
+    case tcmplxA_BrCvt_CompressCheck:
+      if (ps->bit_length == 0) {
+        int const want_compress = 0;
+        if (!want_compress) {
+          x = 1;
+          tcmplxA_blockbuf_clear_output(ps->buffer);
+          ae = tcmplxA_blockbuf_noconv_block(ps->buffer);
+          if (ae != tcmplxA_Success)
+            break;
+          ps->state = tcmplxA_BrCvt_Uncompress;
+          ps->backward = tcmplxA_blockbuf_output_size(ps->buffer);
+          ps->count = 0;
+          assert(ps->backward);
+          break;
+        }
+        ps->bit_length = 1;
+        x = 0;
+        ae = tcmplxA_ErrSanitize;
+      } break;
+    case tcmplxA_BrCvt_Uncompress:
+      x = 0;
       break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       x = 0;
       ae = tcmplxA_EOF;
       break;
     }
-    if (ae > tcmplxA_Success)
+    if (ae > tcmplxA_Success) {
+      if (ae == tcmplxA_ErrPartial)
+        ps->write_scratch = *y; /* save current byte */
       /* halt the read position here: */break;
+    }
     else *y |= (x<<i);
   }
   ps->bit_index = i&7u;
@@ -1225,6 +1321,10 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_WBits: /* initial state */
     case tcmplxA_BrCvt_MetaStart:
     case tcmplxA_BrCvt_MetaLength:
+    case tcmplxA_BrCvt_LastCheck:
+    case tcmplxA_BrCvt_Nibbles:
+    case tcmplxA_BrCvt_InputLength:
+    case tcmplxA_BrCvt_CompressCheck:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -1238,54 +1338,18 @@ int tcmplxA_brcvt_strrtozs
         ps->bit_length = 0;
       }
       break;
-    case 4: /* no compression: LEN and NLEN */
-      if (ps->count == 0u) {
-        tcmplxA_uint32 const diff = ps->backward - ps->index;
-        ps->extra_length = (unsigned short)(diff<65535u ? diff : 65535u);
-      }
-      if (ps->count < 2u) {
-        dst[ret_out] = (unsigned char)(ps->extra_length>>(8u*ps->count));
-        ps->count += 1u;
-      } else if (ps->count < 4u) {
-        dst[ret_out] = (unsigned char)(
-              ~(ps->extra_length>>(8u*(2u-ps->count)))
-            );
-        ps->count += 1u;
-      }
-      if (ps->count == 4u) {
-        ps->state = 5u;
-      } break;
-    case 5: /* no compression: copy bytes */
-      if (ps->extra_length > 0u) {
-        ps->extra_length -= 1u;
-        dst[ret_out] = tcmplxA_blockbuf_output_data(ps->buffer)[ps->index];
-        ps->index += 1u;
-      }
-      if (ps->extra_length == 0u) {
-        if (ps->index < ps->backward) {
-          ps->state = 4u;
-        } else if (ps->h_end & 1u) {
-          ps->state = 6u;
-        } else {
-          ps->state = 3u;
-          ps->bits = 0u;
-        }
-        ps->count = 0u;
-      } break;
-    case 6: /* end-of-stream checksum */
-      if (ps->count < 4u) {
-        dst[ret_out] = (ps->checksum>>(8u*ps->count));
-        ps->count += 1u;
-      }
-      if (ps->count >= 4u) {
-        ps->state = 7u;
-        ps->count = 0u;
+    case tcmplxA_BrCvt_Uncompress:
+      if (ps->count < ps->backward)
+        dst[ret_out] = tcmplxA_blockbuf_output_data(ps->buffer)[ps->count++];
+      ae = tcmplxA_Success;
+      if (ps->count >= ps->backward) {
+        ps->metatext = NULL;
+        tcmplxA_blockbuf_clear_input(ps->buffer);
+        tcmplxA_brcvt_next_block(ps);
+        ps->bit_length = 0;
       } break;
     case tcmplxA_BrCvt_Done:
       ae = tcmplxA_EOF;
-      break;
-    case 8: /* encode */
-      ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     }
     if (ae > tcmplxA_Success)
