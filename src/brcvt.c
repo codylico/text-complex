@@ -412,7 +412,9 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bit_length = 0;
         } else {
           ps->bit_length = (ps->bits+4)*4;
-          ps->state = 99; /* TODO handle data */
+          ps->state = tcmplxA_BrCvt_InputLength;
+          ps->backward = 0;
+          ps->count = 0;
         }
       }
       break;
@@ -459,10 +461,32 @@ int tcmplxA_brcvt_zsrtostr_bits
           ae = tcmplxA_EOF;
       }
       break;
+    case tcmplxA_BrCvt_InputLength:
+      if (ps->count < ps->bit_length) {
+        ps->backward |= (((tcmplxA_uint32)x)<<ps->count);
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->bit_length = 0;
+        ps->count = 0;
+        if (ps->bit_length > 16 && (ps->backward>>(ps->bit_length-4))==0)
+          ae = tcmplxA_ErrSanitize;
+        ps->backward += 1;
+        ps->state = tcmplxA_BrCvt_CompressCheck;
+      } break;
+    case tcmplxA_BrCvt_CompressCheck:
+      if (x) {
+        ps->state = tcmplxA_BrCvt_Uncompress;
+      } else {
+        /* TODO implement */
+        ae = tcmplxA_ErrSanitize;
+      } break;
+    case tcmplxA_BrCvt_Uncompress:
+      if (x)
+        ae = tcmplxA_ErrSanitize;
+      break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
-      break;
-    case 6: /* */
       break;
     case 19: /* generate code trees */
       {
@@ -480,58 +504,6 @@ int tcmplxA_brcvt_zsrtostr_bits
           break;
         ps->state = 8;
       } /*[[fallthrough]]*/;
-    case 8: /* decode */
-      if (ps->bit_length < 15u) {
-        size_t j;
-        ps->bits = (ps->bits<<1) | x;
-        j = tcmplxA_fixlist_codebsearch
-          (ps->literals, ps->bit_length+1u, ps->bits);
-        if (j < ((size_t)-1)) {
-          unsigned const alpha =
-            (unsigned)tcmplxA_fixlist_at_c(ps->literals, j)->value;
-          struct tcmplxA_inscopy_row const* row =
-            tcmplxA_inscopy_at_c(ps->values, alpha);
-          if (row->type == tcmplxA_InsCopy_Stop) {
-            if (ps->h_end)
-              ps->state = 6;
-            else ps->state = 3;
-            ps->count = 0u;
-          } else if (row->type == tcmplxA_InsCopy_Literal) {
-            if (ret_out < dstsz) {
-              unsigned char const byt = (unsigned char)alpha;
-              dst[ret_out] = byt;
-              ps->checksum = tcmplxA_zutil_adler32(1u, &byt, ps->checksum);
-              ret_out += 1u;
-              /* */{
-                size_t const z = tcmplxA_blockbuf_bypass(ps->buffer, &byt, 1u);
-                if (z != 1u) {
-                  ae = tcmplxA_ErrMemory;
-                  break;
-                }
-              }
-            } else {
-              ps->state = 20;
-              ps->bits = (unsigned char)alpha;
-              ae = tcmplxA_ErrPartial;
-              break;
-            }
-          } else if ((row->type&127) == tcmplxA_InsCopy_Copy) {
-            if (row->copy_bits > 0u) {
-              ps->state = 9;
-              ps->extra_length = row->copy_bits;
-            } else ps->state = 10;
-            ps->count = row->copy_first;
-          } else ae = tcmplxA_ErrSanitize;
-          ps->bit_length = 0u;
-          ps->backward = 0u;
-          ps->bits = 0u;
-          break;
-        }
-        ps->bit_length += 1u;
-      }
-      if (ps->bit_length >= 15u) {
-        ae = tcmplxA_ErrSanitize;
-      } break;
     case 20: /* alpha bringback */
       if (ret_out < dstsz) {
         unsigned char const byt = (unsigned char)(ps->bits);
@@ -551,17 +523,6 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->backward = 0u;
       } else {
         ae = tcmplxA_ErrPartial;
-      } break;
-    case 9: /* copy bits */
-      if (ps->bit_length < ps->extra_length) {
-        ps->bits = (ps->bits | (x<<ps->bit_length));
-        ps->bit_length += 1u;
-      }
-      if (ps->bit_length >= ps->extra_length) {
-        ps->count += ps->bits;
-        ps->bits = 0u;
-        ps->bit_length = 0u;
-        ps->state = 10;
       } break;
     case 10: /* backward */
       if (ps->bit_length < 15u) {
@@ -1212,6 +1173,8 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_LastCheck:
     case tcmplxA_BrCvt_MetaStart:
     case tcmplxA_BrCvt_MetaLength:
+    case tcmplxA_BrCvt_InputLength:
+    case tcmplxA_BrCvt_CompressCheck:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -1239,61 +1202,21 @@ int tcmplxA_brcvt_zsrtostr
           ae = tcmplxA_EOF;
       }
       break;
-    case 9904: /* no compression: LEN and NLEN */
-      if (ps->count < 4u) {
-        ps->backward = (ps->backward<<8) | (*p);
-        ps->count += 1u;
-      }
-      if (ps->count >= 4u) {
-        unsigned int const len = (ps->backward>>16)&65535u;
-        unsigned int const nlen = (~ps->backward)&65535u;
-        if (len != nlen) {
-          ae = tcmplxA_ErrSanitize;
-        } else {
-          ps->backward = len;
-          ps->state = 5;
-          ps->count = 0u;
-        }
-      } break;
-    case 5: /* no compression: copy bytes */
+    case tcmplxA_BrCvt_Uncompress:
       if (ps->count < ps->backward) {
-        if (ret_out < dstsz) {
-          dst[ret_out] = (*p);
-          ps->checksum = tcmplxA_zutil_adler32(1u, p, ps->checksum);
-          ret_out += 1u;
-          /* */{
-            size_t const z = tcmplxA_blockbuf_bypass(ps->buffer, p, 1u);
-            if (z != 1u)
-              ae = tcmplxA_ErrMemory;
-          }
-        } else {
-          ae = tcmplxA_ErrPartial;
-          break;
-        }
-        ps->count += 1u;
+        dst[ret_out] = (*p);
+        ret_out += 1u;
+        ps->count += 1;
       }
       if (ps->count >= ps->backward) {
+        ps->metatext = NULL;
+        ps->state = (ps->h_end
+          ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
         if (ps->h_end)
-          ps->state = 6;
-        else ps->state = 3;
-        ps->count = 0u;
-        ps->backward = 0u;
-      } break;
-    case 6: /* end-of-stream checksum */
-      if (ps->count < 4u) {
-        ps->backward = (ps->backward<<8) | (*p);
-        ps->count += 1u;
-      }
-      if (ps->count >= 4u) {
-        if (ps->checksum != ps->backward) {
-          ae = tcmplxA_ErrSanitize;
-        } else ps->state = 7;
+          ae = tcmplxA_EOF;
       } break;
     case 7: /* end of stream */
       ae = tcmplxA_EOF;
-      break;
-    case 8: /* decode */
-      ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     }
     if (ae > tcmplxA_Success)
