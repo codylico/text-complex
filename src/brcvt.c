@@ -224,6 +224,8 @@ int tcmplxA_brcvt_init
       break;
     }
   }
+  if (block_size >= 16777200u)
+    block_size = 16777200u;
   /* buffer */{
     x->buffer = tcmplxA_blockbuf_new(block_size,n,chain_length, 0);
     if (x->buffer == NULL)
