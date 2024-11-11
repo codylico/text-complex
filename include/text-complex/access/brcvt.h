@@ -22,7 +22,7 @@ struct tcmplxA_brcvt;
 /**
  * @brief Construct a new Brotli conversion state.
  * @param block_size amount of input data to process at once
- * @param n maximum sliding window size
+ * @param n maximum sliding window size (use 16777200 for Brotli default)
  * @param chain_length run-time parameter limiting hash chain length
  * @return a pointer to the Brotli conversion state on success, NULL otherwise
  */

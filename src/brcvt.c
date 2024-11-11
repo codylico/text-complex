@@ -1204,6 +1204,8 @@ int tcmplxA_brcvt_zsrtostr
       break;
     case tcmplxA_BrCvt_Uncompress:
       if (ps->count < ps->backward) {
+        if (!tcmplxA_blockbuf_bypass(ps->buffer, p, 1))
+          ae = tcmplxA_ErrMemory;
         dst[ret_out] = (*p);
         ret_out += 1u;
         ps->count += 1;
