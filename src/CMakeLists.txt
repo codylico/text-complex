@@ -11,7 +11,7 @@ set(text_complex_access_FILES
   fixlist.c
   ringdist.c
   inscopy.c
-  ctxtmap.c
+  ctxtmap.c  ctxtmap_p.h
 
   bdict.c    bdict_p.h  bdict_cb.c
   bdict04.c  bdict05.c  bdict06.c  bdict07.c  bdict08.c
@@ -27,6 +27,7 @@ set(text_complex_access_FILES
   zcvt.c
   brcvt.c
   brmeta.c
+  ctxtspan.c
   )
 set(text_complex_access_HEADERS
   ../include/text-complex/access/api.h
@@ -45,6 +46,7 @@ set(text_complex_access_HEADERS
   ../include/text-complex/access/zcvt.h
   ../include/text-complex/access/brcvt.h
   ../include/text-complex/access/brmeta.h
+  ../include/text-complex/access/ctxtspan.h
   )
 
 add_library(tcmplx_access ${text_complex_access_FILES}

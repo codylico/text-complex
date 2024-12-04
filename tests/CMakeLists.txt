@@ -105,4 +105,10 @@ target_include_directories(tcmplx_access_testfont
   add_executable(tcmplx_access_test_brcvt tca_brcvt.c)
   target_link_libraries(tcmplx_access_test_brcvt munit tcmplx_access)
 #END   BrCvt test
+
+#BEGIN CtxtSpan test
+  add_executable(tcmplx_access_test_ctxtspan tca_ctxtspan.c)
+  target_link_libraries(tcmplx_access_test_ctxtspan
+    tcmplx_access_testfont munit tcmplx_access)
+#END   CtxtSpan test
 endif (TCMPLX_ACCESS_BUILD_TESTS)

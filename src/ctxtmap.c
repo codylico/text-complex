@@ -4,10 +4,12 @@
  * @author Cody Licorish (svgmovement@gmail.com)
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
+#include "ctxtmap_p.h"
 #include "text-complex/access/ctxtmap.h"
 #include "text-complex/access/api.h"
 #include "text-complex/access/util.h"
 #include <string.h>
+#include <assert.h>
 
 struct tcmplxA_ctxtmap {
   unsigned char *p;
@@ -180,6 +182,13 @@ int tcmplxA_ctxtmap_resize
   return tcmplxA_Success;
 }
 /* END   context map / static */
+
+/* BEGIN context map / internal */
+unsigned char tcmplxA_ctxtmap_getlut2(int i) {
+  assert(i >= 0 && i < sizeof(tcmplxA_ctxtmap_lut2));
+  return tcmplxA_ctxtmap_lut2[i];
+}
+/* END   context map / internal */
 
 /* BEGIN context map / public */
 struct tcmplxA_ctxtmap* tcmplxA_ctxtmap_new(size_t btypes, size_t ctxts) {

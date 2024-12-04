@@ -25,7 +25,8 @@ enum tcmplxA_ctxtmap_mode {
   tcmplxA_CtxtMap_LSB6 = 0,
   tcmplxA_CtxtMap_MSB6 = 1,
   tcmplxA_CtxtMap_UTF8 = 2,
-  tcmplxA_CtxtMap_Signed = 3
+  tcmplxA_CtxtMap_Signed = 3,
+  tcmplxA_CtxtMap_ModeMax
 };
 
 /* BEGIN context map */
