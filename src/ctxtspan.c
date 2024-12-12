@@ -92,7 +92,7 @@ void tcmplxA_ctxtspan_guess(struct tcmplxA_ctxtscore* results,
     void const* buf, size_t buf_len)
 {
     struct tcmplxA_ctxtscore out = *results;
-    unsigned char const* p = (unsigned char const*)buf;
+    unsigned char const* const p = (unsigned char const*)buf;
     unsigned char last = 0;
     unsigned char utf8count = 0;
     size_t i;
@@ -139,7 +139,7 @@ void tcmplxA_ctxtspan_guess(struct tcmplxA_ctxtscore* results,
 void tcmplxA_ctxtspan_subdivide(struct tcmplxA_ctxtspan* results,
     void const* buf, size_t buf_len, unsigned margin)
 {
-    unsigned char const* char_buf = (unsigned char const*)buf;
+    unsigned char const* const char_buf = (unsigned char const*)buf;
     struct tcmplxA_ctxtscore scores[tcmplxA_CtxtSpan_Size] = {{{0}}};
     unsigned char groups[tcmplxA_CtxtSpan_Size] = {0};
     size_t stops[tcmplxA_CtxtSpan_Size] = {0};
