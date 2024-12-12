@@ -19,6 +19,8 @@ static MunitResult test_ctxtspan_guess_utf8
     (const MunitParameter params[], void* data);
 static MunitResult test_ctxtspan_guess_signed
     (const MunitParameter params[], void* data);
+static MunitResult test_ctxtspan_subdivide
+    (const MunitParameter params[], void* data);
 
 static MunitTest tests_ctxtspan[] = {
   {"guess", test_ctxtspan_guess, NULL,NULL,0,NULL},
@@ -26,6 +28,7 @@ static MunitTest tests_ctxtspan[] = {
   {"guess/msb", test_ctxtspan_guess_msb, NULL,NULL,0,NULL},
   {"guess/utf8", test_ctxtspan_guess_utf8, NULL,NULL,0,NULL},
   {"guess/signed", test_ctxtspan_guess_signed, NULL,NULL,0,NULL},
+  {"subdivide", test_ctxtspan_subdivide, NULL,NULL,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -127,6 +130,31 @@ MunitResult test_ctxtspan_guess_signed
     munit_assert(score.vec[tcmplxA_CtxtMap_Signed] > score.vec[tcmplxA_CtxtMap_UTF8]);
   }
   munit_assert(score.vec[tcmplxA_CtxtMap_Signed] > score.vec[tcmplxA_CtxtMap_MSB6]);
+  return MUNIT_OK;
+}
+
+MunitResult test_ctxtspan_subdivide
+    (const MunitParameter params[], void* data)
+{
+  unsigned char buf[32] = {0};
+  unsigned len = munit_rand_uint32()%33;
+  struct tcmplxA_ctxtspan spans = {0};
+  size_t i;
+  (void)params;
+  (void)data;
+  munit_rand_memory(sizeof(buf), buf);
+  tcmplxA_ctxtspan_subdivide(&spans, buf, len, 0);
+  munit_assert(spans.count <= tcmplxA_CtxtSpan_Size);
+  munit_assert(spans.total_bytes == len);
+  for (i = 0; i < spans.count; ++i) {
+    size_t next;
+    if (i == spans.count-1)
+      next = spans.total_bytes;
+    else
+      next = spans.offsets[i+1];
+    munit_assert(spans.offsets[i] < next);
+    munit_assert(spans.modes[i] < tcmplxA_CtxtMap_ModeMax);
+  }
   return MUNIT_OK;
 }
 

@@ -35,6 +35,21 @@ int tcmplxA_ctxtspan_popcount(unsigned x);
  */
 static
 unsigned tcmplxA_ctxtspan_subscore(unsigned sub, unsigned add);
+/**
+ * @brief Absolute difference of two unsigned integers.
+ * @param a one integer
+ * @param b other integer
+ * @return a difference
+ */
+static
+unsigned tcmplxA_ctxtspan_absdiff(unsigned a, unsigned b);
+/**
+ * @brief Select a mode from a score collection.
+ * @param score collection to use
+ * @return a context mode
+ */
+static
+enum tcmplxA_ctxtmap_mode tcmplxA_ctxtspan_select(struct tcmplxA_ctxtscore const* score);
 
 /* BEGIN context span / static */
 int tcmplxA_ctxtspan_popcount(unsigned x) {
@@ -52,6 +67,23 @@ int tcmplxA_ctxtspan_popcount(unsigned x) {
 
 unsigned tcmplxA_ctxtspan_subscore(unsigned sub, unsigned add) {
     return add > sub ? tcmplxA_CtxtSpan_Ceiling : tcmplxA_CtxtSpan_Ceiling+add-sub;
+}
+
+enum tcmplxA_ctxtmap_mode tcmplxA_ctxtspan_select(struct tcmplxA_ctxtscore const* score) {
+    unsigned current_score = 0;
+    int mode = 0;
+    int i;
+    for (i = 0; i < tcmplxA_CtxtMap_ModeMax; ++i) {
+        if (score->vec[i] > current_score) {
+            mode = i;
+            current_score = score->vec[i];
+        }
+    }
+    return (enum tcmplxA_ctxtmap_mode)mode;
+}
+
+unsigned tcmplxA_ctxtspan_absdiff(unsigned a, unsigned b) {
+    return a > b ? a - b : b - a;
 }
 /* END   context span / static */
 
@@ -101,6 +133,93 @@ void tcmplxA_ctxtspan_guess(struct tcmplxA_ctxtscore* results,
         }
     }
     *results = out;
+    return;
+}
+
+void tcmplxA_ctxtspan_subdivide(struct tcmplxA_ctxtspan* results,
+    void const* buf, size_t buf_len, unsigned margin)
+{
+    unsigned char const* char_buf = (unsigned char const*)buf;
+    struct tcmplxA_ctxtscore scores[tcmplxA_CtxtSpan_Size] = {{{0}}};
+    unsigned char groups[tcmplxA_CtxtSpan_Size] = {0};
+    size_t stops[tcmplxA_CtxtSpan_Size] = {0};
+    size_t const span_len = (buf_len/tcmplxA_CtxtSpan_Size);
+    unsigned int i, bit;
+    unsigned char last_group = UCHAR_MAX;
+    memset(results, 0, sizeof(struct tcmplxA_ctxtspan));
+    for (i = 0; i < tcmplxA_CtxtSpan_Size; ++i) {
+        groups[i] = (unsigned char)i;
+        results->offsets[i] = span_len*i;
+        stops[i] = (i+1>=tcmplxA_CtxtSpan_Size) ? buf_len : span_len*(i+1);
+    }
+    /* Initial guesses. */
+    for (i = 0; i < tcmplxA_CtxtSpan_Size; ++i) {
+        size_t const start = results->offsets[i];
+        size_t const stop = stops[i];
+        tcmplxA_ctxtspan_guess(scores+i, char_buf+start, stop-start);
+        results->modes[i] = tcmplxA_ctxtspan_select(scores+i);
+    }
+    /* Collapse. */
+    for (bit = 0; bit < 4; ++bit) {
+        unsigned const substep = 1u<<bit;
+        unsigned const step = substep<<1;
+        for (i = 0; i < tcmplxA_CtxtSpan_Size; i += step) {
+            unsigned const inner = substep>>1;
+            unsigned const next = i+substep;
+            size_t const start = results->offsets[i];
+            size_t const stop = stops[i];
+            unsigned int j;
+            if (groups[i] != groups[i+inner]
+            ||  groups[next] != groups[next+inner])
+            {
+                /* Previous grouping step failed. */
+                continue;
+            }
+            /* See if the contexts are similar enough. */
+            if (results->modes[i] != results->modes[next]) {
+                int const i_mode = results->modes[i];
+                int const next_mode = results->modes[next];
+                /*
+                * Cross difference based on `X` term of seam objective from:
+                * Agarwala et al. "Interactive Digital Photomontage."
+                *   ACM Transactions on Graphics (Proceedings of SIGGRAPH 2004), 2004.
+                * https://grail.cs.washington.edu/projects/photomontage/
+                */
+                unsigned const cross_diff =
+                    tcmplxA_ctxtspan_absdiff(scores[i].vec[i_mode], scores[i].vec[next_mode])
+                    + tcmplxA_ctxtspan_absdiff(scores[next].vec[i_mode], scores[next].vec[next_mode]);
+                if (cross_diff > margin)
+                    continue;
+            }
+            /* Group the spans. */
+            for (j = i; j < i+step; ++j)
+                groups[j] = (unsigned char)i;
+            tcmplxA_ctxtspan_guess(scores+i, char_buf+start, stop-start);
+            {
+                unsigned char const mode = (unsigned char)tcmplxA_ctxtspan_select(scores+i);
+                results->modes[i] = mode;
+                results->modes[next] = mode;
+            }
+            stops[i] = stops[next];
+            results->offsets[next] = stops[next];
+        }
+    }
+    /* Shift */
+    results->count = 0;
+    results->total_bytes = buf_len;
+    for (i = 0; i < tcmplxA_CtxtSpan_Size; ++i) {
+        size_t const current = results->count;
+        if (groups[i] == last_group || results->offsets[i] == stops[i])
+            continue;
+        last_group = groups[i];
+        results->offsets[current] = results->offsets[i];
+        results->modes[current] = results->modes[i];
+        results->count += 1;
+    }
+    for (i = results->count; i < tcmplxA_CtxtSpan_Size; ++i) {
+        results->offsets[i] = buf_len;
+        results->modes[i] = tcmplxA_CtxtMap_ModeMax;
+    }
     return;
 }
 /* BEGIN context score / public */
