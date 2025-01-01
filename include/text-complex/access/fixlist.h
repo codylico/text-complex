@@ -56,7 +56,13 @@ enum tcmplxA_fix_preset {
   /**
    * @brief Code lengths for Brotli window bits.
    */
-  tcmplxA_FixList_BrotliWBits = 6
+  tcmplxA_FixList_BrotliWBits = 6,
+  /**
+   * @brief Code lengths for Brotli literal block types
+   *   `NBLTYPESL`.
+   * @note Also used for `NBLTYPESI`, `NBLTYPESD`, `NTREESL`, and `NTREESD`.
+   */
+  tcmplxA_FixList_BrotliBlockType = 7,
 };
 /* END   prefix preset identifiers */
 

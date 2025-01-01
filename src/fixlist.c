@@ -137,13 +137,14 @@ struct {
   size_t n;
   struct tcmplxA_fixline const* v;
 } const tcmplxA_fixlist_ps[] = {
-  { 6u, tcmplxA_fixlist_ps_BrotliComplex },
-  { 1u, tcmplxA_fixlist_ps_BrotliS1 },
-  { 2u, tcmplxA_fixlist_ps_BrotliS2 },
-  { 3u, tcmplxA_fixlist_ps_BrotliS3 },
-  { 4u, tcmplxA_fixlist_ps_BrotliS4A },
-  { 4u, tcmplxA_fixlist_ps_BrotliS4B },
-  {15u, tcmplxA_fixlist_ps_BrotliWBits }
+  {  6u, tcmplxA_fixlist_ps_BrotliComplex },
+  {  1u, tcmplxA_fixlist_ps_BrotliS1 },
+  {  2u, tcmplxA_fixlist_ps_BrotliS2 },
+  {  3u, tcmplxA_fixlist_ps_BrotliS3 },
+  {  4u, tcmplxA_fixlist_ps_BrotliS4A },
+  {  4u, tcmplxA_fixlist_ps_BrotliS4B },
+  { 15u, tcmplxA_fixlist_ps_BrotliWBits },
+  {256u, NULL }
 };
 
 /**
@@ -266,6 +267,13 @@ int tcmplxA_fixline_codecmp(void const* a, void const* b);
  */
 static
 int tcmplxA_fixline_valuecmp(void const* a, void const* b);
+/**
+ * @internal
+ * @brief Reverse the bits in a prefix line.
+ * @param line code to reverse
+ */
+static
+void tcmplxA_fixline_reverse(struct tcmplxA_fixline* line);
 
 
 
@@ -463,6 +471,16 @@ int tcmplxA_fixline_valuecmp(void const* pa, void const* pb) {
     return -1;
   else return (a->value > b->value);
 }
+
+void tcmplxA_fixline_reverse(struct tcmplxA_fixline* line) {
+  unsigned short const oldcode = line->code;
+  unsigned short i;
+  line->code = 0;
+  for (i = 0; i < line->len; ++i) {
+    line->code = (line->code<<1)|((oldcode>>i)&1u);
+  }
+  return;
+}
 /* END   prefix list / static */
 
 /* BEGIN prefix list / public */
@@ -573,7 +591,33 @@ int tcmplxA_fixlist_preset(struct tcmplxA_fixlist* dst, unsigned int i) {
     if (res != tcmplxA_Success) {
       return res;
     }
-    memcpy(dst->p, tcmplxA_fixlist_ps[i].v, sizeof(struct tcmplxA_fixlist)*sz);
+    if (tcmplxA_fixlist_ps[i].v)
+      memcpy(dst->p, tcmplxA_fixlist_ps[i].v, sizeof(struct tcmplxA_fixlist)*sz);
+    else switch (i) {
+    case tcmplxA_FixList_BrotliBlockType:
+      {
+        unsigned j;
+        unsigned mask = ~1u;
+        unsigned base = 0u;
+        for (j = 0; j < 256; ++j) {
+          struct tcmplxA_fixline *const line = dst->p+j;
+          line->value = j+1;
+          if (j == 0) {
+            line->len = 1;
+            line->code = 0;
+            continue;
+          } else if (j&mask) {
+            mask <<= 1;
+            base += 1;
+          }
+          line->len = 4+base;
+          line->code = (base<<1)|1|(j&~mask);
+          tcmplxA_fixline_reverse(line);
+        }
+      } break;
+    default:
+      return tcmplxA_ErrInit;
+    }
   }
   return tcmplxA_Success;
 }
