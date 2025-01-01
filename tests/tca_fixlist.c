@@ -295,7 +295,9 @@ MunitResult test_fixlist_preset
   /* */{
     ds[1] = *tcmplxA_fixlist_at_c(p, i);
   }
-  munit_assert_memory_equal(sizeof(ds[0]), &ds[0],&ds[1]);
+  munit_assert(ds[0].code == ds[1].code);
+  munit_assert(ds[0].len == ds[1].len);
+  munit_assert(ds[0].value == ds[1].value);
   return MUNIT_OK;
 }
 
