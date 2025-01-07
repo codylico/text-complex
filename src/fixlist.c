@@ -4,6 +4,7 @@
  * @author Cody Licorish (svgmovement@gmail.com)
  */
 #define TCMPLX_A_WIN32_DLL_INTERNAL
+#include "fixlist_p.h"
 #include "text-complex/access/fixlist.h"
 #include "text-complex/access/api.h"
 #include "text-complex/access/util.h"
@@ -61,11 +62,6 @@ struct tcmplxA_fixlist_arg {
 struct tcmplxA_fixlist_state {
   struct tcmplxA_fixlist_arg args;
   struct tcmplxA_fixlist_heapitem item;
-};
-
-struct tcmplxA_fixlist {
-  struct tcmplxA_fixline* p;
-  size_t n;
 };
 
 enum tcmplxA_fixlist_uconst {
@@ -147,24 +143,6 @@ struct {
   {256u, NULL }
 };
 
-/**
- * @brief Initialize a prefix list.
- * @param x the prefix list to initialize
- * @return zero on success, nonzero otherwise
- */
-static int tcmplxA_fixlist_init(struct tcmplxA_fixlist* x, size_t sz);
-/**
- * @brief Resize a prefix list.
- * @param x the list to resize
- * @param sz number of lines in the list
- * @return zero on success, nonzero otherwise
- */
-static int tcmplxA_fixlist_resize(struct tcmplxA_fixlist* x, size_t sz);
-/**
- * @brief Close a prefix list.
- * @param x the prefix list to close
- */
-static void tcmplxA_fixlist_close(struct tcmplxA_fixlist* x);
 /**
  * @brief Push a heap item onto a heap.
  * @param h heap represented by an array

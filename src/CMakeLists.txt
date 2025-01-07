@@ -8,7 +8,7 @@ set(text_complex_access_FILES
   offtable.c
   woff2.c
   seq.c
-  fixlist.c
+  fixlist.c  fixlist_p.h
   ringdist.c
   inscopy.c
   ctxtmap.c  ctxtmap_p.h
