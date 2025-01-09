@@ -150,6 +150,8 @@ struct tcmplxA_brcvt {
   unsigned char wbits_select;
   /** @brief Whether to insert an empty metadata block. */
   unsigned char emptymeta;
+  /** @brief Size of alphabet used by the treety. */
+  unsigned char alphabits;
   /** @brief Output internal bit count. */
   tcmplxA_uint32 bit_cap;
   /** @brief Nonzero metadata block storage. */
@@ -595,15 +597,16 @@ int tcmplxA_brcvt_zsrtostr_bits
           tcmplxA_fixlist_preset(&ps->literal_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
         } else {
-          ps->treety.count = (unsigned short)((ps->bits>>4)+(1u<<(ps->count-4))+1u);
-          // TODO store `util_bitwidth(state.treety.count)` somewhere.
+          unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          ps->treety.count = (unsigned short)alphasize;
+          ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
         }
       } break;
     case tcmplxA_BrCvt_BlockTypesLAlpha:
       {
         int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->literal_blocktype, x,
-          tcmplxA_util_bitwidth(ps->treety.count));
+          ps->alphabits);
         if (res == tcmplxA_EOF)
           ps->state += 1;
         else if (res != tcmplxA_Success)
@@ -926,7 +929,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
 {
   switch (treety->state) {
   case tcmplxA_BrCvt_TComplex:
-    treety->bits = (x<<(treety->bit_length++));
+    treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length == 2) {
       if (treety->bits == 1) {
         treety->state = tcmplxA_BrCvt_TSimpleCount;
@@ -956,7 +959,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       }
     } break;
   case tcmplxA_BrCvt_TSimpleCount:
-    treety->bits = (x<<(treety->bit_length++));
+    treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length == 2) {
       unsigned short const new_count = treety->bits+1;
       int const res = tcmplxA_fixlist_resize(&treety->nineteen, new_count);
@@ -969,7 +972,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       treety->state = tcmplxA_BrCvt_TSimpleAlpha;
     } break;
   case tcmplxA_BrCvt_TSimpleAlpha:
-    treety->bits = (x<<(treety->bit_length++));
+    treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length == alphabits) {
       tcmplxA_fixlist_at(&treety->nineteen, treety->index)->value = treety->bits;
       treety->index += 1;
@@ -1011,12 +1014,16 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       }
       if (len > 5)
         return tcmplxA_Success;
-      treety->len_check += (32 >> len);
-      treety->nonzero += (len > 0);
+      treety->bits = 0;
+      treety->bit_length = 0;
+      if (len > 0) {
+        treety->len_check += (32 >> len);
+        treety->nonzero += 1;
+        if (treety->len_check > 32)
+          return tcmplxA_ErrSanitize;
+      }
       if (treety->nonzero == 1)
         treety->singular = tcmplxA_brcvt_clen[treety->index];
-      if (treety->len_check > 32)
-        return tcmplxA_ErrSanitize;
       tcmplxA_fixlist_at(&treety->nineteen, treety->index++)->len = len;
       if (treety->index >= tcmplxA_brcvt_CLenExtent || treety->len_check >= 32) {
         if (treety->nonzero > 1 && treety->len_check != 32)
@@ -1048,7 +1055,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
     } break;
   case tcmplxA_BrCvt_TRepeat:
   case tcmplxA_BrCvt_TZeroes:
-    treety->bits = (x<<(treety->bit_length++));
+    treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length < treety->state-tcmplxA_BrCvt_TRepeatStop)
       break;
     else {
@@ -1140,11 +1147,18 @@ int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
       treety->state = tcmplxA_BrCvt_TRepeat;
       treety->bits = 0;
       treety->bit_length = 0;
-    }
+    } else if (value == 17) {
+      if (treety->last_len != 0)
+        treety->last_repeat = 0;
+      treety->state = tcmplxA_BrCvt_TZeroes;
+      treety->bits = 0;
+      treety->bit_length = 0;
+    } else return tcmplxA_ErrSanitize;
   } else return tcmplxA_ErrSanitize;
   if (treety->index >= treety->count || treety->len_check >= 32768) {
     int const sort_res = tcmplxA_fixlist_valuesort(prefixes);
     int const res = tcmplxA_fixlist_gen_codes(prefixes);
+    treety->state = tcmplxA_BrCvt_TDone;
     return (res == tcmplxA_Success && sort_res == tcmplxA_Success)
       ? tcmplxA_EOF : (res?res:sort_res);
   }
