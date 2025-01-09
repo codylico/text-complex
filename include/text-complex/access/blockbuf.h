@@ -135,6 +135,15 @@ unsigned char const* tcmplxA_blockbuf_output_data
   (struct tcmplxA_blockbuf const* x);
 
 /**
+ * @brief Inspect the input data.
+ * @param x block buffer
+ * @return start of pending input data in the buffer
+ */
+TCMPLX_A_API
+unsigned char const* tcmplxA_blockbuf_input_data
+  (struct tcmplxA_blockbuf const* x);
+
+/**
  * @brief Clear the output buffer.
  * @param x the block buffer to edit
  */

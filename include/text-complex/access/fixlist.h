@@ -214,6 +214,18 @@ int tcmplxA_fixlist_valuesort(struct tcmplxA_fixlist* dst);
 TCMPLX_A_API
 size_t tcmplxA_fixlist_valuebsearch
   (struct tcmplxA_fixlist const* dst, unsigned long int value);
+
+/**
+ * @brief Match a small prefix tree to a simple preset.
+ * @param[in,out] dst tree to match
+ * @return a value between tcmplxA_FixList_BrotliSimple1
+ *   and tcmplxA_FixList_BrotliSimple4B (inclusive) on success,
+ *   otherwise tcmplxA_FixList_BrotliComplex
+ * @note Useful for encoding to a compressed stream.
+ * @note Modifies `dst`.
+ */
+TCMPLX_A_API
+int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst);
 /* END   prefix list */
 
 #ifdef __cplusplus

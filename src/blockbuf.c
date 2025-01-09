@@ -429,6 +429,12 @@ tcmplxA_uint32 tcmplxA_blockbuf_output_size(struct tcmplxA_blockbuf const* x) {
   return x->output.sz;
 }
 
+unsigned char const* tcmplxA_blockbuf_input_data
+  (struct tcmplxA_blockbuf const* x)
+{
+  return x->input.p;
+}
+
 unsigned char const* tcmplxA_blockbuf_output_data
   (struct tcmplxA_blockbuf const* x)
 {

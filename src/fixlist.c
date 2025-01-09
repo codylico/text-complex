@@ -252,6 +252,17 @@ int tcmplxA_fixline_valuecmp(void const* a, void const* b);
  */
 static
 void tcmplxA_fixline_reverse(struct tcmplxA_fixline* line);
+/**
+ * @internal
+ * @brief Compare two prefix lines by bit code, then by alphabet value.
+ * @param a one line
+ * @param b another line
+ * @return positive if `a`'s value is "less" than `b`'s,
+ *   zero if the value are equal,
+ *   negative otherwise
+ */
+static
+int tcmplxA_fixline_codevaluecmp(void const* a, void const* b);
 
 
 
@@ -458,6 +469,11 @@ void tcmplxA_fixline_reverse(struct tcmplxA_fixline* line) {
     line->code = (line->code<<1)|((oldcode>>i)&1u);
   }
   return;
+}
+
+int tcmplxA_fixline_codevaluecmp(void const* a, void const* b) {
+  int const codecmp = tcmplxA_fixline_codecmp(a,b);
+  return codecmp ? codecmp : tcmplxA_fixline_valuecmp(a,b);
 }
 /* END   prefix list / static */
 
@@ -848,5 +864,62 @@ size_t tcmplxA_fixlist_valuebsearch
         tcmplxA_fixline_valuecmp);
     return x!=NULL ? (size_t)(x-dst->p) : ((size_t)-1);
   }
+}
+
+int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst) {
+  size_t nonzero_start = dst->n;
+  size_t i;
+  size_t nonzero_total;
+  if (dst->n == 0 || !dst->p)
+    return tcmplxA_FixList_BrotliComplex;
+  qsort
+    ( dst->p, dst->n,
+      sizeof(struct tcmplxA_fixline), tcmplxA_fixline_codevaluecmp);
+  for (i = 0; i < dst->n; ++i) {
+    if (dst->p[i].len == 0)
+      continue;
+    nonzero_start = i;
+    break;
+  }
+  nonzero_total = dst->n - nonzero_start;
+  if (nonzero_total < 1 || nonzero_total > 4)
+    return tcmplxA_FixList_BrotliComplex;
+  if (nonzero_start > 0) {
+    memmove(dst->p, dst->p+nonzero_start, sizeof(struct tcmplxA_fixline)*nonzero_total);
+    dst->n = nonzero_total;
+  }
+  switch (nonzero_total) {
+  case 1:
+    dst->p[0].len = 0;
+    dst->p[0].code = 0;
+    return tcmplxA_FixList_BrotliSimple1;
+  case 2:
+    for (i = 0; i < 2; ++i) {
+      dst->p[i].code = tcmplxA_fixlist_ps_BrotliS2[i].code;
+      dst->p[i].len = tcmplxA_fixlist_ps_BrotliS2[i].len;
+    }
+    return tcmplxA_FixList_BrotliSimple2;
+  case 3:
+    for (i = 0; i < 3; ++i) {
+      dst->p[i].code = tcmplxA_fixlist_ps_BrotliS3[i].code;
+      dst->p[i].len = tcmplxA_fixlist_ps_BrotliS3[i].len;
+    }
+    return tcmplxA_FixList_BrotliSimple3;
+  case 4:
+    if (dst->p[0].len == 1) {
+      for (i = 0; i < 4; ++i) {
+        dst->p[i].code = tcmplxA_fixlist_ps_BrotliS4B[i].code;
+        dst->p[i].len = tcmplxA_fixlist_ps_BrotliS4B[i].len;
+      }
+      return tcmplxA_FixList_BrotliSimple4B;
+    } else {
+      for (i = 0; i < 4; ++i) {
+        dst->p[i].code = tcmplxA_fixlist_ps_BrotliS4A[i].code;
+        dst->p[i].len = tcmplxA_fixlist_ps_BrotliS4A[i].len;
+      }
+      return tcmplxA_FixList_BrotliSimple4A;
+    }
+  }
+  return tcmplxA_FixList_BrotliComplex;
 }
 /* END   prefix list / public */

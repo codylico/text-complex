@@ -14,6 +14,7 @@
 #include "text-complex/access/ringdist.h"
 #include "text-complex/access/zutil.h"
 #include "text-complex/access/brmeta.h"
+#include "text-complex/access/ctxtspan.h"
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
@@ -30,6 +31,7 @@ enum tcmplxA_brcvt_uconst {
     + tcmplxA_brcvt_SeqHistoSize,
   tcmplxA_brcvt_MetaHeaderLen = 6,
   tcmplxA_brcvt_CLenExtent = 18,
+  tcmplxA_BrCvt_Margin = 16,
 };
 
 enum tcmplxA_brcvt_istate {
@@ -162,12 +164,19 @@ struct tcmplxA_brcvt {
   unsigned char* metatext;
   /** @brief Prefix code tree marshal. */
   struct tcmplxA_brcvt_treety treety;
+  /** @brief Context span guess for outflow. */
+  struct tcmplxA_ctxtspan guesses;
+  /** @brief Context mode offset for outflow. */
+  unsigned char guess_offset;
+  /** @brief Built-in tree type for block type outflow. */
+  unsigned char blocktype_simple;
 };
 
 unsigned char tcmplxA_brcvt_clen[tcmplxA_brcvt_CLenExtent] =
   {1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
 static struct tcmplxA_brcvt_treety const tcmplxA_brcvt_treety_zero = {0};
+static struct tcmplxA_ctxtspan const tcmplxA_brcvt_guess_zero = {0};
 
 /**
  * @brief Initialize a zcvt state.
@@ -292,6 +301,12 @@ static int tcmplxA_brcvt_transfer19(struct tcmplxA_fixlist* prefixes,
  */
 static int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
   struct tcmplxA_fixlist* prefixes, unsigned short value);
+/**
+ * @brief Check whether to emit compression.
+ * @param ps Brotli conversion state
+ * @return Success to proceed with compression, nonzero to emit uncompressed
+ */
+static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -1310,6 +1325,50 @@ int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps) {
     && (ps->state <= tcmplxA_BrCvt_MetaText);
 }
 
+
+int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
+  unsigned int ctxt_i;
+  int guess_nonzero = 0;
+  size_t accum = 0;
+  int blocktype_tree = tcmplxA_FixList_BrotliComplex;
+  /* calculate the guesses */
+  tcmplxA_uint32 ctxt_histogram[4] = {0};
+  ps->guesses = tcmplxA_brcvt_guess_zero;
+  tcmplxA_ctxtspan_subdivide(&ps->guesses,
+    tcmplxA_blockbuf_input_data(ps->buffer), tcmplxA_blockbuf_input_size(ps->buffer),
+    tcmplxA_BrCvt_Margin);
+  tcmplxA_fixlist_resize(&ps->literal_blocktype, 4);
+  ps->guess_offset = (ps->guesses.count)
+    ? ps->guesses.modes[0] : 0;
+  for (ctxt_i = 0; ctxt_i < ps->guesses.count; ++ctxt_i) {
+    unsigned const mode = ps->guesses.modes[ctxt_i];
+    assert(mode < 4);
+    ctxt_histogram[(mode+4u-ps->guess_offset)%4u] += 1;
+  }
+  for (ctxt_i = 0; ctxt_i < 4u; ++ctxt_i) {
+    struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(&ps->literal_blocktype, ctxt_i);
+    line->value = ctxt_i;
+    if (ctxt_histogram[ctxt_i] > 0)
+      guess_nonzero += 1;
+  }
+  tcmplxA_fixlist_gen_lengths(&ps->literal_blocktype, ctxt_histogram, 3);
+  {
+    int const res = tcmplxA_fixlist_gen_codes(&ps->literal_blocktype);
+    if (res != tcmplxA_Success)
+      return res;
+  }
+  blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype);
+  if (blocktype_tree == tcmplxA_FixList_BrotliComplex)
+    return tcmplxA_ErrSanitize;
+  ps->blocktype_simple = (unsigned char)blocktype_tree;
+  accum += 4;
+  accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2)
+     * tcmplxA_fixlist_size(&ps->literal_blocktype);
+  accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple4A);
+  /* TODO the rest */
+  return tcmplxA_Success;
+}
+
 int tcmplxA_brcvt_strrtozs_bits
   ( struct tcmplxA_brcvt* ps, unsigned char* y,
     unsigned char const** src, unsigned char const* src_end)
@@ -1482,7 +1541,7 @@ int tcmplxA_brcvt_strrtozs_bits
       break;
     case tcmplxA_BrCvt_CompressCheck:
       if (ps->bit_length == 0) {
-        int const want_compress = 0;
+        int const want_compress = tcmplxA_brcvt_check_compress(ps)==tcmplxA_Success;
         if (!want_compress) {
           x = 1;
           tcmplxA_blockbuf_clear_output(ps->buffer);
@@ -1495,10 +1554,73 @@ int tcmplxA_brcvt_strrtozs_bits
           assert(ps->backward);
           break;
         }
-        ps->bit_length = 1;
+        ps->bit_length = 0;
         x = 0;
-        ae = tcmplxA_ErrSanitize;
+        ps->state = tcmplxA_BrCvt_BlockTypesL;
       } break;
+    case tcmplxA_BrCvt_BlockTypesL:
+      if (ps->bit_length == 0) {
+        ps->count = 0;
+        switch (tcmplxA_fixlist_size(&ps->literal_blocktype)) {
+        case 0:
+        case 1:
+          ps->bit_length = 1;
+          ps->bits = 0;
+          break;
+        case 2:
+          ps->bit_length = 4;
+          ps->bits = 1;
+          break;
+        case 3:
+        case 4:
+          ps->bit_length = 5;
+          ps->bits = 3 | ((tcmplxA_fixlist_size(&ps->literal_blocktype)-3)<<4);
+          break;
+        default:
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+      }
+      if (ps->count < ps->bit_length) {
+        x = (ps->bits>>ps->count)&1u;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->bit_length = 0;
+        if (tcmplxA_fixlist_size(&ps->literal_blocktype) > 1)
+          ps->state += 1;
+        else
+          ps->state += 4;
+      } break;
+    case tcmplxA_BrCvt_BlockTypesLAlpha:
+      if (ps->bit_length == 0) {
+        size_t const symbols = tcmplxA_fixlist_size(&ps->literal_blocktype);
+        size_t sym_i;
+        unsigned const shift = 2u+(symbols>=3);
+        assert(symbols <= 4);
+        ps->bits = 0;
+        for (sym_i = 0; sym_i < symbols; ++sym_i) {
+          ps->bits |= ((tcmplxA_fixlist_at_c(&ps->literal_blocktype, sym_i)->value+2)<<(shift*sym_i));
+        }
+        ps->bit_length += 2;
+        ps->bits = (symbols-1)|(ps->bits<<2);
+        if (symbols >= 4) {
+          ps->bits |= ((ps->blocktype_simple&1u)<<ps->bit_length);
+          ps->bit_length += 1;
+        }
+        ps->bit_length += 2;
+        ps->count = 0;
+      }
+      if (ps->count < 2) {
+        x = (ps->count==0);
+        ps->count += 1;
+      } else if (ps->count < ps->bit_length) {
+        x = (ps->bits >> (ps->count-2))&1u;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length)
+        ps->state += 1;
+      break;
     case tcmplxA_BrCvt_Uncompress:
       x = 0;
       break;
