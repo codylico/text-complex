@@ -22,6 +22,14 @@ void* tcmplxA_util_malloc(size_t sz);
  */
 TCMPLX_A_API
 void tcmplxA_util_free(void* x);
+
+/**
+ * @brief Calculate the minimum number of bits needed to store a value.
+ * @param x value to check
+ * @return a bit count
+ */
+TCMPLX_A_API
+unsigned tcmplxA_util_bitwidth(unsigned int x);
 /* END   allocation */
 
 #endif /*hg_TextComplexAccess_Util_H_*/

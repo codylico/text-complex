@@ -596,13 +596,14 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->state += 4;
         } else {
           ps->treety.count = (unsigned short)((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          // TODO store `util_bitwidth(state.treety.count)` somewhere.
           ps->state += 1;
         }
       } break;
     case tcmplxA_BrCvt_BlockTypesLAlpha:
       {
         int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->literal_blocktype, x,
-          /*`needed_digits2(state.treety.count)`*/);
+          tcmplxA_util_bitwidth(ps->treety.count));
         if (res == tcmplxA_EOF)
           ps->state += 1;
         else if (res != tcmplxA_Success)
@@ -1544,6 +1545,8 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_MetaLength:
     case tcmplxA_BrCvt_InputLength:
     case tcmplxA_BrCvt_CompressCheck:
+    case tcmplxA_BrCvt_BlockTypesL:
+    case tcmplxA_BrCvt_BlockTypesLAlpha:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
