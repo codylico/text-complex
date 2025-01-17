@@ -730,11 +730,9 @@ int tcmplxA_zcvt_make_sequence(struct tcmplxA_zcvt* x) {
         (&x->sequence_list, len, len_count);
       if (ae != tcmplxA_Success)
         return ae;
-      else {
-        len = n;
-        len_count = 1u;
-      }
-    }
+      len = n;
+      len_count = 1u;
+    } else len_count += 1u;
   }
   for (i = 0u; i < dist_sz; ++i) {
     unsigned int const n = tcmplxA_fixlist_at_c(x->distances,i)->len;
@@ -743,11 +741,9 @@ int tcmplxA_zcvt_make_sequence(struct tcmplxA_zcvt* x) {
         (&x->sequence_list, len, len_count);
       if (ae != tcmplxA_Success)
         return ae;
-      else {
-        len = n;
-        len_count = 1u;
-      }
-    }
+      len = n;
+      len_count = 1u;
+    } else len_count += 1u;
   }
   return tcmplxA_zcvt_post_sequence(&x->sequence_list, len, len_count);
 }
