@@ -32,6 +32,8 @@ enum tcmplxA_brcvt_uconst {
   tcmplxA_brcvt_MetaHeaderLen = 6,
   tcmplxA_brcvt_CLenExtent = 18,
   tcmplxA_BrCvt_Margin = 16,
+  tcmplxA_brcvt_BlockCountBits = 5,
+  tcmplxA_brcvt_NoSkip = SHRT_MAX,
 };
 
 enum tcmplxA_brcvt_istate {
@@ -47,6 +49,8 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_Uncompress = 9,
   tcmplxA_BrCvt_BlockTypesL = 16,
   tcmplxA_BrCvt_BlockTypesLAlpha = 17,
+  tcmplxA_BrCvt_BlockCountLAlpha = 18,
+  tcmplxA_BrCvt_BlockStartL = 19,
   tcmplxA_BrCvt_BlockTypesI = 20,
   tcmplxA_BrCvt_BlockTypesD = 24,
 };
@@ -90,6 +94,8 @@ struct tcmplxA_brcvt_treety {
   unsigned short last_repeat;
   /** @brief Internal prefix code. */
   struct tcmplxA_fixlist nineteen;
+  /** @brief Tree description sequence. */
+  struct tcmplxA_blockstr sequence_list;
 };
 
 struct tcmplxA_brcvt {
@@ -101,6 +107,8 @@ struct tcmplxA_brcvt {
   struct tcmplxA_blockbuf* buffer;
   /** @brief Block type prefix code for literals. */
   struct tcmplxA_fixlist literal_blocktype;
+  /** @brief Block count prefix code for literals. */
+  struct tcmplxA_fixlist literal_blockcount;
   /** @brief ... */
   struct tcmplxA_fixlist* literals;
   /** @brief ... */
@@ -111,14 +119,14 @@ struct tcmplxA_brcvt {
   struct tcmplxA_fixlist* wbits;
   /** @brief ... */
   struct tcmplxA_inscopy* values;
+  /** @brief Block count insert-copy table */
+  struct tcmplxA_inscopy* blockcounts;
   /** @brief ... */
   struct tcmplxA_ringdist* ring;
   /** @brief ... */
   struct tcmplxA_ringdist* try_ring;
   /** @brief Check for large blocks. */
   tcmplxA_uint32* histogram;
-  /** @brief Tree description sequence. */
-  struct tcmplxA_blockstr sequence_list;
   /** @brief ... */
   unsigned short int bits;
   /** @brief Read count for bits used after a Huffman code. */
@@ -168,8 +176,32 @@ struct tcmplxA_brcvt {
   struct tcmplxA_ctxtspan guesses;
   /** @brief Context mode offset for outflow. */
   unsigned char guess_offset;
-  /** @brief Built-in tree type for block type outflow. */
-  unsigned char blocktype_simple;
+  /** @brief Current literal block type. */
+  unsigned char blocktypeL_index;
+  /** @brief Maximum literal block type. */
+  unsigned char blocktypeL_max;
+  /** @brief Context span effective lengths for outflow. */
+  tcmplxA_uint32 guess_lengths[tcmplxA_CtxtSpan_Size];
+  /** @brief Remaining items under the current literal blocktype. */
+  tcmplxA_uint32 blocktypeL_remaining;
+  /** @brief Literal type skip code. */
+  unsigned short blocktypeL_skip;
+  /** @brief Literal count skip code. */
+  unsigned short blockcountL_skip;
+  /** @brief Insert-and-copy type skip code. */
+  unsigned short blocktypeI_skip;
+  /** @brief Insert-and-copy count skip code. */
+  unsigned short blockcountI_skip;
+  /** @brief Distance type skip code. */
+  unsigned short blocktypeD_skip;
+  /** @brief Distance count skip code. */
+  unsigned short blockcountD_skip;
+  /**
+   * @brief Built-in tree type for block type outflow.
+   * @todo Test for removal.
+   */
+  unsigned char blocktype_simple
+  __attribute__((__deprecated__));
 };
 
 unsigned char tcmplxA_brcvt_clen[tcmplxA_brcvt_CLenExtent] =
@@ -233,10 +265,11 @@ static int tcmplxA_brcvt_nonzero(int a, int b);
 static int tcmplxA_brcvt_nonzero3(int a, int b, int c);
 /**
  * @brief Make a code length sequence.
- * @param x the zcvt state
+ * @param x the mini-state for tree conversion
+ * @param literals primary tree to encode
  * @return tcmplxA_Success on success, nonzero otherwise
  */
-static int tcmplxA_brcvt_make_sequence(struct tcmplxA_brcvt* x);
+static int tcmplxA_brcvt_make_sequence(struct tcmplxA_brcvt_treety* x, struct tcmplxA_fixlist const* literals);
 /**
  * @brief Add a code length sequence.
  * @param s sequence list
@@ -281,9 +314,33 @@ static int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps);
  *   applicable symbols
  * @return EOF at the end of a prefix list, Sanitize on
  *   parse failure, otherwise Success
+ * @note At EOF, the extracted prefix list `prefixes` is sorted
+ *   and ready to use.
  */
 static int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
   struct tcmplxA_fixlist* prefixes, unsigned x, unsigned alphabits);
+/**
+ * @brief Reset a mini-state.
+ * @param treety mini-state to reset
+ */
+static void tcmplxA_brcvt_reset19(struct tcmplxA_brcvt_treety* treety);
+/**
+ * @brief CLean up a mini-state.
+ * @param treety mini-state to clean
+ */
+static void tcmplxA_brcvt_close19(struct tcmplxA_brcvt_treety* treety);
+/**
+ * @brief Emit a single bit of a prefix list description.
+ * @param[in,out] treety mini-state for description parsing
+ * @param[in,out] prefixes prefix list to update
+ * @param[out] x bit to emit
+ * @param alphabits minimum number of bits needed to represent all
+ *   applicable symbols
+ * @return EOF at the end of a prefix list, Sanitize or Memory on
+ *   generator failure, otherwise Success
+ */
+static int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
+  struct tcmplxA_fixlist* prefixes, unsigned* x, unsigned alphabits);
 /**
  * @brief Transfer values for a simple prefix tree.
  * @param[out] prefixes tree to compose
@@ -301,6 +358,21 @@ static int tcmplxA_brcvt_transfer19(struct tcmplxA_fixlist* prefixes,
  */
 static int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
   struct tcmplxA_fixlist* prefixes, unsigned short value);
+/**
+ * @brief Resolve skip values.
+ * @param prefixes prefix tree that may participate in code skipping
+ * @return the value with the single nonzero code length, or NoSkip if unavailable
+ */
+static unsigned short tcmplxA_brcvt_resolve_skip(struct tcmplxA_fixlist const* prefixes);
+/**
+ * @brief Configure the literal block count acquisition.
+ * @param[out] ps Brotli conversion state to update
+ * @param value block code [0, 26)
+ * @param next_state follow-up state in case of zero-length extra bits
+ * @return base block count
+ */
+static tcmplxA_uint32 tcmplxA_brcvt_config_count
+  (struct tcmplxA_brcvt* ps, unsigned long value, unsigned char next_state);
 /**
  * @brief Check whether to emit compression.
  * @param ps Brotli conversion state
@@ -367,11 +439,6 @@ int tcmplxA_brcvt_init
     if (x->try_ring == NULL)
       res = tcmplxA_ErrMemory;
   }
-  /* sequence_list */{
-    int const ae = tcmplxA_blockstr_init(&x->sequence_list, 286u+30u);
-    if (ae != tcmplxA_Success)
-      res = ae;
-  }
   /* histogram */{
     if (tcmplxA_brcvt_HistogramSize < ((size_t)-1)/sizeof(tcmplxA_uint32)) {
       x->histogram = tcmplxA_util_malloc
@@ -392,13 +459,26 @@ int tcmplxA_brcvt_init
       else tcmplxA_inscopy_codesort(x->values);
     }
   }
+  /* blockcounts */{
+    x->blockcounts = tcmplxA_inscopy_new(26u);
+    if (x->blockcounts == NULL)
+      res = tcmplxA_ErrMemory;
+    else {
+      int const preset_ae =
+        tcmplxA_inscopy_preset(x->blockcounts, tcmplxA_InsCopy_BrotliBlock);
+      if (preset_ae != tcmplxA_Success)
+        res = preset_ae;
+      else tcmplxA_inscopy_codesort(x->blockcounts);
+    }
+  }
   /* fixed prefix code ensemble */{
     int const bltypesl_res = tcmplxA_fixlist_init(&x->literal_blocktype,0);
     x->treety = tcmplxA_brcvt_treety_zero;
+    memset(x->guess_lengths, 0, sizeof(x->guess_lengths));
     assert(bltypesl_res == tcmplxA_Success);
   }
   if (res != tcmplxA_Success) {
-    tcmplxA_blockstr_close(&x->sequence_list);
+    tcmplxA_inscopy_destroy(x->blockcounts);
     tcmplxA_inscopy_destroy(x->values);
     tcmplxA_util_free(x->histogram);
     tcmplxA_ringdist_destroy(x->try_ring);
@@ -425,18 +505,27 @@ int tcmplxA_brcvt_init
     x->emptymeta = 0u;
     x->meta_index = 0u;
     x->metatext = NULL;
+    x->blocktypeL_index = 0u;
+    x->blocktypeL_max = 0u;
+    x->blocktypeL_remaining = 0u;
+    x->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
+    x->blockcountL_skip = tcmplxA_brcvt_NoSkip;
+    x->blocktypeI_skip = tcmplxA_brcvt_NoSkip;
+    x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
+    x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
+    x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
     return tcmplxA_Success;
   }
 }
 
 void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
-  tcmplxA_fixlist_close(&x->treety.nineteen);
+  tcmplxA_brcvt_close19(&x->treety);
   tcmplxA_fixlist_close(&x->literal_blocktype);
-  tcmplxA_blockstr_close(&x->sequence_list);
   tcmplxA_util_free(x->histogram);
   tcmplxA_ringdist_destroy(x->try_ring);
   tcmplxA_ringdist_destroy(x->ring);
   tcmplxA_inscopy_destroy(x->values);
+  tcmplxA_inscopy_destroy(x->blockcounts);
   tcmplxA_fixlist_destroy(x->sequence);
   tcmplxA_fixlist_destroy(x->distances);
   tcmplxA_fixlist_destroy(x->literals);
@@ -444,6 +533,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_fixlist_destroy(x->wbits);
   tcmplxA_blockbuf_destroy(x->buffer);
 #ifndef NDEBUG
+  x->treety = tcmplxA_brcvt_treety_zero;
   x->metatext = NULL;
   x->meta_index = 0u;
   x->emptymeta = 0u;
@@ -461,6 +551,19 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->buffer = NULL;
 #endif /*NDEBUG*/
   return;
+}
+
+tcmplxA_uint32 tcmplxA_brcvt_config_count
+  (struct tcmplxA_brcvt* ps, unsigned long value, unsigned char next_state)
+{
+  struct tcmplxA_inscopy_row const* const row = tcmplxA_inscopy_at_c(ps->blockcounts, (size_t)value);
+  assert(row);
+  ps->extra_length = row->insert_bits;
+  ps->bits = 0;
+  ps->bit_length = 0;
+  if (!ps->extra_length)
+    ps->state = next_state;
+  return row->insert_first;
 }
 
 int tcmplxA_brcvt_zsrtostr_bits
@@ -588,6 +691,12 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->bit_length = 0;
         ps->count = 0;
         ps->bits = 0;
+        ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
+        ps->blockcountL_skip = tcmplxA_brcvt_NoSkip;
+        ps->blocktypeI_skip = tcmplxA_brcvt_NoSkip;
+        ps->blockcountI_skip = tcmplxA_brcvt_NoSkip;
+        ps->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
+        ps->blockcountD_skip = tcmplxA_brcvt_NoSkip;
       } break;
     case tcmplxA_BrCvt_Uncompress:
       if (x)
@@ -605,35 +714,80 @@ int tcmplxA_brcvt_zsrtostr_bits
       }
       if (ps->count >= ps->bit_length) {
         /* extract encoded count */
-        tcmplxA_fixlist_close(&ps->treety.nineteen);
-        ps->treety = tcmplxA_brcvt_treety_zero;
+        tcmplxA_brcvt_reset19(&ps->treety);
+        ps->blocktypeL_index = 0;
         if (ps->count == 1) {
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->literal_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
+          ps->blocktypeL_max = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
           ps->treety.count = (unsigned short)alphasize;
           ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
+          ps->blocktypeL_max = (unsigned char)(alphasize-1u);
         }
       } break;
     case tcmplxA_BrCvt_BlockTypesLAlpha:
       {
         int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->literal_blocktype, x,
           ps->alphabits);
-        if (res == tcmplxA_EOF)
+        if (res == tcmplxA_EOF) {
+          ps->blocktypeL_skip = tcmplxA_brcvt_resolve_skip(&ps->literal_blocktype);
+          tcmplxA_brcvt_reset19(&ps->treety);
           ps->state += 1;
-        else if (res != tcmplxA_Success)
+        } else if (res != tcmplxA_Success)
           ae = res;
       } break;
-        /* TODO implement */
-        ae = tcmplxA_ErrSanitize;
-        break;
+    case tcmplxA_BrCvt_BlockCountLAlpha:
+      {
+        int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->literal_blockcount, x, 5);
+        if (res == tcmplxA_EOF) {
+          ps->blockcountL_skip = tcmplxA_brcvt_resolve_skip(&ps->literal_blockcount);
+          ps->state += 1;
+          ps->bit_length = 0;
+          ps->bits = 0;
+          ps->count = 0;
+          ps->extra_length = 0;
+          ps->blocktypeL_index = 0;
+          ps->blocktypeL_remaining = 0;
+          tcmplxA_fixlist_codesort(&ps->literal_blockcount);
+          tcmplxA_inscopy_codesort(ps->blockcounts);
+          if (ps->blockcountL_skip != tcmplxA_brcvt_NoSkip)
+            ps->blocktypeL_remaining = tcmplxA_brcvt_config_count(ps, ps->blockcountL_skip, ps->state + 1);
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockStartL:
+      if (ps->extra_length == 0) {
+        size_t code_index = ~0;
+        struct tcmplxA_fixline const* line = NULL;
+        ps->bits = (ps->bits<<1) | x;
+        ps->bit_length += 1;
+        code_index = tcmplxA_fixlist_codebsearch(&ps->literal_blockcount, ps->bit_length, ps->bits);
+        if (code_index >= 26) {
+          if (ps->bit_length >= 15)
+            ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        line = tcmplxA_fixlist_at_c(&ps->literal_blockcount, code_index);
+        assert(line);
+        ps->blocktypeL_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
+      } else if (ps->bit_length < ps->extra_length) {
+        ps->bits |= (x<< ps->bit_length++);
+        if (ps->bit_length >= ps->extra_length) {
+          ps->blocktypeL_remaining += ps->bits;
+          ps->bits = 0;
+          ps->bit_length = 0;
+          ps->state += 1;
+        }
+      } else ae = tcmplxA_ErrSanitize;
+      break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
-    case 19: /* generate code trees */
+    case 5000019: /* generate code trees */
       {
         ae = tcmplxA_fixlist_gen_codes(ps->literals);
         if (ae != tcmplxA_Success)
@@ -895,7 +1049,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->bits = 0u;
         ps->bit_length = 0u;
       } break;
-    case 18: /* copy zero length + 11 */
+    case 5000018: /* copy zero length + 11 */
       if (ps->bit_length < 7u) {
         ps->bits = (ps->bits | (x<<ps->bit_length));
         ps->bit_length += 1u;
@@ -926,6 +1080,21 @@ int tcmplxA_brcvt_zsrtostr_bits
   return ae;
 }
 
+unsigned short tcmplxA_brcvt_resolve_skip(struct tcmplxA_fixlist const* prefixes) {
+  size_t i;
+  size_t const count = tcmplxA_fixlist_size(prefixes);
+  unsigned long last_nonzero = ULONG_MAX;
+  for (i = 0; i < count; ++i) {
+    struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(prefixes, i);
+    if (line->len == 0)
+      continue;
+    else if (last_nonzero != ULONG_MAX)
+      return tcmplxA_brcvt_NoSkip;
+    else last_nonzero = line->value;
+  }
+  return last_nonzero == ULONG_MAX ? tcmplxA_brcvt_NoSkip : (unsigned short)last_nonzero;
+}
+
 int tcmplxA_brcvt_transfer19(struct tcmplxA_fixlist* prefixes,
   struct tcmplxA_fixlist const* nineteen)
 {
@@ -937,6 +1106,20 @@ int tcmplxA_brcvt_transfer19(struct tcmplxA_fixlist* prefixes,
   tcmplxA_fixlist_valuesort(prefixes);
   tcmplxA_fixlist_gen_codes(prefixes);
   return tcmplxA_EOF;
+}
+
+void tcmplxA_brcvt_reset19(struct tcmplxA_brcvt_treety* treety) {
+  struct tcmplxA_fixlist nineteen = treety->nineteen;
+  struct tcmplxA_blockstr compress = treety->sequence_list;
+  *treety = tcmplxA_brcvt_treety_zero;
+  treety->sequence_list = compress;
+  treety->sequence_list.sz = 0;
+  treety->nineteen = nineteen;
+}
+
+void tcmplxA_brcvt_close19(struct tcmplxA_brcvt_treety* treety) {
+  tcmplxA_fixlist_close(&treety->nineteen);
+  tcmplxA_blockstr_close(&treety->sequence_list);
 }
 
 int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
@@ -1180,6 +1363,180 @@ int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
   return tcmplxA_Success;
 }
 
+int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
+  struct tcmplxA_fixlist* prefixes, unsigned* x, unsigned alphabits)
+{
+  switch (treety->state) {
+  case tcmplxA_BrCvt_TComplex:
+    if (treety->bit_length == 0) {
+      int const preset = tcmplxA_fixlist_match_preset(prefixes);
+      if (preset != tcmplxA_FixList_BrotliComplex) {
+        treety->bits = 1;
+        treety->count = preset;
+      } else {
+        tcmplxA_uint32 const lines = sizeof(tcmplxA_brcvt_clen);
+        int res = 0;
+        tcmplxA_uint32 histogram[sizeof(tcmplxA_brcvt_clen)] = {0};
+        tcmplxA_uint32 i;
+        tcmplxA_uint32 nonzero = 0;
+        if (tcmplxA_brcvt_make_sequence(treety, prefixes) != tcmplxA_Success)
+          return tcmplxA_ErrMemory;
+        for (i = 0; i < treety->sequence_list.sz; ++i) {
+          unsigned char const code = treety->sequence_list.p[i];
+          assert(code < sizeof(histogram));
+          histogram[code] += 1;
+          if (code >= 16)
+            i += 1;
+        }
+        for (i = 0; i < 3; ++i) {
+          if (histogram[tcmplxA_brcvt_clen[i]])
+            break;
+        }
+        treety->bits = (i - (i==1));
+        if (tcmplxA_fixlist_resize(&treety->nineteen, lines) != tcmplxA_Success)
+          return tcmplxA_ErrMemory;
+        for (i = 0; i < lines; ++i)
+          tcmplxA_fixlist_at(&treety->nineteen, i)->value = i;
+        if (tcmplxA_fixlist_gen_lengths(&treety->nineteen, histogram, 5) != tcmplxA_Success)
+          return tcmplxA_ErrMemory;
+        res = tcmplxA_fixlist_gen_codes(&treety->nineteen);
+        assert(res == tcmplxA_Success);
+        treety->count = 0;
+        treety->nonzero = 0;
+        for (i = 0; i < lines; ++i) {
+          unsigned char clen = tcmplxA_brcvt_clen[i];
+          if (histogram[clen] == 0)
+            continue;
+          else if (!treety->nonzero)
+            treety->nonzero = clen;
+          treety->count = i+1;
+          nonzero += 1;
+        }
+        if (nonzero < 2)
+          treety->count = (unsigned short)lines;
+        else nonzero = 0;
+      }
+    }
+    *x = (treety->bits>>treety->bit_length++)&1u;
+    if (treety->bit_length >= 2) {
+      treety->bit_length = 0;
+      if (treety->bits == 1) {
+        treety->state = tcmplxA_BrCvt_TSimpleCount;
+        treety->index = 0;
+      } else {
+        treety->state = tcmplxA_BrCvt_TNineteen;
+        treety->index = treety->bits;
+      }
+    } break;
+  case tcmplxA_BrCvt_TSimpleCount:
+    if (treety->bit_length == 0) {
+      treety->bits = treety->count - 1 - (treety->count==tcmplxA_FixList_BrotliSimple4B);
+    }
+    *x = (treety->bits>>treety->bit_length++)&1u;
+    if (treety->bit_length >= 2) {
+      treety->state = tcmplxA_BrCvt_TSimpleAlpha;
+      treety->bit_length = 0;
+    } break;
+  case tcmplxA_BrCvt_TSimpleAlpha:
+    if (treety->bit_length == 0) {
+      if (treety->index >= tcmplxA_fixlist_size(prefixes))
+        return tcmplxA_ErrSanitize;
+      treety->bits = (unsigned short)tcmplxA_fixlist_at_c(prefixes, treety->index)->value;
+    }
+    *x = (treety->bits>>treety->bit_length++)&1u;
+    if (treety->bit_length >= alphabits) {
+      unsigned const effective = treety->count - (treety->count==tcmplxA_FixList_BrotliSimple4B);
+      treety->index += 1;
+      treety->bit_length = 0;
+      if (treety->index < effective)
+        break;
+      treety->state = tcmplxA_BrCvt_TDone;
+      if (treety->count < tcmplxA_FixList_BrotliSimple4A)
+        return tcmplxA_EOF;
+      treety->state = tcmplxA_BrCvt_TSimpleFour;
+    } break;
+  case tcmplxA_BrCvt_TSimpleFour:
+    *x = (treety->count==tcmplxA_FixList_BrotliSimple4B);
+    treety->state = tcmplxA_BrCvt_TDone;
+    return tcmplxA_EOF;
+  case tcmplxA_BrCvt_TNineteen:
+    if (treety->bit_length == 0) {
+      unsigned short const len = tcmplxA_fixlist_at_c(&treety->nineteen, treety->index)->len;
+      switch (len) {
+      case 0: treety->bit_length = 2; treety->bits = 0u; break;
+      case 1: treety->bit_length = 4; treety->bits = 14u; break;
+      case 2: treety->bit_length = 3; treety->bits = 6u; break;
+      case 3: treety->bit_length = 2; treety->bits = 1u; break;
+      case 4: treety->bit_length = 2; treety->bits = 2u; break;
+      case 5: treety->bit_length = 2; treety->bits = 15u; break;
+      default: return tcmplxA_ErrSanitize;
+      }
+    }
+    if (treety->bit_length > 0)
+      *x = (treety->bits>>--treety->bit_length)&1u;
+    if (treety->bit_length == 0) {
+      treety->index += 1;
+      if (treety->index < treety->count)
+        break;
+      assert(treety->bit_length == 0);
+      if (treety->nonzero >= 16) {
+        treety->state = treety->nonzero;
+        treety->index = 1;
+        assert(treety->sequence_list.sz >= 2);
+      } else if (treety->nonzero > 0) {
+        treety->state = tcmplxA_BrCvt_TDone;
+        return tcmplxA_EOF;
+      } else {
+        treety->index = 0;
+        treety->state = tcmplxA_BrCvt_TSymbols;
+      }
+    } break;
+  case tcmplxA_BrCvt_TRepeat:
+  case tcmplxA_BrCvt_TZeroes:
+    if (treety->bit_length == 0) {
+      treety->bits = treety->sequence_list.p[treety->index];
+      treety->count = treety->state - 14;
+    }
+    *x = (treety->bits>>treety->bit_length++)&1u;
+    if (treety->bit_length >= treety->count) {
+      treety->index += 1;
+      if (treety->index >= treety->sequence_list.sz) {
+        treety->state = tcmplxA_BrCvt_TDone;
+        return tcmplxA_EOF;
+      } else if (treety->nonzero) {
+        assert(treety->sequence_list.p[treety->index] == treety->nonzero);
+        treety->index += 1;
+      } else treety->state = tcmplxA_BrCvt_TSymbols;
+    } break;
+  case tcmplxA_BrCvt_TSymbols:
+    if (treety->bit_length == 0) {
+      unsigned char const code = treety->sequence_list.p[treety->index];
+      struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&treety->nineteen, code);
+      treety->bits = line->code;
+      treety->bit_length = line->len;
+    }
+    if (treety->bit_length > 0)
+      *x = (treety->bits>>--treety->bit_length)&1u;
+    if (treety->bit_length == 0) {
+      unsigned char const code = treety->sequence_list.p[treety->index];
+      treety->index += 1;
+      if (treety->index >= treety->sequence_list.sz) {
+        if (code >= 16)
+          return tcmplxA_ErrSanitize;
+        treety->state = tcmplxA_BrCvt_TDone;
+        return tcmplxA_EOF;
+      } else if (code >= 16)
+        treety->state = code;
+      // otherwise stay put
+    } break;
+  case tcmplxA_BrCvt_TDone:
+    return tcmplxA_EOF;
+  default:
+    return tcmplxA_ErrSanitize;
+  }
+  return tcmplxA_Success;
+}
+
 unsigned int tcmplxA_brcvt_cinfo(tcmplxA_uint32 window_size) {
   unsigned int out = 0u;
   tcmplxA_uint32 v;
@@ -1203,37 +1560,26 @@ int tcmplxA_brcvt_nonzero3(int a, int b, int c) {
   return tcmplxA_brcvt_nonzero(a,tcmplxA_brcvt_nonzero(b,c));
 }
 
-int tcmplxA_brcvt_make_sequence(struct tcmplxA_brcvt* x) {
+int tcmplxA_brcvt_make_sequence(struct tcmplxA_brcvt_treety* x, struct tcmplxA_fixlist const* literals) {
   unsigned int len = UINT_MAX, len_count = 0u;
   size_t i;
-  size_t const lit_sz = tcmplxA_fixlist_size(x->literals);
-  size_t const dist_sz = tcmplxA_fixlist_size(x->distances);
+  size_t end = 0;
+  size_t const lit_sz = tcmplxA_fixlist_size(literals);
   x->sequence_list.sz = 0u;
   for (i = 0u; i < lit_sz; ++i) {
-    unsigned int const n = tcmplxA_fixlist_at_c(x->literals,i)->len;
-    if (len != n) {
-      int const ae = tcmplxA_brcvt_post_sequence
-        (&x->sequence_list, len, len_count);
-      if (ae != tcmplxA_Success)
-        return ae;
-      else {
-        len = n;
-        len_count = 1u;
-      }
-    }
+    if (tcmplxA_fixlist_at_c(literals,i)->len > 0)
+      end = i+1;
   }
-  for (i = 0u; i < dist_sz; ++i) {
-    unsigned int const n = tcmplxA_fixlist_at_c(x->distances,i)->len;
+  for (i = 0u; i < end; ++i) {
+    unsigned int const n = tcmplxA_fixlist_at_c(literals,i)->len;
     if (len != n) {
       int const ae = tcmplxA_brcvt_post_sequence
         (&x->sequence_list, len, len_count);
       if (ae != tcmplxA_Success)
         return ae;
-      else {
-        len = n;
-        len_count = 1u;
-      }
-    }
+      len = n;
+      len_count = 1u;
+    } else len_count += 1u;
   }
   return tcmplxA_brcvt_post_sequence(&x->sequence_list, len, len_count);
 }
@@ -1241,65 +1587,39 @@ int tcmplxA_brcvt_make_sequence(struct tcmplxA_brcvt* x) {
 int tcmplxA_brcvt_post_sequence
   (struct tcmplxA_blockstr* s, unsigned int len, unsigned int count)
 {
+  int ae = tcmplxA_Success;
+  unsigned int i;
   if (count == 0u)
     return tcmplxA_Success;
-  else if ((len==0u&&count<3u) || count < 4u) {
+  else if (count < 4u) {
     unsigned char buf[3];
     memset(buf, len, count);
     return tcmplxA_blockstr_append(s, buf, count);
   } else if (len == 0u) {
-    unsigned int i;
-    int ae = tcmplxA_Success;
-    for (i = 0u; i < count && ae == tcmplxA_Success; ) {
-      unsigned int const x = count-i;
-      if (x > 138u) {
-        unsigned char buf[2] = {18u, 127u};
-        ae = tcmplxA_blockstr_append(s, buf, 2u);
-        i += 138u;
-      } else if (x >= 11u) {
-        unsigned char buf[2] = {18u};
-        buf[1] = x-11u;
-        ae = tcmplxA_blockstr_append(s, buf, 2u);
-        i += x;
-      } else if (x >= 3u) {
-        unsigned char buf[2] = {17u};
-        buf[1] = x-3u;
-        ae = tcmplxA_blockstr_append(s, buf, 2u);
-        i += x;
-      } else {
-        unsigned char buf[1] = {0u};
-        ae = tcmplxA_blockstr_append(s, buf, 1u);
-        ++i;
-      }
+    unsigned const recount = count-3;
+    int width = (int)tcmplxA_util_bitwidth(recount);
+    for (i = width-width%3; i >= 0 && ae == tcmplxA_Success; i -= 3) {
+      unsigned int const x = (recount>>i)&7u;
+      unsigned char buf[2] = {17u};
+      buf[1] = (unsigned char)x;
+      ae = tcmplxA_blockstr_append(s, buf, 2u);
     }
-    return ae;
   } else {
-    unsigned int i;
-    int ae;
     /* */{
       unsigned char buf[1];
       buf[0] = (unsigned char)len;
       ae = tcmplxA_blockstr_append(s, buf, 1u);
     }
-    for (i = 0u; i < count && ae == tcmplxA_Success; ) {
-      unsigned int const x = len-i;
-      if (x > 6u) {
-        unsigned char buf[2] = {16u, 3u};
-        ae = tcmplxA_blockstr_append(s, buf, 2u);
-        i += 6u;
-      } else if (x >= 3u) {
-        unsigned char buf[2] = {16u};
-        buf[1] = x-3u;
-        ae = tcmplxA_blockstr_append(s, buf, 2u);
-        i += x;
-      } else {
-        unsigned char const buf = (unsigned char)len;
-        ae = tcmplxA_blockstr_append(s, &buf, 1u);
-        ++i;
-      }
+    unsigned const recount = count-3;
+    int width = (int)tcmplxA_util_bitwidth(recount);
+    for (i = (int)(width&~1u); i >= 0 && ae == tcmplxA_Success; i -= 2) {
+      unsigned int const x = (recount>>i)&3u;
+      unsigned char buf[2] = {16u};
+      buf[1] = (unsigned char)x;
+      ae = tcmplxA_blockstr_append(s, buf, 2u);
     }
-    return ae;
   }
+  return ae;
 }
 
 
@@ -1587,40 +1907,146 @@ int tcmplxA_brcvt_strrtozs_bits
       }
       if (ps->count >= ps->bit_length) {
         ps->bit_length = 0;
+        tcmplxA_fixlist_close(&ps->treety.nineteen);
+        tcmplxA_brcvt_reset19(&ps->treety);
+        ps->alphabits = 2u+(tcmplxA_fixlist_size(&ps->literal_blocktype)>=3);
         if (tcmplxA_fixlist_size(&ps->literal_blocktype) > 1)
           ps->state += 1;
         else
           ps->state += 4;
       } break;
     case tcmplxA_BrCvt_BlockTypesLAlpha:
+      {
+        int const res = tcmplxA_brcvt_outflow19(&ps->treety, &ps->literal_blocktype, &x,
+          ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          ps->bit_length = 0;
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->state += 1;
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockCountLAlpha:
       if (ps->bit_length == 0) {
-        size_t const symbols = tcmplxA_fixlist_size(&ps->literal_blocktype);
-        size_t sym_i;
-        unsigned const shift = 2u+(symbols>=3);
-        assert(symbols <= 4);
-        ps->bits = 0;
-        for (sym_i = 0; sym_i < symbols; ++sym_i) {
-          ps->bits |= ((tcmplxA_fixlist_at_c(&ps->literal_blocktype, sym_i)->value+2)<<(shift*sym_i));
+        ps->bit_length += 1;
+        tcmplxA_uint32 histogram[26] = {0};
+        size_t const output_len = tcmplxA_blockbuf_output_size(ps->buffer);
+        size_t i;
+        size_t guess_i = 0;
+        size_t total = 0;
+        size_t literals = 0;
+        size_t coverage = 0;
+        unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
+        // Reparse the text.
+        for (i = 0; i < output_len; ++i) {
+          int const copy = (data[i]&128u);
+          unsigned len = data[i]&63u;
+          if (data[i] & 64u && i+1 < output_len) {
+            i += 1;
+            len = (len<<8) | data[i];
+          }
+          if (copy && i+i < output_len) {
+            unsigned extend = 0;
+            i += 1;
+            if (data[i] < 128)
+              extend = 3;
+            else if (data[i] < 192)
+              extend = 2;
+            else extend = 4;
+            if (extend >= output_len - i)
+              break;
+            i += (extend-1);
+          } else if (len > output_len - i) {
+            ae = tcmplxA_ErrSanitize;
+            break;
+          } else i += len;
+          for (; guess_i < ps->guesses.count; ++guess_i) {
+            size_t const limit = (guess_i >= ps->guesses.count-1)
+              ? ps->guesses.total_bytes : ps->guesses.offsets[guess_i+1];
+            size_t const remaining = total - limit;
+            if (len < remaining) {
+              literals += len;
+              break;
+            }
+            len -= remaining;
+            literals += remaining;
+            ps->guess_lengths[guess_i] = literals;
+            literals = 0;
+          }
+          total += len;
         }
-        ps->bit_length += 2;
-        ps->bits = (symbols-1)|(ps->bits<<2);
-        if (symbols >= 4) {
-          ps->bits |= ((ps->blocktype_simple&1u)<<ps->bit_length);
-          ps->bit_length += 1;
+        if (ae != tcmplxA_Success)
+          break;
+        assert(total == output_len);
+        // Populate histogram.
+        tcmplxA_inscopy_lengthsort(ps->blockcounts);
+        for (i = 0; i < ps->guesses.count; ++i) {
+          size_t const v = tcmplxA_inscopy_encode(ps->blockcounts, ps->guess_lengths[i], 0, 0);
+          if (v >= 26) {
+            ae = tcmplxA_ErrSanitize;
+            break;
+          }
+          histogram[v] += 1;
         }
-        ps->bit_length += 2;
-        ps->count = 0;
+        if (ae != tcmplxA_Success)
+          break;
+        ae = tcmplxA_fixlist_resize(&ps->literal_blockcount, 26);
+        if (ae != tcmplxA_Success)
+          break;
+        for (i = 0; i < 26; ++i) {
+          tcmplxA_fixlist_at(&ps->literal_blockcount, i)->value = i;
+          coverage += (histogram[i] != 0);
+        }
+        ae = tcmplxA_fixlist_gen_lengths(&ps->literal_blockcount, histogram, 15);
+        if (ae != tcmplxA_Success)
+          break;
+        ae = tcmplxA_fixlist_gen_codes(&ps->literal_blockcount);
+        assert(ae == tcmplxA_Success);
       }
-      if (ps->count < 2) {
-        x = (ps->count==0);
-        ps->count += 1;
-      } else if (ps->count < ps->bit_length) {
-        x = (ps->bits >> (ps->count-2))&1u;
-        ps->count += 1;
+      /* render tree to output */
+      {
+        int const res = tcmplxA_brcvt_outflow19(&ps->treety, &ps->literal_blockcount, &x, 5);
+        if (res == tcmplxA_EOF) {
+          ps->bit_length = 0;
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->state += 1;
+          ae = tcmplxA_fixlist_valuesort(&ps->literal_blockcount);
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockStartL:
+      if (ps->bit_length == 0) {
+        size_t const code_index =
+          tcmplxA_inscopy_encode(ps->blockcounts, ps->guess_lengths[0], 0,0);
+        struct tcmplxA_inscopy_row const* const row =
+          tcmplxA_inscopy_at_c(ps->blockcounts, code_index);
+        struct tcmplxA_fixline const* line;
+        size_t line_index = 0;
+        if (!row) {
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        line_index = tcmplxA_fixlist_valuebsearch(&ps->literal_blockcount, row->code);
+        line = tcmplxA_fixlist_at_c(&ps->literal_blockcount, line_index);
+        if (!line) {
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        ps->count = (ps->guess_lengths[0] - row->insert_first);
+        ps->extra_length = row->insert_bits;
+        ps->bits = line->code;
+        ps->bit_cap = line->len;
       }
-      if (ps->count >= ps->bit_length)
+      if (ps->bit_length < ps->bit_cap) {
+        x = (ps->bits >> (ps->bit_cap - ps->bit_length - 1u))&1u;
+      } else {
+        x = (ps->count >> (ps->bit_length - ps->bit_cap)) & 1u;
+      }
+      ps->bit_length += 1;
+      if (ps->bit_length >= ps->bit_cap + ps->extra_length) {
         ps->state += 1;
-      break;
+        ps->bit_length = 0;
+      } break;
     case tcmplxA_BrCvt_Uncompress:
       x = 0;
       break;
@@ -1683,6 +2109,8 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_CompressCheck:
     case tcmplxA_BrCvt_BlockTypesL:
     case tcmplxA_BrCvt_BlockTypesLAlpha:
+    case tcmplxA_BrCvt_BlockCountLAlpha:
+    case tcmplxA_BrCvt_BlockStartL:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -1760,6 +2188,10 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_Nibbles:
     case tcmplxA_BrCvt_InputLength:
     case tcmplxA_BrCvt_CompressCheck:
+    case tcmplxA_BrCvt_BlockTypesL:
+    case tcmplxA_BrCvt_BlockTypesLAlpha:
+    case tcmplxA_BrCvt_BlockCountLAlpha:
+    case tcmplxA_BrCvt_BlockStartL:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
