@@ -28,6 +28,7 @@ set(text_complex_access_FILES
   brcvt.c
   brmeta.c
   ctxtspan.c
+  gaspvec.c
   )
 set(text_complex_access_HEADERS
   ../include/text-complex/access/api.h
@@ -47,6 +48,7 @@ set(text_complex_access_HEADERS
   ../include/text-complex/access/brcvt.h
   ../include/text-complex/access/brmeta.h
   ../include/text-complex/access/ctxtspan.h
+  ../include/text-complex/access/gaspvec.h
   )
 
 add_library(tcmplx_access ${text_complex_access_FILES}

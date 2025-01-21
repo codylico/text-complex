@@ -111,4 +111,10 @@ target_include_directories(tcmplx_access_testfont
   target_link_libraries(tcmplx_access_test_ctxtspan
     tcmplx_access_testfont munit tcmplx_access)
 #END   CtxtSpan test
+
+#BEGIN GaspVec test
+  add_executable(tcmplx_access_test_gaspvec tca_gaspvec.c)
+  target_link_libraries(tcmplx_access_test_gaspvec
+    tcmplx_access_testfont munit tcmplx_access)
+#END   GaspVec test
 endif (TCMPLX_ACCESS_BUILD_TESTS)

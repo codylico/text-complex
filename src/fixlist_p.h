@@ -20,12 +20,14 @@ struct tcmplxA_fixlist {
 };
 
 /**
+ * @internal
  * @brief Initialize a prefix list.
  * @param x the prefix list to initialize
  * @return zero on success, nonzero otherwise
  */
 int tcmplxA_fixlist_init(struct tcmplxA_fixlist* x, size_t sz);
 /**
+ * @internal
  * @brief Resize a prefix list.
  * @param x the list to resize
  * @param sz number of lines in the list
@@ -33,6 +35,7 @@ int tcmplxA_fixlist_init(struct tcmplxA_fixlist* x, size_t sz);
  */
 int tcmplxA_fixlist_resize(struct tcmplxA_fixlist* x, size_t sz);
 /**
+ * @internal
  * @brief Close a prefix list.
  * @param x the prefix list to close
  */
