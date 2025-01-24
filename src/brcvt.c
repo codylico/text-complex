@@ -52,6 +52,9 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_BlockCountLAlpha = 18,
   tcmplxA_BrCvt_BlockStartL = 19,
   tcmplxA_BrCvt_BlockTypesI = 20,
+  tcmplxA_BrCvt_BlockTypesIAlpha = 21,
+  tcmplxA_BrCvt_BlockCountIAlpha = 22,
+  tcmplxA_BrCvt_BlockStartI = 23,
   tcmplxA_BrCvt_BlockTypesD = 24,
 };
 
@@ -109,6 +112,10 @@ struct tcmplxA_brcvt {
   struct tcmplxA_fixlist literal_blocktype;
   /** @brief Block count prefix code for literals. */
   struct tcmplxA_fixlist literal_blockcount;
+  /** @brief Block type prefix code for insert-and-copy. */
+  struct tcmplxA_fixlist insert_blocktype;
+  /** @brief Block count prefix code for insert-and-copy. */
+  struct tcmplxA_fixlist insert_blockcount;
   /** @brief ... */
   struct tcmplxA_fixlist* literals;
   /** @brief ... */
@@ -180,10 +187,16 @@ struct tcmplxA_brcvt {
   unsigned char blocktypeL_index;
   /** @brief Maximum literal block type. */
   unsigned char blocktypeL_max;
+  /** @brief Current insert-and-copy block type. */
+  unsigned char blocktypeI_index;
+  /** @brief Maximum insert-and-copy block type. */
+  unsigned char blocktypeI_max;
   /** @brief Context span effective lengths for outflow. */
   tcmplxA_uint32 guess_lengths[tcmplxA_CtxtSpan_Size];
   /** @brief Remaining items under the current literal blocktype. */
   tcmplxA_uint32 blocktypeL_remaining;
+  /** @brief Remaining items under the current insert-and-copy blocktype. */
+  tcmplxA_uint32 blocktypeI_remaining;
   /** @brief Literal type skip code. */
   unsigned short blocktypeL_skip;
   /** @brief Literal count skip code. */
@@ -473,9 +486,15 @@ int tcmplxA_brcvt_init
   }
   /* fixed prefix code ensemble */{
     int const bltypesl_res = tcmplxA_fixlist_init(&x->literal_blocktype,0);
+    int const blcountl_res = tcmplxA_fixlist_init(&x->literal_blockcount,0);
+    int const bltypesi_res = tcmplxA_fixlist_init(&x->insert_blocktype,0);
+    int const blcounti_res = tcmplxA_fixlist_init(&x->insert_blockcount,0);
     x->treety = tcmplxA_brcvt_treety_zero;
     memset(x->guess_lengths, 0, sizeof(x->guess_lengths));
     assert(bltypesl_res == tcmplxA_Success);
+    assert(blcountl_res == tcmplxA_Success);
+    assert(bltypesi_res == tcmplxA_Success);
+    assert(blcounti_res == tcmplxA_Success);
   }
   if (res != tcmplxA_Success) {
     tcmplxA_inscopy_destroy(x->blockcounts);
@@ -508,6 +527,9 @@ int tcmplxA_brcvt_init
     x->blocktypeL_index = 0u;
     x->blocktypeL_max = 0u;
     x->blocktypeL_remaining = 0u;
+    x->blocktypeI_index = 0u;
+    x->blocktypeI_max = 0u;
+    x->blocktypeI_remaining = 0u;
     x->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
     x->blockcountL_skip = tcmplxA_brcvt_NoSkip;
     x->blocktypeI_skip = tcmplxA_brcvt_NoSkip;
@@ -687,6 +709,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       if (x) {
         ps->state = tcmplxA_BrCvt_Uncompress;
       } else {
+        tcmplxA_inscopy_codesort(ps->blockcounts);
         ps->state = tcmplxA_BrCvt_BlockTypesL;
         ps->bit_length = 0;
         ps->count = 0;
@@ -721,6 +744,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           tcmplxA_fixlist_preset(&ps->literal_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
           ps->blocktypeL_max = 0;
+          ps->blocktypeL_remaining = (tcmplxA_uint32)(~0ul);
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
           ps->treety.count = (unsigned short)alphasize;
@@ -753,7 +777,6 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->blocktypeL_index = 0;
           ps->blocktypeL_remaining = 0;
           tcmplxA_fixlist_codesort(&ps->literal_blockcount);
-          tcmplxA_inscopy_codesort(ps->blockcounts);
           if (ps->blockcountL_skip != tcmplxA_brcvt_NoSkip)
             ps->blocktypeL_remaining = tcmplxA_brcvt_config_count(ps, ps->blockcountL_skip, ps->state + 1);
         } else if (res != tcmplxA_Success)
@@ -784,6 +807,88 @@ int tcmplxA_brcvt_zsrtostr_bits
         }
       } else ae = tcmplxA_ErrSanitize;
       break;
+    case tcmplxA_BrCvt_BlockTypesI:
+      if (ps->bit_length == 0) {
+        ps->count = 1;
+        ps->bits = x;
+        ps->bit_length = (x ? 4 : 1);
+      } else if (ps->count < ps->bit_length) {
+        ps->bits |= ((x&1u)<<(ps->count++));
+        if (ps->count == 4 && (ps->bits&14u))
+          ps->bit_length += (ps->bits>>1);
+      }
+      if (ps->count >= ps->bit_length) {
+        /* extract encoded count */
+        tcmplxA_brcvt_reset19(&ps->treety);
+        ps->blocktypeI_index = 0;
+        if (ps->count == 1) {
+          ps->treety.count = 1;
+          tcmplxA_fixlist_preset(&ps->insert_blocktype, tcmplxA_FixList_BrotliSimple1);
+          ps->state += 4;
+          ps->blocktypeI_max = 0;
+          ps->blocktypeI_remaining = (tcmplxA_uint32)(~0ul);
+        } else {
+          unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          ps->treety.count = (unsigned short)alphasize;
+          ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
+          ps->state += 1;
+          ps->blocktypeI_max = (unsigned char)(alphasize-1u);
+        }
+      } break;
+    case tcmplxA_BrCvt_BlockTypesIAlpha:
+      {
+        int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->insert_blocktype, x,
+          ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          ps->blocktypeI_skip = tcmplxA_brcvt_resolve_skip(&ps->insert_blocktype);
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->state += 1;
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockCountIAlpha:
+      {
+        int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->insert_blockcount, x, 5);
+        if (res == tcmplxA_EOF) {
+          ps->blockcountI_skip = tcmplxA_brcvt_resolve_skip(&ps->insert_blockcount);
+          ps->state += 1;
+          ps->bit_length = 0;
+          ps->bits = 0;
+          ps->count = 0;
+          ps->extra_length = 0;
+          ps->blocktypeI_index = 0;
+          ps->blocktypeI_remaining = 0;
+          tcmplxA_fixlist_codesort(&ps->insert_blockcount);
+          if (ps->blockcountI_skip != tcmplxA_brcvt_NoSkip)
+            ps->blocktypeI_remaining = tcmplxA_brcvt_config_count(ps, ps->blockcountI_skip, ps->state + 1);
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockStartI:
+      if (ps->extra_length == 0) {
+        size_t code_index = ~0;
+        struct tcmplxA_fixline const* line = NULL;
+        ps->bits = (ps->bits<<1) | x;
+        ps->bit_length += 1;
+        code_index = tcmplxA_fixlist_codebsearch(&ps->insert_blockcount, ps->bit_length, ps->bits);
+        if (code_index >= 26) {
+          if (ps->bit_length >= 15)
+            ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        line = tcmplxA_fixlist_at_c(&ps->insert_blockcount, code_index);
+        assert(line);
+        ps->blocktypeI_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
+      } else if (ps->bit_length < ps->extra_length) {
+        ps->bits |= (x<< ps->bit_length++);
+        if (ps->bit_length >= ps->extra_length) {
+          ps->blocktypeI_remaining += ps->bits;
+          ps->bits = 0;
+          ps->bit_length = 0;
+          ps->state += 1;
+        }
+      } else ae = tcmplxA_ErrSanitize;
+      break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
@@ -803,7 +908,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           break;
         ps->state = 8;
       } /*[[fallthrough]]*/;
-    case 20: /* alpha bringback */
+    case 5000020: /* alpha bringback */
       if (ret_out < dstsz) {
         unsigned char const byt = (unsigned char)(ps->bits);
         dst[ret_out] = byt;
@@ -2047,6 +2152,12 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->state += 1;
         ps->bit_length = 0;
       } break;
+    case tcmplxA_BrCvt_BlockTypesI:
+      /* hardcode single insert-and-copy block type */
+      x = 0;
+      ps->state = tcmplxA_BrCvt_BlockTypesD;
+      ps->bit_length = 0;
+      break;
     case tcmplxA_BrCvt_Uncompress:
       x = 0;
       break;
@@ -2111,6 +2222,11 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_BlockTypesLAlpha:
     case tcmplxA_BrCvt_BlockCountLAlpha:
     case tcmplxA_BrCvt_BlockStartL:
+    case tcmplxA_BrCvt_BlockTypesI:
+    case tcmplxA_BrCvt_BlockTypesIAlpha:
+    case tcmplxA_BrCvt_BlockCountIAlpha:
+    case tcmplxA_BrCvt_BlockStartI:
+    case tcmplxA_BrCvt_BlockTypesD:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -2192,6 +2308,10 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_BlockTypesLAlpha:
     case tcmplxA_BrCvt_BlockCountLAlpha:
     case tcmplxA_BrCvt_BlockStartL:
+    case tcmplxA_BrCvt_BlockTypesI:
+    case tcmplxA_BrCvt_BlockTypesIAlpha:
+    case tcmplxA_BrCvt_BlockCountIAlpha:
+    case tcmplxA_BrCvt_BlockStartI:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -2217,6 +2337,9 @@ int tcmplxA_brcvt_strrtozs
       } break;
     case tcmplxA_BrCvt_Done:
       ae = tcmplxA_EOF;
+      break;
+    default:
+      ae = tcmplxA_ErrSanitize;
       break;
     }
     if (ae > tcmplxA_Success)
