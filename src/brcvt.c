@@ -561,6 +561,9 @@ int tcmplxA_brcvt_init
 void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_brcvt_close19(&x->treety);
   tcmplxA_fixlist_close(&x->literal_blocktype);
+  tcmplxA_fixlist_close(&x->literal_blockcount);
+  tcmplxA_fixlist_close(&x->insert_blocktype);
+  tcmplxA_fixlist_close(&x->insert_blockcount);
   tcmplxA_fixlist_close(&x->distance_blocktype);
   tcmplxA_fixlist_close(&x->distance_blockcount);
   tcmplxA_util_free(x->histogram);
@@ -591,6 +594,10 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->distances = NULL;
   x->literals = NULL;
   x->buffer = NULL;
+  x->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
+  x->blockcountL_skip = tcmplxA_brcvt_NoSkip;
+  x->blocktypeI_skip = tcmplxA_brcvt_NoSkip;
+  x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
   x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
   x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
 #endif /*NDEBUG*/
