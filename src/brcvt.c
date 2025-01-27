@@ -772,6 +772,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->literal_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
+          ps->blocktypeL_skip = 0;
           ps->blocktypeL_max = 0;
           ps->blocktypeL_remaining = (tcmplxA_uint32)(~0ul);
         } else {
@@ -854,6 +855,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->insert_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
+          ps->blocktypeI_skip = 0;
           ps->blocktypeI_max = 0;
           ps->blocktypeI_remaining = (tcmplxA_uint32)(~0ul);
         } else {
@@ -936,6 +938,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->distance_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
+          ps->blocktypeD_skip = 0;
           ps->blocktypeD_max = 0;
           ps->blocktypeD_remaining = (tcmplxA_uint32)(~0ul);
         } else {
@@ -1300,7 +1303,9 @@ unsigned short tcmplxA_brcvt_resolve_skip(struct tcmplxA_fixlist const* prefixes
   size_t i;
   size_t const count = tcmplxA_fixlist_size(prefixes);
   unsigned long last_nonzero = ULONG_MAX;
-  for (i = 0; i < count; ++i) {
+  if (count == 1) {
+    return (unsigned short)tcmplxA_fixlist_at_c(prefixes, 0)->value;
+  } else for (i = 0; i < count; ++i) {
     struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(prefixes, i);
     if (line->len == 0)
       continue;
