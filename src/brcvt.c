@@ -56,6 +56,10 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_BlockCountIAlpha = 22,
   tcmplxA_BrCvt_BlockStartI = 23,
   tcmplxA_BrCvt_BlockTypesD = 24,
+  tcmplxA_BrCvt_BlockTypesDAlpha = 25,
+  tcmplxA_BrCvt_BlockCountDAlpha = 26,
+  tcmplxA_BrCvt_BlockStartD = 27,
+  tcmplxA_BrCvt_NPostfix = 28,
 };
 
 /** @brief Treety machine states. */
@@ -116,6 +120,10 @@ struct tcmplxA_brcvt {
   struct tcmplxA_fixlist insert_blocktype;
   /** @brief Block count prefix code for insert-and-copy. */
   struct tcmplxA_fixlist insert_blockcount;
+  /** @brief Block type prefix code for distances. */
+  struct tcmplxA_fixlist distance_blocktype;
+  /** @brief Block count prefix code for distances. */
+  struct tcmplxA_fixlist distance_blockcount;
   /** @brief ... */
   struct tcmplxA_fixlist* literals;
   /** @brief ... */
@@ -191,12 +199,18 @@ struct tcmplxA_brcvt {
   unsigned char blocktypeI_index;
   /** @brief Maximum insert-and-copy block type. */
   unsigned char blocktypeI_max;
+  /** @brief Current distances block type. */
+  unsigned char blocktypeD_index;
+  /** @brief Maximum distances block type. */
+  unsigned char blocktypeD_max;
   /** @brief Context span effective lengths for outflow. */
   tcmplxA_uint32 guess_lengths[tcmplxA_CtxtSpan_Size];
   /** @brief Remaining items under the current literal blocktype. */
   tcmplxA_uint32 blocktypeL_remaining;
   /** @brief Remaining items under the current insert-and-copy blocktype. */
   tcmplxA_uint32 blocktypeI_remaining;
+  /** @brief Remaining items under the current distance blocktype. */
+  tcmplxA_uint32 blocktypeD_remaining;
   /** @brief Literal type skip code. */
   unsigned short blocktypeL_skip;
   /** @brief Literal count skip code. */
@@ -489,12 +503,16 @@ int tcmplxA_brcvt_init
     int const blcountl_res = tcmplxA_fixlist_init(&x->literal_blockcount,0);
     int const bltypesi_res = tcmplxA_fixlist_init(&x->insert_blocktype,0);
     int const blcounti_res = tcmplxA_fixlist_init(&x->insert_blockcount,0);
+    int const bltypesd_res = tcmplxA_fixlist_init(&x->distance_blocktype,0);
+    int const blcountd_res = tcmplxA_fixlist_init(&x->distance_blockcount,0);
     x->treety = tcmplxA_brcvt_treety_zero;
     memset(x->guess_lengths, 0, sizeof(x->guess_lengths));
     assert(bltypesl_res == tcmplxA_Success);
     assert(blcountl_res == tcmplxA_Success);
     assert(bltypesi_res == tcmplxA_Success);
     assert(blcounti_res == tcmplxA_Success);
+    assert(bltypesd_res == tcmplxA_Success);
+    assert(blcountd_res == tcmplxA_Success);
   }
   if (res != tcmplxA_Success) {
     tcmplxA_inscopy_destroy(x->blockcounts);
@@ -543,6 +561,8 @@ int tcmplxA_brcvt_init
 void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_brcvt_close19(&x->treety);
   tcmplxA_fixlist_close(&x->literal_blocktype);
+  tcmplxA_fixlist_close(&x->distance_blocktype);
+  tcmplxA_fixlist_close(&x->distance_blockcount);
   tcmplxA_util_free(x->histogram);
   tcmplxA_ringdist_destroy(x->try_ring);
   tcmplxA_ringdist_destroy(x->ring);
@@ -571,6 +591,8 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->distances = NULL;
   x->literals = NULL;
   x->buffer = NULL;
+  x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
+  x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
 #endif /*NDEBUG*/
   return;
 }
@@ -883,6 +905,88 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->bits |= (x<< ps->bit_length++);
         if (ps->bit_length >= ps->extra_length) {
           ps->blocktypeI_remaining += ps->bits;
+          ps->bits = 0;
+          ps->bit_length = 0;
+          ps->state += 1;
+        }
+      } else ae = tcmplxA_ErrSanitize;
+      break;
+    case tcmplxA_BrCvt_BlockTypesD:
+      if (ps->bit_length == 0) {
+        ps->count = 1;
+        ps->bits = x;
+        ps->bit_length = (x ? 4 : 1);
+      } else if (ps->count < ps->bit_length) {
+        ps->bits |= ((x&1u)<<(ps->count++));
+        if (ps->count == 4 && (ps->bits&14u))
+          ps->bit_length += (ps->bits>>1);
+      }
+      if (ps->count >= ps->bit_length) {
+        /* extract encoded count */
+        tcmplxA_brcvt_reset19(&ps->treety);
+        ps->blocktypeD_index = 0;
+        if (ps->count == 1) {
+          ps->treety.count = 1;
+          tcmplxA_fixlist_preset(&ps->distance_blocktype, tcmplxA_FixList_BrotliSimple1);
+          ps->state += 4;
+          ps->blocktypeD_max = 0;
+          ps->blocktypeD_remaining = (tcmplxA_uint32)(~0ul);
+        } else {
+          unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          ps->treety.count = (unsigned short)alphasize;
+          ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
+          ps->state += 1;
+          ps->blocktypeI_max = (unsigned char)(alphasize-1u);
+        }
+      } break;
+    case tcmplxA_BrCvt_BlockTypesDAlpha:
+      {
+        int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->distance_blocktype, x,
+          ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          ps->blocktypeD_skip = tcmplxA_brcvt_resolve_skip(&ps->distance_blocktype);
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->state += 1;
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockCountDAlpha:
+      {
+        int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->distance_blockcount, x, 5);
+        if (res == tcmplxA_EOF) {
+          ps->blockcountD_skip = tcmplxA_brcvt_resolve_skip(&ps->distance_blockcount);
+          ps->state += 1;
+          ps->bit_length = 0;
+          ps->bits = 0;
+          ps->count = 0;
+          ps->extra_length = 0;
+          ps->blocktypeD_index = 0;
+          ps->blocktypeD_remaining = 0;
+          tcmplxA_fixlist_codesort(&ps->distance_blockcount);
+          if (ps->blockcountD_skip != tcmplxA_brcvt_NoSkip)
+            ps->blocktypeD_remaining = tcmplxA_brcvt_config_count(ps, ps->blockcountD_skip, ps->state + 1);
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_BlockStartD:
+      if (ps->extra_length == 0) {
+        size_t code_index = ~0;
+        struct tcmplxA_fixline const* line = NULL;
+        ps->bits = (ps->bits<<1) | x;
+        ps->bit_length += 1;
+        code_index = tcmplxA_fixlist_codebsearch(&ps->distance_blockcount, ps->bit_length, ps->bits);
+        if (code_index >= 26) {
+          if (ps->bit_length >= 15)
+            ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        line = tcmplxA_fixlist_at_c(&ps->distance_blockcount, code_index);
+        assert(line);
+        ps->blocktypeD_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
+      } else if (ps->bit_length < ps->extra_length) {
+        ps->bits |= (x<< ps->bit_length++);
+        if (ps->bit_length >= ps->extra_length) {
+          ps->blocktypeD_remaining += ps->bits;
           ps->bits = 0;
           ps->bit_length = 0;
           ps->state += 1;
@@ -2158,6 +2262,12 @@ int tcmplxA_brcvt_strrtozs_bits
       ps->state = tcmplxA_BrCvt_BlockTypesD;
       ps->bit_length = 0;
       break;
+    case tcmplxA_BrCvt_BlockTypesD:
+      /* hardcode single distance block type */
+      x = 0;
+      ps->state = tcmplxA_BrCvt_NPostfix;
+      ps->bit_length = 0;
+      break;
     case tcmplxA_BrCvt_Uncompress:
       x = 0;
       break;
@@ -2227,6 +2337,9 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_BlockCountIAlpha:
     case tcmplxA_BrCvt_BlockStartI:
     case tcmplxA_BrCvt_BlockTypesD:
+    case tcmplxA_BrCvt_BlockTypesDAlpha:
+    case tcmplxA_BrCvt_BlockCountDAlpha:
+    case tcmplxA_BrCvt_BlockStartD:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -2312,6 +2425,10 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_BlockTypesIAlpha:
     case tcmplxA_BrCvt_BlockCountIAlpha:
     case tcmplxA_BrCvt_BlockStartI:
+    case tcmplxA_BrCvt_BlockTypesD:
+    case tcmplxA_BrCvt_BlockTypesDAlpha:
+    case tcmplxA_BrCvt_BlockCountDAlpha:
+    case tcmplxA_BrCvt_BlockStartD:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
