@@ -84,6 +84,22 @@ unsigned int tcmplxA_ringdist_encode
 TCMPLX_A_API
 void tcmplxA_ringdist_copy
   (struct tcmplxA_ringdist* dst, struct tcmplxA_ringdist const* src);
+
+/**
+ * @brief Query a construction parameter.
+ * @param x the distance ring to inspect
+ * @return the direct parameter
+ */
+TCMPLX_A_API
+unsigned int tcmplxA_ringdist_get_direct(struct tcmplxA_ringdist const* x);
+
+/**
+ * @brief Query a construction parameter.
+ * @param x the distance ring to inspect
+ * @return the postfix parameter
+ */
+TCMPLX_A_API
+unsigned int tcmplxA_ringdist_get_postfix(struct tcmplxA_ringdist const* x);
 /* END   distance ring */
 
 #ifdef __cplusplus

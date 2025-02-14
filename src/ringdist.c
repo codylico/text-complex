@@ -350,4 +350,12 @@ void tcmplxA_ringdist_copy
   dst->postmask = src->postmask;
   return;
 }
+
+unsigned int tcmplxA_ringdist_get_direct(struct tcmplxA_ringdist const* x) {
+  return x->direct_one - 1u;
+}
+
+unsigned int tcmplxA_ringdist_get_postfix(struct tcmplxA_ringdist const* x) {
+  return x->postfix;
+}
 /* END   distance ring / public */
