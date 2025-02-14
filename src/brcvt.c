@@ -775,6 +775,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->blocktypeL_skip = 0;
           ps->blocktypeL_max = 0;
           ps->blocktypeL_remaining = (tcmplxA_uint32)(~0ul);
+          ps->bit_length = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
           ps->treety.count = (unsigned short)alphasize;
@@ -858,6 +859,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->blocktypeI_skip = 0;
           ps->blocktypeI_max = 0;
           ps->blocktypeI_remaining = (tcmplxA_uint32)(~0ul);
+          ps->bit_length = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
           ps->treety.count = (unsigned short)alphasize;
@@ -941,6 +943,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->blocktypeD_skip = 0;
           ps->blocktypeD_max = 0;
           ps->blocktypeD_remaining = (tcmplxA_uint32)(~0ul);
+          ps->bit_length = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
           ps->treety.count = (unsigned short)alphasize;
