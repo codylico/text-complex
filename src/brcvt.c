@@ -60,6 +60,7 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_BlockCountDAlpha = 26,
   tcmplxA_BrCvt_BlockStartD = 27,
   tcmplxA_BrCvt_NPostfix = 28,
+  tcmplxA_BrCvt_ContextTypesL = 29,
 };
 
 /** @brief Treety machine states. */
@@ -1006,6 +1007,29 @@ int tcmplxA_brcvt_zsrtostr_bits
         }
       } else ae = tcmplxA_ErrSanitize;
       break;
+    case tcmplxA_BrCvt_NPostfix:
+      if (ps->bit_length == 0)
+        ps->bits = 0;
+      if (ps->bit_length < 6) {
+        ps->bits |= (x<<ps->bit_length);
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= 6) {
+        unsigned const postfix = ps->bits&3;
+        unsigned const direct = (ps->bits>>2)<<postfix;
+        struct tcmplxA_ringdist* const tryring = tcmplxA_ringdist_new(1,direct,postfix);
+        if (!tryring) {
+          tcmplxA_ringdist_destroy(tryring);
+          ae = tcmplxA_ErrMemory;
+          break;
+        }
+        ps->state = tcmplxA_BrCvt_ContextTypesL;
+        tcmplxA_ringdist_destroy(ps->try_ring);
+        tcmplxA_ringdist_copy(ps->ring, tryring);
+        ps->try_ring = tryring;
+        ps->bit_length = 0;
+        ps->count = 0;
+      } break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
@@ -2283,6 +2307,25 @@ int tcmplxA_brcvt_strrtozs_bits
       ps->state = tcmplxA_BrCvt_NPostfix;
       ps->bit_length = 0;
       break;
+    case tcmplxA_BrCvt_NPostfix:
+      if (ps->bit_length == 0) {
+        unsigned const postfix = tcmplxA_ringdist_get_postfix(ps->ring);
+        unsigned const direct = tcmplxA_ringdist_get_direct(ps->ring);
+        if (postfix > 3 || (direct & ((1u<<postfix)-1u))) {
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        ps->bits = postfix|(direct>>postfix);
+      }
+      if (ps->bit_length < 6) {
+        x = (ps->bits>>ps->bit_length)&1u;
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= 6) {
+        ps->state = tcmplxA_BrCvt_ContextTypesL;
+        ps->bit_length = 0;
+        ps->count = 0;
+      } break;
     case tcmplxA_BrCvt_Uncompress:
       x = 0;
       break;
@@ -2355,6 +2398,7 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_BlockTypesDAlpha:
     case tcmplxA_BrCvt_BlockCountDAlpha:
     case tcmplxA_BrCvt_BlockStartD:
+    case tcmplxA_BrCvt_NPostfix:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -2444,6 +2488,7 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_BlockTypesDAlpha:
     case tcmplxA_BrCvt_BlockCountDAlpha:
     case tcmplxA_BrCvt_BlockStartD:
+    case tcmplxA_BrCvt_NPostfix:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
