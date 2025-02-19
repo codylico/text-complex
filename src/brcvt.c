@@ -11,6 +11,7 @@
 #include "text-complex/access/blockbuf.h"
 #include "text-complex/access/fixlist.h"
 #include "text-complex/access/inscopy.h"
+#include "text-complex/access/ctxtmap.h"
 #include "text-complex/access/ringdist.h"
 #include "text-complex/access/zutil.h"
 #include "text-complex/access/brmeta.h"
@@ -61,6 +62,7 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_BlockStartD = 27,
   tcmplxA_BrCvt_NPostfix = 28,
   tcmplxA_BrCvt_ContextTypesL = 29,
+  tcmplxA_BrCvt_TreeCountL = 30,
 };
 
 /** @brief Treety machine states. */
@@ -141,6 +143,8 @@ struct tcmplxA_brcvt {
   struct tcmplxA_ringdist* ring;
   /** @brief ... */
   struct tcmplxA_ringdist* try_ring;
+  /** @brief Context map for dancing through the literals' Huffman forest. */
+  struct tcmplxA_ctxtmap* literals_map;
   /** @brief Check for large blocks. */
   tcmplxA_uint32* histogram;
   /** @brief ... */
@@ -529,6 +533,7 @@ int tcmplxA_brcvt_init
     tcmplxA_blockbuf_destroy(x->buffer);
     return res;
   } else {
+    x->literals_map = NULL;
     x->max_len_meta = 1024;
     x->bits = 0u;
     x->h_end = 0;
@@ -578,6 +583,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_brmeta_destroy(x->metadata);
   tcmplxA_fixlist_destroy(x->wbits);
   tcmplxA_blockbuf_destroy(x->buffer);
+  tcmplxA_ctxtmap_destroy(x->literals_map);
 #ifndef NDEBUG
   x->treety = tcmplxA_brcvt_treety_zero;
   x->metatext = NULL;
@@ -601,6 +607,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
   x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
   x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+  x->literals_map = NULL;
 #endif /*NDEBUG*/
   return;
 }
@@ -783,6 +790,13 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
           ps->blocktypeL_max = (unsigned char)(alphasize-1u);
+        }
+        if (ps->literals_map)
+          tcmplxA_ctxtmap_destroy(ps->literals_map);
+        ps->literals_map = tcmplxA_ctxtmap_new(ps->treety.count, 64);
+        if (!ps->literals_map) {
+          ae = tcmplxA_ErrMemory;
+          break;
         }
       } break;
     case tcmplxA_BrCvt_BlockTypesLAlpha:
@@ -1028,7 +1042,25 @@ int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_ringdist_copy(ps->ring, tryring);
         ps->try_ring = tryring;
         ps->bit_length = 0;
-        ps->count = 0;
+        ps->bits = 0;
+        assert(ps->literals_map);
+        ps->count = (tcmplxA_uint32)tcmplxA_ctxtmap_block_types(ps->literals_map);
+        ps->index = 0;
+      } break;
+    case tcmplxA_BrCvt_ContextTypesL:
+      if (ps->bit_length < 2) {
+        ps->bits |= (x<<ps->bit_length);
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= 2) {
+        tcmplxA_ctxtmap_set_mode(ps->literals_map, ps->index, (int)ps->bits);
+        ps->index += 1;
+        ps->bits = 0;
+        ps->bit_length = 0;
+      }
+      if (ps->index >= ps->count) {
+        ps->state = tcmplxA_BrCvt_TreeCountL;
+        ps->bit_length = 0;
       } break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
@@ -2323,6 +2355,25 @@ int tcmplxA_brcvt_strrtozs_bits
       }
       if (ps->bit_length >= 6) {
         ps->state = tcmplxA_BrCvt_ContextTypesL;
+        ps->bit_length = 0;
+        ps->count = 0;
+      } break;
+    case tcmplxA_BrCvt_ContextTypesL:
+      if (ps->bit_length == 0) {
+        size_t const contexts = tcmplxA_fixlist_size(&ps->literal_blocktype);
+        size_t i;
+        for (i = 0; i < contexts; ++i) {
+          struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, i);
+          ps->bits |= ((line->value&3u)<<ps->bit_length);
+          ps->bit_length += 2;
+        }
+      }
+      if (ps->count < ps->bit_length) {
+        x = (ps->bits>>ps->count)&1u;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->state = tcmplxA_BrCvt_TreeCountL;
         ps->bit_length = 0;
         ps->count = 0;
       } break;
