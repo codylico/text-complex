@@ -16,6 +16,7 @@
 #include "text-complex/access/zutil.h"
 #include "text-complex/access/brmeta.h"
 #include "text-complex/access/ctxtspan.h"
+#include "text-complex/access/gaspvec.h"
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
@@ -63,6 +64,8 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_NPostfix = 28,
   tcmplxA_BrCvt_ContextTypesL = 29,
   tcmplxA_BrCvt_TreeCountL = 30,
+  tcmplxA_BrCvt_ContextRunMax = 31,
+  tcmplxA_BrCvt_TreeCountD = 38,
 };
 
 /** @brief Treety machine states. */
@@ -145,6 +148,8 @@ struct tcmplxA_brcvt {
   struct tcmplxA_ringdist* try_ring;
   /** @brief Context map for dancing through the literals' Huffman forest. */
   struct tcmplxA_ctxtmap* literals_map;
+  /** @brief The literals' Huffman forest. */
+  struct tcmplxA_gaspvec* literals_forest;
   /** @brief Check for large blocks. */
   tcmplxA_uint32* histogram;
   /** @brief ... */
@@ -534,6 +539,7 @@ int tcmplxA_brcvt_init
     return res;
   } else {
     x->literals_map = NULL;
+    x->literals_forest = NULL;
     x->max_len_meta = 1024;
     x->bits = 0u;
     x->h_end = 0;
@@ -584,6 +590,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_fixlist_destroy(x->wbits);
   tcmplxA_blockbuf_destroy(x->buffer);
   tcmplxA_ctxtmap_destroy(x->literals_map);
+  tcmplxA_gaspvec_destroy(x->literals_forest);
 #ifndef NDEBUG
   x->treety = tcmplxA_brcvt_treety_zero;
   x->metatext = NULL;
@@ -608,6 +615,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
   x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
   x->literals_map = NULL;
+  x->literals_forest = NULL;
 #endif /*NDEBUG*/
   return;
 }
@@ -1062,6 +1070,42 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->state = tcmplxA_BrCvt_TreeCountL;
         ps->bit_length = 0;
       } break;
+    case tcmplxA_BrCvt_TreeCountL:
+      if (ps->bit_length == 0) {
+        ps->count = 1;
+        ps->bits = x;
+        ps->bit_length = (x ? 4 : 1);
+      } else if (ps->count < ps->bit_length) {
+        ps->bits |= ((x&1u)<<(ps->count++));
+        if (ps->count == 4 && (ps->bits&14u))
+          ps->bit_length += (ps->bits>>1);
+      }
+      if (ps->count >= ps->bit_length) {
+        unsigned const alphasize = (ps->count == 1) ? 1u
+          : ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+        if (alphasize > 256 || alphasize == 0) {
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        tcmplxA_gaspvec_destroy(ps->literals_forest);
+        ps->literals_forest = tcmplxA_gaspvec_new(alphasize);
+        if (!ps->literals_forest) {
+          ae = tcmplxA_ErrMemory;
+          break;
+        } else if (alphasize == 1) {
+          memset(tcmplxA_ctxtmap_data(ps->literals_map), 0,
+            tcmplxA_ctxtmap_block_types(ps->literals_map)
+            * tcmplxA_ctxtmap_contexts(ps->literals_map));
+          ps->state = tcmplxA_BrCvt_TreeCountD;
+          ps->bit_length = 0;
+        } else {
+          ps->state = tcmplxA_BrCvt_ContextRunMax;
+          ps->bit_length = 0;
+        }
+      } break;
+    case tcmplxA_BrCvt_ContextRunMax:
+      /* TODO this state */
+      break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
@@ -2377,6 +2421,36 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->bit_length = 0;
         ps->count = 0;
       } break;
+    case tcmplxA_BrCvt_TreeCountL:
+      if (ps->bit_length == 0) {
+        size_t const btypes = tcmplxA_fixlist_size(&ps->literal_blocktype);
+        ps->count = 0;
+        switch (btypes) {
+        case 1:
+          ps->bits = 0;
+          ps->bit_length = 1;
+          break;
+        case 2:
+          ps->bits = 1;
+          ps->bit_length = 4;
+          break;
+        default:
+          ps->bits = 3|(((btypes&1u)^1u)<<4);
+          ps->bit_length = 5;
+          break;
+        }
+      }
+      if (ps->count < ps->bit_length) {
+        x = (ps->bits>>ps->count)&1u;
+        ps->count += 1;
+      }
+      if (ps->count >= ps->bit_length) {
+        ps->state = (ps->count == 1) ? tcmplxA_BrCvt_TreeCountD : tcmplxA_BrCvt_ContextRunMax;
+        ps->bit_length = 0;
+      } break;
+    case tcmplxA_BrCvt_ContextRunMax:
+      /* TODO this state */
+      break;
     case tcmplxA_BrCvt_Uncompress:
       x = 0;
       break;
@@ -2450,6 +2524,10 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_BlockCountDAlpha:
     case tcmplxA_BrCvt_BlockStartD:
     case tcmplxA_BrCvt_NPostfix:
+    case tcmplxA_BrCvt_ContextTypesL:
+    case tcmplxA_BrCvt_TreeCountL:
+    case tcmplxA_BrCvt_TreeCountD:
+    case tcmplxA_BrCvt_ContextRunMax:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -2540,6 +2618,10 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_BlockCountDAlpha:
     case tcmplxA_BrCvt_BlockStartD:
     case tcmplxA_BrCvt_NPostfix:
+    case tcmplxA_BrCvt_ContextTypesL:
+    case tcmplxA_BrCvt_TreeCountL:
+    case tcmplxA_BrCvt_TreeCountD:
+    case tcmplxA_BrCvt_ContextRunMax:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
