@@ -95,6 +95,23 @@ TCMPLX_A_API
 void tcmplxA_ctxtmap_set(struct tcmplxA_ctxtmap* x, size_t i, size_t j, int v);
 
 /**
+ * @brief Inspect the context mode for a block type in a context map.
+ * @param x the context map to inspect
+ * @param i row (block type) selector
+ * @return the context mode at the given coordinates
+ */
+TCMPLX_A_API
+int tcmplxA_ctxtmap_get_mode(struct tcmplxA_ctxtmap const* x, size_t i);
+/**
+ * @brief Modify the context mode for a block type in a context map.
+ * @param x the context map to inspect
+ * @param i row (block type) selector
+ * @param v new context mode
+ */
+TCMPLX_A_API
+void tcmplxA_ctxtmap_set_mode(struct tcmplxA_ctxtmap* x, size_t i, int v);
+
+/**
  * @brief Calculate a distance context from a copy length.
  * @param copylen a copy length
  * @return a distance context on success, negative otherwise

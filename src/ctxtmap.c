@@ -13,6 +13,7 @@
 
 struct tcmplxA_ctxtmap {
   unsigned char *p;
+  unsigned char *modes;
   size_t btypes;
   size_t ctxts;
 };
@@ -151,6 +152,7 @@ void tcmplxA_ctxtmap_close(struct tcmplxA_ctxtmap* x) {
     tcmplxA_util_free(x->p);
     x->p = NULL;
   }
+  x->modes = NULL;
   x->btypes = 0u;
   x->ctxts = 0u;
   return;
@@ -159,15 +161,16 @@ void tcmplxA_ctxtmap_close(struct tcmplxA_ctxtmap* x) {
 int tcmplxA_ctxtmap_resize
   (struct tcmplxA_ctxtmap* x, size_t btypes, size_t ctxts)
 {
-  if (ctxts > 0u && btypes >= (~(size_t)0u)/ctxts) {
+  if (ctxts > 0u && (btypes > 256 || btypes >= (~(size_t)0u)/ctxts-1u)) {
     return tcmplxA_ErrMemory;
   } else if (ctxts == 0u || btypes == 0u) {
     if (x->p != NULL) {
       tcmplxA_util_free(x->p);
       x->p = NULL;
     }
+    x->modes = NULL;
   } else {
-    unsigned char* const np = tcmplxA_util_malloc(btypes*ctxts);
+    unsigned char* const np = tcmplxA_util_malloc(btypes*(ctxts+1u));
     if (np == NULL) {
       return tcmplxA_ErrMemory;
     } else {
@@ -176,6 +179,7 @@ int tcmplxA_ctxtmap_resize
       }
     }
     x->p = np;
+    x->modes = np+(btypes*ctxts);
   }
   x->btypes = btypes;
   x->ctxts = ctxts;
@@ -243,6 +247,22 @@ void tcmplxA_ctxtmap_set
     return;
 #endif /*NDEBUG*/
   x->p[i*x->ctxts + j] = (unsigned char)v;
+  return;
+}
+
+int tcmplxA_ctxtmap_get_mode(struct tcmplxA_ctxtmap const* x, size_t i) {
+#ifndef NDEBUG
+    if (i >= x->btypes)
+      return -1;
+#endif /*NDEBUG*/
+    return x->modes[i];
+}
+void tcmplxA_ctxtmap_set_mode(struct tcmplxA_ctxtmap* x, size_t i, int v) {
+#ifndef NDEBUG
+  if (i >= x->btypes)
+    return;
+#endif /*NDEBUG*/
+  x->modes[i] = (unsigned char)v;
   return;
 }
 

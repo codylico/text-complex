@@ -21,6 +21,8 @@ static MunitResult test_ctxtmap_imtf
   (const MunitParameter params[], void* data);
 static MunitResult test_ctxtmap_mtf
   (const MunitParameter params[], void* data);
+static MunitResult test_ctxtmap_modes
+  (const MunitParameter params[], void* data);
 static void* test_ctxtmap_setup
     (const MunitParameter params[], void* user_data);
 static void test_ctxtmap_teardown(void* fixture);
@@ -40,6 +42,8 @@ static MunitTest tests_ctxtmap[] = {
   {"imtf", test_ctxtmap_imtf,
     test_ctxtmap_setup,test_ctxtmap_teardown,0,NULL},
   {"mtf", test_ctxtmap_mtf,
+    test_ctxtmap_setup,test_ctxtmap_teardown,0,NULL},
+  {"modes", test_ctxtmap_modes,
     test_ctxtmap_setup,test_ctxtmap_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -221,6 +225,24 @@ MunitResult test_ctxtmap_mtf
   free(mem);
   return MUNIT_OK;
 }
+
+MunitResult test_ctxtmap_modes
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
+  if (!p)
+    return MUNIT_SKIP;
+  (void)params;
+  /* */{
+    size_t blocks = tcmplxA_ctxtmap_block_types(p);
+    int mode = testfont_rand_int_range(0,3);
+    size_t choice = testfont_rand_size_range(0,blocks-1);
+    tcmplxA_ctxtmap_set_mode(p, choice, mode);
+    munit_assert(tcmplxA_ctxtmap_get_mode(p, choice) == mode);
+  }
+  return MUNIT_OK;
+}
+
 
 
 int main(int argc, char **argv) {
