@@ -69,9 +69,16 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_TreeCountL = 30,
   tcmplxA_BrCvt_ContextRunMaxL = 31,
   tcmplxA_BrCvt_ContextPrefixL = 32,
+  tcmplxA_BrCvt_ContextValuesL = 33,
+  tcmplxA_BrCvt_ContextRepeatL = 34,
+  tcmplxA_BrCvt_ContextInvertL = 35,
   tcmplxA_BrCvt_TreeCountD = 38,
   tcmplxA_BrCvt_ContextRunMaxD = 39,
   tcmplxA_BrCvt_ContextPrefixD = 40,
+  tcmplxA_BrCvt_ContextValuesD = 41,
+  tcmplxA_BrCvt_ContextRepeatD = 42,
+  tcmplxA_BrCvt_ContextInvertD = 43,
+  tcmplxA_BrCvt_GaspVectorL = 44,
 };
 
 /** @brief Treety machine states. */
@@ -158,6 +165,8 @@ struct tcmplxA_brcvt {
   struct tcmplxA_ctxtmap* literals_map;
   /** @brief The literals' Huffman forest. */
   struct tcmplxA_gaspvec* literals_forest;
+  /** @brief Context map for dancing through the distances' Huffman forest. */
+  struct tcmplxA_ctxtmap* distance_map;
   /** @brief The distances' Huffman forest. */
   struct tcmplxA_gaspvec* distance_forest;
   /** @brief Check for large blocks. */
@@ -247,6 +256,8 @@ struct tcmplxA_brcvt {
   unsigned short blocktypeD_skip;
   /** @brief Distance count skip code. */
   unsigned short blockcountD_skip;
+  /** @brief Context map prefix tree skip code. */
+  unsigned short context_skip;
   /**
    * @brief Built-in tree type for block type outflow.
    * @todo Test for removal.
@@ -567,6 +578,7 @@ int tcmplxA_brcvt_init
     tcmplxA_blockstr_init(&x->context_encode, 0);
     x->literals_map = NULL;
     x->literals_forest = NULL;
+    x->distance_map = NULL;
     x->distance_forest = NULL;
     x->max_len_meta = 1024;
     x->bits = 0u;
@@ -598,6 +610,7 @@ int tcmplxA_brcvt_init
     x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
     x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
     x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+    x->context_skip = tcmplxA_brcvt_NoSkip;
     return tcmplxA_Success;
   }
 }
@@ -624,6 +637,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_blockbuf_destroy(x->buffer);
   tcmplxA_ctxtmap_destroy(x->literals_map);
   tcmplxA_gaspvec_destroy(x->literals_forest);
+  tcmplxA_ctxtmap_destroy(x->distance_map);
   tcmplxA_gaspvec_destroy(x->distance_forest);
   tcmplxA_blockstr_close(&x->context_encode);
 #ifndef NDEBUG
@@ -649,6 +663,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
   x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
   x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+  x->context_skip = tcmplxA_brcvt_NoSkip;
   x->literals_map = NULL;
   x->literals_forest = NULL;
 #endif /*NDEBUG*/
@@ -1161,6 +1176,99 @@ int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_ContextPrefixL:
     case tcmplxA_BrCvt_ContextPrefixD:
+      {
+        int const res = tcmplxA_brcvt_inflow19(&ps->treety, &ps->context_tree, x,
+          ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          struct tcmplxA_ctxtmap* const map = (ps->state == tcmplxA_BrCvt_ContextPrefixL)
+            ? ps->literals_map : ps->distance_map;
+          ps->context_skip = tcmplxA_brcvt_resolve_skip(&ps->context_tree);
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->bit_length = 0;
+          ps->bits = 0;
+          ps->index = 0;
+          ps->count = (!map) ? 0
+            : tcmplxA_ctxtmap_block_types(map)*tcmplxA_ctxtmap_contexts(map);
+          if (ps->context_skip == tcmplxA_brcvt_NoSkip) {
+            ps->state += 1;
+          } else if (ps->context_skip == 0 || ps->context_skip > ps->rlemax) {
+            unsigned char const fill = (ps->context_skip ?
+              ps->context_skip - ps->rlemax : 0);
+            if (map)
+              memset(tcmplxA_ctxtmap_data(map), fill, ps->count*sizeof(char));
+            ps->state += 3;
+          } else {
+            ps->extra_length = ps->context_skip;
+            ps->state += 2;
+          }
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_ContextValuesL:
+    case tcmplxA_BrCvt_ContextValuesD:
+      if (ps->bit_length < 16) {
+        struct tcmplxA_ctxtmap* const map = (ps->state == tcmplxA_BrCvt_ContextValuesL)
+          ? ps->literals_map : ps->distance_map;
+        size_t line_index = 0;
+        struct tcmplxA_fixline const* line = NULL;
+        ps->bits = (ps->bits<<1)|x;
+        ps->bit_length += 1;
+        line_index = tcmplxA_fixlist_codebsearch(&ps->context_tree, ps->bit_length, ps->bits);
+        if (line_index >= tcmplxA_fixlist_size(&ps->context_tree))
+          break;
+        ps->bits = 0;
+        ps->bit_length = 0;
+        line = tcmplxA_fixlist_at_c(&ps->context_tree, line_index);
+        if (line->value == 0 || line->value > ps->rlemax) {
+          /* single value */
+          tcmplxA_ctxtmap_data(map)[ps->index] = (unsigned char)line->value;
+          ps->index += 1;
+          if (ps->index >= ps->count)
+            ps->state += 2;
+        } else {
+          ps->extra_length = line->value;
+          ps->state += 1;
+        }
+      }
+      if (ps->bit_length >= 16)
+        ae = tcmplxA_ErrSanitize;
+      break;
+    case tcmplxA_BrCvt_ContextRepeatL:
+    case tcmplxA_BrCvt_ContextRepeatD:
+      if (ps->bit_length < ps->extra_length) {
+        ps->bits |= (x<<ps->bit_length);
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= ps->extra_length) {
+        struct tcmplxA_ctxtmap* const map = (ps->state == tcmplxA_BrCvt_ContextRepeatL)
+          ? ps->literals_map : ps->distance_map;
+        size_t const total = ps->bits | (1ul<<ps->extra_length);
+        if (total > ps->count - ps->index) {
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        memset(tcmplxA_ctxtmap_data(map)+ps->index, 0, total*sizeof(char));
+        ps->index += total;
+        ps->bits = 0;
+        ps->bit_length = 0;
+        if (ps->index >= ps->count)
+          ps->state += 1; /* IMTF bit */
+        else if (ps->context_skip == tcmplxA_brcvt_NoSkip)
+          ps->state -= 1; /* next */
+        else/* stay put and */break;
+      } break;
+    case tcmplxA_BrCvt_ContextInvertL:
+    case tcmplxA_BrCvt_ContextInvertD:
+      if (x) {
+        int const literals = (ps->state == tcmplxA_BrCvt_ContextInvertL);
+        struct tcmplxA_ctxtmap* const map = literals
+          ? ps->literals_map : ps->distance_map;
+        tcmplxA_ctxtmap_revert_movetofront(map);
+        ps->state = (literals ? tcmplxA_BrCvt_TreeCountD : tcmplxA_BrCvt_GaspVectorL);
+        ps->bits = 0;
+        ps->bit_length = 0;
+      } break;
+    case tcmplxA_BrCvt_GaspVectorL:
       /* TODO this state */
       break;
     case tcmplxA_BrCvt_Done: /* end of stream */
@@ -2618,10 +2726,74 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->state += 1;
       } break;
     case tcmplxA_BrCvt_ContextPrefixL:
+      {
+        int const res = tcmplxA_brcvt_outflow19(&ps->treety, &ps->context_tree, &x, ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          ps->bit_length = 0;
+          ps->index = 0;
+          ps->count = (tcmplxA_uint32)ps->context_encode.sz;
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->state += 1;
+          ae = tcmplxA_fixlist_valuesort(&ps->context_tree);
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_ContextValuesL:
+      if (ps->bit_length == 0) {
+        unsigned char const code = ps->context_encode.p[ps->index];
+        unsigned int const extra = (code&tcmplxA_brcvt_ZeroBit)
+          ? code & (tcmplxA_brcvt_ZeroBit-1u) : 0;
+        unsigned int const value = extra ? extra : (code?code+ps->rlemax:0);
+        size_t const line_index = tcmplxA_fixlist_valuebsearch(&ps->context_tree, value);
+        struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->context_tree, line_index);
+        if (!line) {
+          ae = tcmplxA_ErrSanitize;
+          break;
+        }
+        ps->bits = line->code;
+        ps->bit_length = (unsigned char)line->len;
+        ps->extra_length = extra;
+      }
+      if (ps->bit_length > 0)
+        x = (ps->bits>>(--ps->bit_length))&1u;
+      if (ps->bit_length == 0) {
+        ps->index += 1;
+        ps->bits = 0;
+        if (ps->index >= ps->count)
+          ps->state += 2;
+        else if (ps->extra_length > 0)
+          ps->state += 1;
+      } break;
+    case tcmplxA_BrCvt_ContextRepeatL:
+      if (ps->bit_length == 0) {
+        assert(ps->index < ps->context_encode.sz);
+        ps->bits = ps->context_encode.p[ps->index];
+      }
+      if (ps->bit_length < ps->extra_length) {
+        x = (ps->bits>>ps->bit_length)&1u;
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= ps->extra_length) {
+        ps->index += 1;
+        ps->bits = 0;
+        ps->bit_length = 0;
+        if (ps->index >= ps->count)
+          ps->state += 1;
+        else
+          ps->state -= 1;
+      } break;
+    case tcmplxA_BrCvt_ContextInvertL:
+      x = 1;
+      ps->state = tcmplxA_BrCvt_TreeCountD;
+      break;
+    case tcmplxA_BrCvt_GaspVectorL:
       /* TODO this state */
       break;
     case tcmplxA_BrCvt_ContextRunMaxD:
     case tcmplxA_BrCvt_ContextPrefixD:
+    case tcmplxA_BrCvt_ContextValuesD:
+    case tcmplxA_BrCvt_ContextRepeatD:
+    case tcmplxA_BrCvt_ContextInvertD:
       ae = tcmplxA_ErrSanitize;
       break;
     case tcmplxA_BrCvt_Uncompress:
@@ -2700,8 +2872,17 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_ContextTypesL:
     case tcmplxA_BrCvt_TreeCountL:
     case tcmplxA_BrCvt_ContextRunMaxL:
+    case tcmplxA_BrCvt_ContextPrefixL:
+    case tcmplxA_BrCvt_ContextValuesL:
+    case tcmplxA_BrCvt_ContextRepeatL:
+    case tcmplxA_BrCvt_ContextInvertL:
     case tcmplxA_BrCvt_TreeCountD:
     case tcmplxA_BrCvt_ContextRunMaxD:
+    case tcmplxA_BrCvt_ContextPrefixD:
+    case tcmplxA_BrCvt_ContextValuesD:
+    case tcmplxA_BrCvt_ContextRepeatD:
+    case tcmplxA_BrCvt_ContextInvertD:
+    case tcmplxA_BrCvt_GaspVectorL:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
@@ -2795,8 +2976,17 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_ContextTypesL:
     case tcmplxA_BrCvt_TreeCountL:
     case tcmplxA_BrCvt_ContextRunMaxL:
+    case tcmplxA_BrCvt_ContextPrefixL:
+    case tcmplxA_BrCvt_ContextValuesL:
+    case tcmplxA_BrCvt_ContextRepeatL:
+    case tcmplxA_BrCvt_ContextInvertL:
     case tcmplxA_BrCvt_TreeCountD:
     case tcmplxA_BrCvt_ContextRunMaxD:
+    case tcmplxA_BrCvt_ContextPrefixD:
+    case tcmplxA_BrCvt_ContextValuesD:
+    case tcmplxA_BrCvt_ContextRepeatD:
+    case tcmplxA_BrCvt_ContextInvertD:
+    case tcmplxA_BrCvt_GaspVectorL:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
