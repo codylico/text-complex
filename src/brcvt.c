@@ -849,8 +849,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->state += 1;
           ps->blocktypeL_max = (unsigned char)(alphasize-1u);
         }
-        if (ps->literals_map)
-          tcmplxA_ctxtmap_destroy(ps->literals_map);
+        tcmplxA_ctxtmap_destroy(ps->literals_map);
         ps->literals_map = tcmplxA_ctxtmap_new(ps->treety.count, 64);
         if (!ps->literals_map) {
           ae = tcmplxA_ErrMemory;
@@ -1024,6 +1023,12 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->state += 1;
           ps->blocktypeI_max = (unsigned char)(alphasize-1u);
         }
+        tcmplxA_ctxtmap_destroy(ps->distance_map);
+        ps->distance_map = tcmplxA_ctxtmap_new(ps->treety.count, 4);
+        if (!ps->distance_map) {
+          ae = tcmplxA_ErrMemory;
+          break;
+        }
       } break;
     case tcmplxA_BrCvt_BlockTypesDAlpha:
       {
@@ -1121,6 +1126,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->bit_length = 0;
       } break;
     case tcmplxA_BrCvt_TreeCountL:
+    case tcmplxA_BrCvt_TreeCountD:
       if (ps->bit_length == 0) {
         ps->count = 1;
         ps->bits = x;
@@ -1131,25 +1137,29 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bit_length += (ps->bits>>1);
       }
       if (ps->count >= ps->bit_length) {
+        int const literal = (ps->state == tcmplxA_BrCvt_TreeCountL);
+        struct tcmplxA_gaspvec** const forest_ptr =
+          (literal ? &ps->literals_forest : &ps->distance_forest);
         unsigned const alphasize = (ps->count == 1) ? 1u
           : ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
         if (alphasize > 256 || alphasize == 0) {
           ae = tcmplxA_ErrSanitize;
           break;
         }
-        tcmplxA_gaspvec_destroy(ps->literals_forest);
-        ps->literals_forest = tcmplxA_gaspvec_new(alphasize);
-        if (!ps->literals_forest) {
+        tcmplxA_gaspvec_destroy(*forest_ptr);
+        *forest_ptr = tcmplxA_gaspvec_new(alphasize);
+        if (!*forest_ptr) {
           ae = tcmplxA_ErrMemory;
           break;
         } else if (alphasize == 1) {
-          memset(tcmplxA_ctxtmap_data(ps->literals_map), 0,
-            tcmplxA_ctxtmap_block_types(ps->literals_map)
-            * tcmplxA_ctxtmap_contexts(ps->literals_map));
-          ps->state = tcmplxA_BrCvt_TreeCountD;
+          struct tcmplxA_ctxtmap* const map =
+            (literal ? ps->literals_map : ps->distance_map);
+          memset(tcmplxA_ctxtmap_data(map), 0,
+            tcmplxA_ctxtmap_block_types(map) * tcmplxA_ctxtmap_contexts(map));
+          ps->state = (literal ? tcmplxA_BrCvt_TreeCountD : tcmplxA_BrCvt_GaspVectorL);
           ps->bit_length = 0;
         } else {
-          ps->state = tcmplxA_BrCvt_ContextRunMaxL;
+          ps->state += 1;
           ps->bit_length = 0;
           ps->rlemax = 0;
         }
@@ -2785,6 +2795,10 @@ int tcmplxA_brcvt_strrtozs_bits
     case tcmplxA_BrCvt_ContextInvertL:
       x = 1;
       ps->state = tcmplxA_BrCvt_TreeCountD;
+      break;
+    case tcmplxA_BrCvt_TreeCountD:
+      x = 0;
+      ps->state = tcmplxA_BrCvt_GaspVectorL;
       break;
     case tcmplxA_BrCvt_GaspVectorL:
       /* TODO this state */
