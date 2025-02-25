@@ -1775,7 +1775,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       treety->bits = (treety->bits<<1)|x;
       treety->bit_length += 1;
       code_index = tcmplxA_fixlist_codebsearch(&treety->nineteen, treety->bit_length, treety->bits);
-      if (code_index < treety->count) {
+      if (code_index < tcmplxA_fixlist_size(&treety->nineteen)) {
         int const res = tcmplxA_brcvt_post19(treety, prefixes,
           tcmplxA_fixlist_at_c(&treety->nineteen, code_index)->value);
         if (res != tcmplxA_Success)
@@ -1831,6 +1831,8 @@ int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
       treety->index += 1;
       treety->last_repeat = 0;
       treety->last_len = value;
+      treety->bits = 0;
+      treety->bit_length = 0;
       if (value) {
         unsigned short const push = (32768>>value);
         if (push > 32768-treety->len_check)
@@ -1855,9 +1857,13 @@ int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
   if (treety->index >= treety->count || treety->len_check >= 32768) {
     int const sort_res = tcmplxA_fixlist_valuesort(prefixes);
     int const res = tcmplxA_fixlist_gen_codes(prefixes);
+    int const code_res = tcmplxA_fixlist_codesort(prefixes);
     treety->state = tcmplxA_BrCvt_TDone;
-    return (res == tcmplxA_Success && sort_res == tcmplxA_Success)
-      ? tcmplxA_EOF : (res?res:sort_res);
+    if (sort_res != tcmplxA_Success)
+      return sort_res;
+    else if (res != tcmplxA_Success)
+      return res;
+    return (code_res == tcmplxA_Success) ? tcmplxA_EOF : (code_res);
   }
   return tcmplxA_Success;
 }
