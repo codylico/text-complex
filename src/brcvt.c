@@ -1295,13 +1295,16 @@ int tcmplxA_brcvt_zsrtostr_bits
         line = tcmplxA_fixlist_at_c(&ps->context_tree, line_index);
         if (line->value == 0 || line->value > ps->rlemax) {
           /* single value */
-          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.value[%lu] (%lu)", (long unsigned)ps->index, line->value);
-          tcmplxA_ctxtmap_data(map)[ps->index] = (unsigned char)line->value;
+          unsigned char const value = (unsigned char)(line->value ? line->value-ps->rlemax : 0);
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.value[%lu] (%lu)->%u",
+            (long unsigned)ps->index, line->value, value);
+          tcmplxA_ctxtmap_data(map)[ps->index] = value;
           ps->index += 1;
           if (ps->index >= ps->count)
             ps->state += 2;
         } else {
-          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.value[%lu..] zero", (long unsigned)ps->index);
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.value[%lu..] (%lu)->zero",
+            (long unsigned)ps->index, line->value);
           ps->extra_length = line->value;
           ps->state += 1;
         }
