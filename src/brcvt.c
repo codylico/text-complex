@@ -1327,11 +1327,13 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_ContextInvertL:
     case tcmplxA_BrCvt_ContextInvertD:
       tcmplxA_brcvt_countbits(x, 1, "context.IMTF %u", x);
-      if (x) {
+      {
         int const literals = (ps->state == tcmplxA_BrCvt_ContextInvertL);
-        struct tcmplxA_ctxtmap* const map = literals
-          ? ps->literals_map : ps->distance_map;
-        tcmplxA_ctxtmap_revert_movetofront(map);
+        if (x) {
+          struct tcmplxA_ctxtmap* const map = literals
+            ? ps->literals_map : ps->distance_map;
+          tcmplxA_ctxtmap_revert_movetofront(map);
+        }
         ps->state = (literals ? tcmplxA_BrCvt_TreeCountD : tcmplxA_BrCvt_GaspVectorL);
         ps->bits = 0;
         ps->bit_length = 0;
