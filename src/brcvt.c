@@ -482,6 +482,11 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps);
  */
 static int tcmplxA_brcvt_encode_map(struct tcmplxA_blockstr* buffer, size_t zeroes,
   int map_datum, unsigned* rlemax_ptr);
+/**
+ * @brief Prepare for the inflow of a compressed stream.
+ * @param ps state to prepare
+ */
+static void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -714,6 +719,20 @@ tcmplxA_uint32 tcmplxA_brcvt_config_count
   return row->insert_first;
 }
 
+void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps) {
+  tcmplxA_inscopy_codesort(ps->blockcounts);
+  ps->state = tcmplxA_BrCvt_BlockTypesL;
+  ps->bit_length = 0;
+  ps->count = 0;
+  ps->bits = 0;
+  ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
+  ps->blockcountL_skip = tcmplxA_brcvt_NoSkip;
+  ps->blocktypeI_skip = tcmplxA_brcvt_NoSkip;
+  ps->blockcountI_skip = tcmplxA_brcvt_NoSkip;
+  ps->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
+  ps->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+}
+
 int tcmplxA_brcvt_zsrtostr_bits
   ( struct tcmplxA_brcvt* ps, unsigned int y,
     size_t* ret, unsigned char* dst, size_t dstsz)
@@ -835,24 +854,17 @@ int tcmplxA_brcvt_zsrtostr_bits
         if (ps->bit_length > 16 && (ps->backward>>(ps->bit_length-4))==0)
           ae = tcmplxA_ErrSanitize;
         ps->backward += 1;
-        ps->state = tcmplxA_BrCvt_CompressCheck;
+        if (ps->h_end)
+          tcmplxA_brcvt_reset_compress(ps);
+        else
+          ps->state = tcmplxA_BrCvt_CompressCheck;
       } break;
     case tcmplxA_BrCvt_CompressCheck:
       tcmplxA_brcvt_countbits(x, 1, "ISUNCOMPRESSED %u", x);
       if (x) {
         ps->state = tcmplxA_BrCvt_Uncompress;
       } else {
-        tcmplxA_inscopy_codesort(ps->blockcounts);
-        ps->state = tcmplxA_BrCvt_BlockTypesL;
-        ps->bit_length = 0;
-        ps->count = 0;
-        ps->bits = 0;
-        ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
-        ps->blockcountL_skip = tcmplxA_brcvt_NoSkip;
-        ps->blocktypeI_skip = tcmplxA_brcvt_NoSkip;
-        ps->blockcountI_skip = tcmplxA_brcvt_NoSkip;
-        ps->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
-        ps->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+        tcmplxA_brcvt_reset_compress(ps);
       } break;
     case tcmplxA_BrCvt_Uncompress:
       if (x)
