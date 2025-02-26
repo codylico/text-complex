@@ -203,7 +203,7 @@ struct tcmplxA_brcvt {
   /** @brief Check for large blocks. */
   tcmplxA_uint32* histogram;
   /** @brief ... */
-  unsigned short int bits;
+  tcmplxA_uint32 bits;
   /** @brief Read count for bits used after a Huffman code. */
   unsigned short int extra_length;
   /** @brief ... */
