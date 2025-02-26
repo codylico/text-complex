@@ -737,6 +737,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         if (j < 16) {
           ps->wbits_select =
             (unsigned char)tcmplxA_fixlist_at(ps->wbits, j)->value;
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "WBITS %i", ps->wbits_select);
           ps->state = tcmplxA_BrCvt_LastCheck;
           ps->bit_length = 0;
           break;
@@ -749,11 +750,13 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_LastCheck:
       if (ps->bit_length == 0) {
         ps->h_end = (x!=0);
+        tcmplxA_brcvt_countbits(x, 1, "ISLAST %i", ps->h_end);
         ps->bit_length = x?4:3;
         ps->count = 0;
         ps->bits = 0;
       }
       if (ps->count == 1 && ps->h_end) {
+        tcmplxA_brcvt_countbits(x, 1, "ISLASTEMPTY %u", x);
         if (x) {
           ps->state = tcmplxA_BrCvt_Done;
           ae = tcmplxA_EOF;
@@ -765,9 +768,11 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->count += 1;
       if (ps->count >= ps->bit_length) {
         if (ps->bits == 3) {
+          tcmplxA_brcvt_countbits(ps->bits, 2, "MNIBBLES 0");
           ps->state = tcmplxA_BrCvt_MetaStart;
           ps->bit_length = 0;
         } else {
+          tcmplxA_brcvt_countbits(ps->bits, 2, "MNIBBLES %i", ps->bits+4);
           ps->bit_length = (ps->bits+4)*4;
           ps->state = tcmplxA_BrCvt_InputLength;
           ps->backward = 0;
@@ -824,6 +829,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->count += 1;
       }
       if (ps->count >= ps->bit_length) {
+        tcmplxA_brcvt_countbits(ps->backward, ps->bit_length, "MLEN-1 %lu", (long unsigned)ps->backward);
         ps->bit_length = 0;
         ps->count = 0;
         if (ps->bit_length > 16 && (ps->backward>>(ps->bit_length-4))==0)
@@ -832,6 +838,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->state = tcmplxA_BrCvt_CompressCheck;
       } break;
     case tcmplxA_BrCvt_CompressCheck:
+      tcmplxA_brcvt_countbits(x, 1, "ISUNCOMPRESSED %u", x);
       if (x) {
         ps->state = tcmplxA_BrCvt_Uncompress;
       } else {
@@ -866,6 +873,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_reset19(&ps->treety);
         ps->blocktypeL_index = 0;
         if (ps->count == 1) {
+          tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESL 1");
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->literal_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
@@ -875,6 +883,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bit_length = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESL %u", alphasize);
           ps->treety.count = (unsigned short)alphasize;
           ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
@@ -930,10 +939,12 @@ int tcmplxA_brcvt_zsrtostr_bits
         }
         line = tcmplxA_fixlist_at_c(&ps->literal_blockcount, code_index);
         assert(line);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal.Block_count_code %lu", line->value);
         ps->blocktypeL_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
       } else if (ps->bit_length < ps->extra_length) {
         ps->bits |= (x<< ps->bit_length++);
         if (ps->bit_length >= ps->extra_length) {
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal.extra_bits %u", ps->bits);
           ps->blocktypeL_remaining += ps->bits;
           ps->bits = 0;
           ps->bit_length = 0;
@@ -956,6 +967,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_reset19(&ps->treety);
         ps->blocktypeI_index = 0;
         if (ps->count == 1) {
+          tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESI 1");
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->insert_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
@@ -965,6 +977,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bit_length = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESI %u", alphasize);
           ps->treety.count = (unsigned short)alphasize;
           ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
@@ -1014,10 +1027,12 @@ int tcmplxA_brcvt_zsrtostr_bits
         }
         line = tcmplxA_fixlist_at_c(&ps->insert_blockcount, code_index);
         assert(line);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert.Block_count_code %lu", line->value);
         ps->blocktypeI_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
       } else if (ps->bit_length < ps->extra_length) {
         ps->bits |= (x<< ps->bit_length++);
         if (ps->bit_length >= ps->extra_length) {
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert.extra_bits %u", ps->bits);
           ps->blocktypeI_remaining += ps->bits;
           ps->bits = 0;
           ps->bit_length = 0;
@@ -1040,6 +1055,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_reset19(&ps->treety);
         ps->blocktypeD_index = 0;
         if (ps->count == 1) {
+          tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESD 1");
           ps->treety.count = 1;
           tcmplxA_fixlist_preset(&ps->distance_blocktype, tcmplxA_FixList_BrotliSimple1);
           ps->state += 4;
@@ -1049,6 +1065,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bit_length = 0;
         } else {
           unsigned const alphasize = ((ps->bits>>4)+(1u<<(ps->count-4))+1u);
+          tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESD %u", alphasize);
           ps->treety.count = (unsigned short)alphasize;
           ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
@@ -1104,10 +1121,12 @@ int tcmplxA_brcvt_zsrtostr_bits
         }
         line = tcmplxA_fixlist_at_c(&ps->distance_blockcount, code_index);
         assert(line);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance.Block_count_code %lu", line->value);
         ps->blocktypeD_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
       } else if (ps->bit_length < ps->extra_length) {
         ps->bits |= (x<< ps->bit_length++);
         if (ps->bit_length >= ps->extra_length) {
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance.extra_bits %u", ps->bits);
           ps->blocktypeD_remaining += ps->bits;
           ps->bits = 0;
           ps->bit_length = 0;
@@ -1125,6 +1144,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       if (ps->bit_length >= 6) {
         unsigned const postfix = ps->bits&3;
         unsigned const direct = (ps->bits>>2)<<postfix;
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "NPOSTFIX %u NDIRECT %u", postfix, direct);
         struct tcmplxA_ringdist* const tryring = tcmplxA_ringdist_new(1,direct,postfix);
         if (!tryring) {
           tcmplxA_ringdist_destroy(tryring);
@@ -1147,6 +1167,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->bit_length += 1;
       }
       if (ps->bit_length >= 2) {
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal.context_mode[%lu] %u", (long unsigned)ps->index, ps->bits);
         tcmplxA_ctxtmap_set_mode(ps->literals_map, ps->index, (int)ps->bits);
         ps->index += 1;
         ps->bits = 0;
@@ -1177,6 +1198,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ae = tcmplxA_ErrSanitize;
           break;
         }
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "NTREES%c %u", literal?'L':'D', alphasize);
         tcmplxA_gaspvec_destroy(*forest_ptr);
         *forest_ptr = tcmplxA_gaspvec_new(alphasize);
         if (!*forest_ptr) {
@@ -1209,6 +1231,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ? ps->literals_forest : ps->distance_forest;
         size_t const ntrees = forest ? tcmplxA_gaspvec_size(forest) : 0;
         ps->rlemax = (ps->bits ? (ps->bits>>1)+1u : 0u);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.RLEMAX %u", ps->rlemax);
         ps->bit_length = 0;
         ps->state += 1;
         tcmplxA_brcvt_reset19(&ps->treety);
@@ -1257,19 +1280,21 @@ int tcmplxA_brcvt_zsrtostr_bits
         line_index = tcmplxA_fixlist_codebsearch(&ps->context_tree, ps->bit_length, ps->bits);
         if (line_index >= tcmplxA_fixlist_size(&ps->context_tree))
           break;
-        ps->bits = 0;
-        ps->bit_length = 0;
         line = tcmplxA_fixlist_at_c(&ps->context_tree, line_index);
         if (line->value == 0 || line->value > ps->rlemax) {
           /* single value */
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.value[%lu] (%lu)", (long unsigned)ps->index, line->value);
           tcmplxA_ctxtmap_data(map)[ps->index] = (unsigned char)line->value;
           ps->index += 1;
           if (ps->index >= ps->count)
             ps->state += 2;
         } else {
+          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "context.value[%lu..] zero", (long unsigned)ps->index);
           ps->extra_length = line->value;
           ps->state += 1;
         }
+        ps->bits = 0;
+        ps->bit_length = 0;
       }
       if (ps->bit_length >= 16)
         ae = tcmplxA_ErrSanitize;
@@ -1284,6 +1309,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         struct tcmplxA_ctxtmap* const map = (ps->state == tcmplxA_BrCvt_ContextRepeatL)
           ? ps->literals_map : ps->distance_map;
         size_t const total = ps->bits | (1ul<<ps->extra_length);
+        tcmplxA_brcvt_countbits(ps->bits, ps->extra_length, "... x%u", (unsigned)total);
         if (total > ps->count - ps->index) {
           ae = tcmplxA_ErrSanitize;
           break;
@@ -1300,6 +1326,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_ContextInvertL:
     case tcmplxA_BrCvt_ContextInvertD:
+      tcmplxA_brcvt_countbits(x, 1, "context.IMTF %u", x);
       if (x) {
         int const literals = (ps->state == tcmplxA_BrCvt_ContextInvertL);
         struct tcmplxA_ctxtmap* const map = literals
@@ -1659,6 +1686,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
   case tcmplxA_BrCvt_TComplex:
     treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length == 2) {
+      tcmplxA_brcvt_countbits(treety->bits, treety->bit_length, "prefix.HSKIP %u", treety->bits);
       if (treety->bits == 1) {
         treety->state = tcmplxA_BrCvt_TSimpleCount;
         treety->bits = 0;
@@ -1690,6 +1718,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
     treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length == 2) {
       unsigned short const new_count = treety->bits+1;
+      tcmplxA_brcvt_countbits(treety->bits, treety->bit_length, "prefix.NSYM %u", new_count);
       int const res = tcmplxA_fixlist_resize(&treety->nineteen, new_count);
       if (res != tcmplxA_Success)
         return res;
@@ -1702,6 +1731,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
   case tcmplxA_BrCvt_TSimpleAlpha:
     treety->bits |= (x<<(treety->bit_length++));
     if (treety->bit_length == alphabits) {
+      tcmplxA_brcvt_countbits(treety->bits, treety->bit_length, "prefix.symbol %u", treety->bits);
       tcmplxA_fixlist_at(&treety->nineteen, treety->index)->value = treety->bits;
       treety->index += 1;
       treety->bits = 0;
@@ -1717,6 +1747,7 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       }
     } break;
   case tcmplxA_BrCvt_TSimpleFour:
+    tcmplxA_brcvt_countbits(x, 1, "prefix.tree_select %u", x);
     treety->state = tcmplxA_BrCvt_TDone;
     return tcmplxA_fixlist_preset(prefixes, 4+x) == tcmplxA_Success
       ? tcmplxA_brcvt_transfer19(prefixes, &treety->nineteen) : tcmplxA_ErrMemory;
@@ -1742,6 +1773,8 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       }
       if (len > 5)
         return tcmplxA_Success;
+      tcmplxA_brcvt_countbits(treety->bits, treety->bit_length, "prefix.Nineteen_length[[%u]->%u] %u",
+        treety->index, tcmplxA_brcvt_clen[treety->index], len);
       treety->bits = 0;
       treety->bit_length = 0;
       if (len > 0) {
@@ -1807,8 +1840,13 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       treety->bit_length += 1;
       code_index = tcmplxA_fixlist_codebsearch(&treety->nineteen, treety->bit_length, treety->bits);
       if (code_index < tcmplxA_fixlist_size(&treety->nineteen)) {
-        int const res = tcmplxA_brcvt_post19(treety, prefixes,
-          tcmplxA_fixlist_at_c(&treety->nineteen, code_index)->value);
+        long unsigned const value =
+          tcmplxA_fixlist_at_c(&treety->nineteen, code_index)->value;
+        unsigned const bits = treety->bits;
+        unsigned const bit_length = treety->bit_length;
+        unsigned const index = treety->index;
+        int const res = tcmplxA_brcvt_post19(treety, prefixes, value);
+        tcmplxA_brcvt_countbits(bits, bit_length, "prefix.Symbol[%u] = %lu", index, value);
         if (res != tcmplxA_Success)
           return res;
       } else if (treety->bit_length > 5)
@@ -2291,6 +2329,9 @@ int tcmplxA_brcvt_strrtozs_bits
     case tcmplxA_BrCvt_WBits: /* WBITS */
       if (ps->bit_length == 0u) {
         struct tcmplxA_fixlist* const wbits = ps->wbits;
+#if (!defined NDEBUG) && (defined tcmplxA_BrCvt_LogErr)
+        tcmplxA_brcvt_counter = 0;
+#endif //NDEBUG && tcmplxA_BrCvt_LogErr
         tcmplxA_fixlist_valuesort(wbits);
         assert(ps->wbits_select >= 10 && ps->wbits_select <= 24);
         {
