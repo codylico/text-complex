@@ -110,6 +110,7 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_ContextRepeatD = 42,
   tcmplxA_BrCvt_ContextInvertD = 43,
   tcmplxA_BrCvt_GaspVectorL = 44,
+  tcmplxA_BrCvt_TempGap = 55,
 };
 
 /** @brief Treety machine states. */
@@ -1189,6 +1190,14 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->state = tcmplxA_BrCvt_TreeCountL;
         ps->bit_length = 0;
       } break;
+    case tcmplxA_BrCvt_TempGap:
+      if (ps->bit_length < 3)
+        ps->bit_length += 1;
+      if (ps->bit_length >= 3) {
+        ps->state = tcmplxA_BrCvt_TreeCountL;
+        ps->bit_length = 0;
+      }
+      break;
     case tcmplxA_BrCvt_TreeCountL:
     case tcmplxA_BrCvt_TreeCountD:
       if (ps->bit_length == 0) {
@@ -2992,6 +3001,7 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_ContextRepeatD:
     case tcmplxA_BrCvt_ContextInvertD:
     case tcmplxA_BrCvt_GaspVectorL:
+    case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
