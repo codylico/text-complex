@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(text-complex-access C)
 
+option(TCMPLX_ACCESS_BrCvt_LogErr "Whether to log bits of a Brotli stream to stderr" OFF)
 
 set(text_complex_access_FILES
   api.c
@@ -59,6 +60,10 @@ target_include_directories(tcmplx_access
     PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>"
       "$<INSTALL_INTERFACE:include>"
   )
+if (TCMPLX_ACCESS_BrCvt_LogErr)
+  target_compile_definitions(tcmplx_access
+    PRIVATE "tcmplxA_BrCvt_LogErr=1")
+endif (TCMPLX_ACCESS_BrCvt_LogErr)
 
 if (WIN32 AND BUILD_SHARED_LIBS)
   target_compile_definitions(tcmplx_access

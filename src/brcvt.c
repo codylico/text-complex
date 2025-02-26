@@ -21,7 +21,38 @@
 #include <limits.h>
 #include <assert.h>
 
+#if (!defined NDEBUG) && (defined tcmplxA_BrCvt_LogErr)
+#include <stdio.h>
+#include <stdarg.h>
 
+#if (__STDC_VERSION__ >= 201112L && !(defined __STDC_NO_THREADS__))
+_Thread_local
+#endif //__STDC_NO_THREADS__
+static unsigned long long int tcmplxA_brcvt_counter = 0;
+
+static void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
+  const char* description, ...)
+#if (defined __GNUC__)
+  __attribute__((format(printf,3,4)))
+#endif //__GNUC__
+  ;
+void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
+  const char* description, ...)
+{
+  unsigned long long int const mark = tcmplxA_brcvt_counter;
+  tcmplxA_brcvt_counter += bit_count;
+  fprintf(stderr, "[%#6llx,%u %#10x] ", mark/8, (unsigned)mark%8, bits);
+  va_list arg;
+  va_start(arg, description);
+  vfprintf(stderr, description, arg);
+  va_end(arg);
+  fputc('\n', stderr);
+  return;
+}
+#else
+static void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
+  const char* description, ...) { return; }
+#endif //NDEBUG && tcmplxA_BrCvt_LogErr
 
 enum tcmplxA_brcvt_uconst {
   tcmplxA_brcvt_LitHistoSize = 288u,
