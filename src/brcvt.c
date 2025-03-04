@@ -110,6 +110,9 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_ContextRepeatD = 42,
   tcmplxA_BrCvt_ContextInvertD = 43,
   tcmplxA_BrCvt_GaspVectorL = 44,
+  tcmplxA_BrCvt_GaspVectorI = 45,
+  tcmplxA_BrCvt_GaspVectorD = 46,
+  tcmplxA_BrCvt_DataInsertCopy = 47,
   tcmplxA_BrCvt_TempGap = 55,
 };
 
@@ -201,6 +204,8 @@ struct tcmplxA_brcvt {
   struct tcmplxA_ctxtmap* distance_map;
   /** @brief The distances' Huffman forest. */
   struct tcmplxA_gaspvec* distance_forest;
+  /** @brief The Huffman forest for insert-and-copy. */
+  struct tcmplxA_gaspvec* insert_forest;
   /** @brief Check for large blocks. */
   tcmplxA_uint32* histogram;
   /** @brief ... */
@@ -288,6 +293,12 @@ struct tcmplxA_brcvt {
   unsigned short blocktypeD_skip;
   /** @brief Distance count skip code. */
   unsigned short blockcountD_skip;
+  /** @brief Skip code for literals. */
+  unsigned short literal_skip;
+  /** @brief Skip code for insert-and-copy. */
+  unsigned short insert_skip;
+  /** @brief Skip code for distances. */
+  unsigned short distance_skip;
   /** @brief Context map prefix tree skip code. */
   unsigned short context_skip;
   /**
@@ -488,6 +499,18 @@ static int tcmplxA_brcvt_encode_map(struct tcmplxA_blockstr* buffer, size_t zero
  * @param ps state to prepare
  */
 static void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps);
+/**
+ * @brief Get the active forest.
+ * @param ps state to inspect
+ * @return a pointer to a forest if available
+ */
+static struct tcmplxA_gaspvec* tcmplxA_brcvt_active_forest(struct tcmplxA_brcvt const* ps);
+/**
+ * @brief Get the active skip code.
+ * @param ps state to inspect
+ * @return a pointer to a skip code if available
+ */
+static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt const* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -617,6 +640,7 @@ int tcmplxA_brcvt_init
     x->literals_forest = NULL;
     x->distance_map = NULL;
     x->distance_forest = NULL;
+    x->insert_forest = NULL;
     x->max_len_meta = 1024;
     x->bits = 0u;
     x->h_end = 0;
@@ -647,6 +671,9 @@ int tcmplxA_brcvt_init
     x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
     x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
     x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+    x->literal_skip = tcmplxA_brcvt_NoSkip;
+    x->insert_skip = tcmplxA_brcvt_NoSkip;
+    x->distance_skip = tcmplxA_brcvt_NoSkip;
     x->context_skip = tcmplxA_brcvt_NoSkip;
     return tcmplxA_Success;
   }
@@ -676,6 +703,7 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_gaspvec_destroy(x->literals_forest);
   tcmplxA_ctxtmap_destroy(x->distance_map);
   tcmplxA_gaspvec_destroy(x->distance_forest);
+  tcmplxA_gaspvec_destroy(x->insert_forest);
   tcmplxA_blockstr_close(&x->context_encode);
 #ifndef NDEBUG
   x->treety = tcmplxA_brcvt_treety_zero;
@@ -700,9 +728,15 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->blockcountI_skip = tcmplxA_brcvt_NoSkip;
   x->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
   x->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+  x->literal_skip = tcmplxA_brcvt_NoSkip;
+  x->insert_skip = tcmplxA_brcvt_NoSkip;
+  x->distance_skip = tcmplxA_brcvt_NoSkip;
   x->context_skip = tcmplxA_brcvt_NoSkip;
   x->literals_map = NULL;
   x->literals_forest = NULL;
+  x->distance_map = NULL;
+  x->distance_forest = NULL;
+  x->insert_forest = NULL;
 #endif /*NDEBUG*/
   return;
 }
@@ -732,6 +766,26 @@ void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps) {
   ps->blockcountI_skip = tcmplxA_brcvt_NoSkip;
   ps->blocktypeD_skip = tcmplxA_brcvt_NoSkip;
   ps->blockcountD_skip = tcmplxA_brcvt_NoSkip;
+  ps->literal_skip = tcmplxA_brcvt_NoSkip;
+  ps->insert_skip = tcmplxA_brcvt_NoSkip;
+  ps->distance_skip = tcmplxA_brcvt_NoSkip;
+}
+
+struct tcmplxA_gaspvec* tcmplxA_brcvt_active_forest(struct tcmplxA_brcvt const* ps) {
+  switch (ps->state) {
+  case tcmplxA_BrCvt_GaspVectorI: return ps->insert_forest;
+  case tcmplxA_BrCvt_GaspVectorD: return ps->distance_forest;
+  case tcmplxA_BrCvt_GaspVectorL:
+  default: return ps->literals_forest;
+  }
+}
+unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt const* ps) {
+  switch (ps->state) {
+  case tcmplxA_BrCvt_GaspVectorI: return &ps->insert_skip;
+  case tcmplxA_BrCvt_GaspVectorD: return &ps->distance_skip;
+  case tcmplxA_BrCvt_GaspVectorL:
+  default: return &ps->literal_skip;
+  }
 }
 
 int tcmplxA_brcvt_zsrtostr_bits
@@ -996,6 +1050,12 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->state += 1;
           ps->blocktypeI_max = (unsigned char)(alphasize-1u);
         }
+        tcmplxA_gaspvec_destroy(ps->insert_forest);
+        ps->insert_forest = tcmplxA_gaspvec_new(ps->treety.count);
+        if (!ps->insert_forest) {
+          ae = tcmplxA_ErrMemory;
+          break;
+        }
       } break;
     case tcmplxA_BrCvt_BlockTypesIAlpha:
       {
@@ -1231,6 +1291,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           memset(tcmplxA_ctxtmap_data(map), 0,
             tcmplxA_ctxtmap_block_types(map) * tcmplxA_ctxtmap_contexts(map));
           ps->state = (literal ? tcmplxA_BrCvt_TreeCountD : tcmplxA_BrCvt_GaspVectorL);
+          ps->index = 0;
           ps->bit_length = 0;
         } else {
           ps->state += 1;
@@ -1359,10 +1420,42 @@ int tcmplxA_brcvt_zsrtostr_bits
           tcmplxA_ctxtmap_revert_movetofront(map);
         }
         ps->state = (literals ? tcmplxA_BrCvt_TreeCountD : tcmplxA_BrCvt_GaspVectorL);
+        ps->index = 0;
         ps->bits = 0;
         ps->bit_length = 0;
       } break;
     case tcmplxA_BrCvt_GaspVectorL:
+    case tcmplxA_BrCvt_GaspVectorI:
+    case tcmplxA_BrCvt_GaspVectorD:
+      if (ps->bit_length == 0) {
+        ps->bit_length = 1;
+        tcmplxA_brcvt_reset19(&ps->treety);
+        if (ps->state == tcmplxA_BrCvt_GaspVectorD) {
+          ps->alphabits = (16 + tcmplxA_ringdist_get_direct(ps->ring)
+            + (48 << tcmplxA_ringdist_get_postfix(ps->ring)));
+        } else ps->alphabits = ((ps->state == tcmplxA_BrCvt_GaspVectorL) ? 256 : 704);
+      }
+      if (ps->bit_length > 0) {
+        struct tcmplxA_brcvt_treety* const treety = &ps->treety;
+        struct tcmplxA_gaspvec* const forest = tcmplxA_brcvt_active_forest(ps);
+        struct tcmplxA_fixlist* const tree = tcmplxA_gaspvec_at(forest, ps->index);
+        int const res = tcmplxA_brcvt_inflow19(treety, tree, x, ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          if (ps->index == 0)
+            *tcmplxA_brcvt_active_skip(ps) = tcmplxA_brcvt_resolve_skip(tree);
+          ps->bit_length = 0;
+          ps->index += 1;
+          if (ps->index >= tcmplxA_gaspvec_size(forest)) {
+            ps->state += 1;
+            ps->index = 0;
+            if (ps->state != tcmplxA_BrCvt_DataInsertCopy || ps->insert_skip == tcmplxA_brcvt_NoSkip)
+              break;
+            /* TODO handle an insert skip */
+          }
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      } break;
+    case tcmplxA_BrCvt_DataInsertCopy:
       /* TODO this state */
       break;
     case tcmplxA_BrCvt_Done: /* end of stream */
