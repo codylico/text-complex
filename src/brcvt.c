@@ -510,7 +510,7 @@ static struct tcmplxA_gaspvec* tcmplxA_brcvt_active_forest(struct tcmplxA_brcvt 
  * @param ps state to inspect
  * @return a pointer to a skip code if available
  */
-static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt const* ps);
+static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -779,7 +779,7 @@ struct tcmplxA_gaspvec* tcmplxA_brcvt_active_forest(struct tcmplxA_brcvt const* 
   default: return ps->literals_forest;
   }
 }
-unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt const* ps) {
+unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps) {
   switch (ps->state) {
   case tcmplxA_BrCvt_GaspVectorI: return &ps->insert_skip;
   case tcmplxA_BrCvt_GaspVectorD: return &ps->distance_skip;
