@@ -55,13 +55,13 @@ static void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
 #endif //NDEBUG && tcmplxA_BrCvt_LogErr
 
 enum tcmplxA_brcvt_uconst {
-  tcmplxA_brcvt_LitHistoSize = 288u,
-  tcmplxA_brcvt_DistHistoSize = 32u,
-  tcmplxA_brcvt_SeqHistoSize = 19u,
+  tcmplxA_brcvt_LitHistoSize = 256u,
+  tcmplxA_brcvt_DistHistoSize = 68u,
+  tcmplxA_brcvt_InsHistoSize = 704u,
   tcmplxA_brcvt_HistogramSize =
-      tcmplxA_brcvt_LitHistoSize
+      tcmplxA_brcvt_LitHistoSize*4u
     + tcmplxA_brcvt_DistHistoSize
-    + tcmplxA_brcvt_SeqHistoSize,
+    + tcmplxA_brcvt_InsHistoSize,
   tcmplxA_brcvt_MetaHeaderLen = 6,
   tcmplxA_brcvt_CLenExtent = 18,
   tcmplxA_BrCvt_Margin = 16,
@@ -83,6 +83,7 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_Done = 7,
   tcmplxA_BrCvt_CompressCheck = 8,
   tcmplxA_BrCvt_Uncompress = 9,
+  tcmplxA_BrCvt_BadToken = 10,
   tcmplxA_BrCvt_BlockTypesL = 16,
   tcmplxA_BrCvt_BlockTypesLAlpha = 17,
   tcmplxA_BrCvt_BlockCountLAlpha = 18,
@@ -113,7 +114,9 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_GaspVectorI = 45,
   tcmplxA_BrCvt_GaspVectorD = 46,
   tcmplxA_BrCvt_DataInsertCopy = 47,
+
   tcmplxA_BrCvt_TempGap = 55,
+  tcmplxA_BrCvt_Literal = 56,
 };
 
 /** @brief Treety machine states. */
@@ -157,6 +160,23 @@ struct tcmplxA_brcvt_treety {
   struct tcmplxA_fixlist nineteen;
   /** @brief Tree description sequence. */
   struct tcmplxA_blockstr sequence_list;
+};
+
+struct tcmplxA_brcvt_token {
+  tcmplxA_uint32 first;
+  unsigned short second;
+  unsigned char state;
+};
+
+struct tcmplxA_brcvt_forward {
+  size_t i;
+  tcmplxA_uint32 literal_i;
+  tcmplxA_uint32 literal_total;
+  tcmplxA_uint32 pos;
+  tcmplxA_uint32 stop;
+  unsigned short literal_span;
+  unsigned char ostate;
+  unsigned char ctxt_i;
 };
 
 struct tcmplxA_brcvt {
@@ -206,7 +226,7 @@ struct tcmplxA_brcvt {
   struct tcmplxA_gaspvec* distance_forest;
   /** @brief The Huffman forest for insert-and-copy. */
   struct tcmplxA_gaspvec* insert_forest;
-  /** @brief Check for large blocks. */
+  /** @brief Histogram storage used for generating data trees. */
   tcmplxA_uint32* histogram;
   /** @brief ... */
   tcmplxA_uint32 bits;
@@ -511,6 +531,17 @@ static struct tcmplxA_gaspvec* tcmplxA_brcvt_active_forest(struct tcmplxA_brcvt 
  * @return a pointer to a skip code if available
  */
 static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps);
+/**
+ * @brief Generate a nonzero token to emit to output.
+ * @param fwd token forwarding structure
+ * @param guesses literal block switch tracker
+ * @param data output data in block buffer format
+ * @param size length of output data in bytes
+ * @return a token
+ */
+struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
+  (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
+    unsigned char const* data, size_t size);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -2338,6 +2369,81 @@ int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps) {
     && (ps->state <= tcmplxA_BrCvt_MetaText);
 }
 
+struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
+  (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
+    unsigned char const* data, size_t size)
+{
+  struct tcmplxA_brcvt_token out = {0};
+  if (fwd->ostate == 0) {
+    fwd->stop = (tcmplxA_uint32)(guesses->count > 1
+      ? guesses->offsets[1] : guesses->total_bytes);
+    fwd->ostate = tcmplxA_BrCvt_DataInsertCopy;
+  }
+  if (fwd->i >= size)
+    return out;
+  switch (fwd->ostate) {
+  case tcmplxA_BrCvt_DataInsertCopy:
+    {
+      /* acquire all inserts */
+      tcmplxA_uint32 total = 0;
+      size_t next_i;
+      tcmplxA_uint32 literals = 0;
+      tcmplxA_uint32 first_literals = 0;
+      out.state = tcmplxA_BrCvt_DataInsertCopy;
+      /* compose insert length */
+      for (next_i = fwd->i; next_i < size; ++next_i) {
+        unsigned short next_span = 0;
+        unsigned char const ch = data[next_i];
+        if (literals) {
+          literals -= 1;
+          continue;
+        } else if (ch & 128u)
+          break;
+        next_span = (ch & 63u);
+        if (ch & 64u) {
+          assert(next_i < size-1u);
+          next_i += 1;
+          next_span = (next_span << 8) + data[next_i] + 64u;
+        }
+        if (next_span == 0 && first_literals == 0) {
+          fwd->i = next_i+1;
+          if (fwd->i >= size) {
+            out.state = 0;
+            fwd->ostate = tcmplxA_BrCvt_Done;
+            return out;
+          }
+          continue;
+        }
+        if (!first_literals)
+          first_literals = next_span;
+        literals = next_span;
+        assert(literals <= 16777216-total);
+        total += literals;
+      }
+      out.first = total;
+      if (next_i >= size)
+        break;
+      /* parse copy length */{
+        unsigned char const ch = data[next_i];
+        unsigned short next_span = 0;
+        assert(ch & 128u);
+        next_span = (ch & 63u);
+        if (ch & 64u) {
+          assert(next_i < size-1u);
+          next_i += 1;
+          next_span = (next_span << 8) + data[next_i] + 64u;
+        }
+        out.second = next_span;
+      }
+      fwd->i += (1 + ((data[fwd->i]&64u)!=0));
+      fwd->ostate = tcmplxA_BrCvt_Literal;
+    } break;
+  default:
+    out.state = tcmplxA_BrCvt_BadToken;
+    break;
+  }
+  return out;
+}
 
 int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   unsigned int ctxt_i;
@@ -2391,6 +2497,58 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
       tcmplxA_ctxtmap_set(ps->literals_map, btype_j, ctxt_i, (int)btype_j);
   }
   ps->context_encode.sz = 0;
+  /* prepare the fixed-size forests */{
+    if (!ps->insert_forest) {
+      ps->insert_forest = tcmplxA_gaspvec_new(1);
+      if (!ps->insert_forest)
+        return tcmplxA_ErrMemory;
+    }
+    if (!ps->distance_forest) {
+      ps->distance_forest = tcmplxA_gaspvec_new(1);
+      if (!ps->distance_forest)
+        return tcmplxA_ErrMemory;
+    }
+  }
+  /* prepare the variable-size forest */{
+    if ((!ps->literals_forest) || tcmplxA_gaspvec_size(ps->literals_forest) != btypes) {
+      tcmplxA_gaspvec_destroy(ps->literals_forest);
+      ps->literals_forest = tcmplxA_gaspvec_new(btypes);
+      if (!ps->literals_forest)
+        return tcmplxA_ErrMemory;
+    }
+  }
+  /* fill the histograms */{
+    tcmplxA_uint32 *const insert_histogram = ps->histogram;
+    tcmplxA_uint32 *const distance_histogram = insert_histogram+tcmplxA_brcvt_InsHistoSize;
+    tcmplxA_uint32 *literal_histograms[4] = {NULL};
+    tcmplxA_uint32 literal_lengths[tcmplxA_CtxtSpan_Size+1] = {0};
+    struct tcmplxA_brcvt_forward try_fwd = {0};
+    size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
+    size_t i = 0;
+    tcmplxA_uint32 literal_counter = 0;
+    unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
+    /* compute histogram addresses for literals */{
+      tcmplxA_uint32 *const literal_start = distance_histogram+tcmplxA_brcvt_DistHistoSize;
+      for (btype_j = 0; btype_j < btypes; ++btype_j)
+        literal_histograms[btype_j] = literal_start+tcmplxA_brcvt_LitHistoSize*btype_j;
+    }
+    memset(ps->histogram, 0, sizeof(tcmplxA_uint32)*tcmplxA_brcvt_HistogramSize);
+    for (i = 0; i < size; ++i) {
+      struct tcmplxA_brcvt_token next =
+        tcmplxA_brcvt_next_token(&try_fwd, &ps->guesses, data, size);
+      if (try_fwd.i <= i)
+        return tcmplxA_ErrSanitize;
+      i = try_fwd.i-1;
+      switch (next.state) {
+      case tcmplxA_BrCvt_DataInsertCopy:
+        /* TODO use the inscopy instance to update the histogram */
+        break;
+      default:
+        return tcmplxA_ErrSanitize;
+      }
+    }
+    /* TODO parse the output buffer */
+  }
   /* TODO the rest */
   return tcmplxA_Success;
 }
