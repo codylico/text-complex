@@ -17,6 +17,7 @@
 #include "text-complex/access/brmeta.h"
 #include "text-complex/access/ctxtspan.h"
 #include "text-complex/access/gaspvec.h"
+#include "text-complex/access/bdict.h"
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
@@ -117,6 +118,9 @@ enum tcmplxA_brcvt_istate {
 
   tcmplxA_BrCvt_TempGap = 55,
   tcmplxA_BrCvt_Literal = 56,
+  tcmplxA_BrCvt_Distance = 57,
+  tcmplxA_BrCvt_LiteralRestart = 58,
+  tcmplxA_BrCvt_BDict = 59,
 };
 
 /** @brief Treety machine states. */
@@ -168,13 +172,18 @@ struct tcmplxA_brcvt_token {
   unsigned char state;
 };
 
+/**
+ * @brief Demand-driven output bit negotiator.
+ * @note This structure allows meta-blocks to emit zero bytes.
+ */
 struct tcmplxA_brcvt_forward {
   size_t i;
   tcmplxA_uint32 literal_i;
   tcmplxA_uint32 literal_total;
   tcmplxA_uint32 pos;
   tcmplxA_uint32 stop;
-  unsigned short literal_span;
+  tcmplxA_uint32 accum;
+  unsigned short command_span;
   unsigned char ostate;
   unsigned char ctxt_i;
 };
@@ -537,11 +546,12 @@ static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps);
  * @param guesses literal block switch tracker
  * @param data output data in block buffer format
  * @param size length of output data in bytes
+ * @param wbits_select window size bits indirectly selected by user
  * @return a token
  */
 struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
-    unsigned char const* data, size_t size);
+    unsigned char const* data, size_t size, unsigned char wbits_select);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
@@ -611,12 +621,12 @@ int tcmplxA_brcvt_init
       res = tcmplxA_ErrMemory;
   }
   /* values */{
-    x->values = tcmplxA_inscopy_new(286u);
+    x->values = tcmplxA_inscopy_new(704u);
     if (x->values == NULL)
       res = tcmplxA_ErrMemory;
     else {
       int const preset_ae =
-        tcmplxA_inscopy_preset(x->values, tcmplxA_InsCopy_Deflate);
+        tcmplxA_inscopy_preset(x->values, tcmplxA_InsCopy_BrotliIC);
       if (preset_ae != tcmplxA_Success)
         res = preset_ae;
       else tcmplxA_inscopy_codesort(x->values);
@@ -2371,7 +2381,7 @@ int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps) {
 
 struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
-    unsigned char const* data, size_t size)
+    unsigned char const* data, size_t size, unsigned char wbits_select)
 {
   struct tcmplxA_brcvt_token out = {0};
   if (fwd->ostate == 0) {
@@ -2381,6 +2391,17 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   }
   if (fwd->i >= size)
     return out;
+  else if (fwd->pos >= fwd->stop && fwd->i < size) {
+    fwd->ctxt_i += 1;
+    for (; fwd->ctxt_i < guesses->count; ++fwd->ctxt_i) {
+      fwd->stop = (tcmplxA_uint32)(fwd->ctxt_i+1 < guesses->count
+        ? guesses->offsets[fwd->ctxt_i+1] : guesses->total_bytes);
+      if (fwd->pos < fwd->stop) {
+        out.state = tcmplxA_BrCvt_LiteralRestart;
+        return out;
+      }
+    }
+  }
   switch (fwd->ostate) {
   case tcmplxA_BrCvt_DataInsertCopy:
     {
@@ -2421,6 +2442,9 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
         total += literals;
       }
       out.first = total;
+      fwd->accum += total;
+      if (fwd->accum >= 16777200u)
+        fwd->accum = 16777200u;
       if (next_i >= size)
         break;
       /* parse copy length */{
@@ -2436,7 +2460,101 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
         out.second = next_span;
       }
       fwd->i += (1 + ((data[fwd->i]&64u)!=0));
-      fwd->ostate = tcmplxA_BrCvt_Literal;
+      if (out.first == 0)
+        fwd->ostate = tcmplxA_BrCvt_Distance;
+      else
+        fwd->ostate = tcmplxA_BrCvt_Literal;
+      fwd->literal_i = 0;
+      fwd->command_span = (unsigned short)first_literals;
+      fwd->literal_total = total;
+    } break;
+  case tcmplxA_BrCvt_Literal:
+    out.state = tcmplxA_BrCvt_Literal;
+    out.first = data[fwd->i];
+    fwd->i += 1;
+    fwd->literal_i += 1;
+    if (fwd->i >= size)
+      fwd->ostate = tcmplxA_BrCvt_Done;
+    else if (fwd->literal_i >= fwd->literal_total) {
+      /* check for copy count */
+      unsigned char const ch = data[fwd->i];
+      unsigned short next_span = (ch & 63u);
+      if (ch & 64u) {
+        assert(fwd->i < size-1u);
+        fwd->i += 1;
+        next_span = (next_span << 8) + data[fwd->i] + 64u;
+      }
+      fwd->i += 1;
+      fwd->ostate = tcmplxA_BrCvt_Distance;
+      fwd->pos += next_span;
+      fwd->command_span = next_span;
+    } else if (fwd->literal_i >= fwd->command_span) {
+      size_t next_i;
+      assert(fwd->command_span <= fwd->literal_total);
+      fwd->literal_total -= fwd->command_span;
+      fwd->literal_i = 0;
+      for (next_i = fwd->i; next_i < size; ++next_i) {
+        unsigned short next_span = 0;
+        unsigned char const ch = data[next_i];
+        if (ch & 128u) {
+          out.state = tcmplxA_BrCvt_BadToken;
+          return out;
+        } else if ((ch & 63u) == 0u)
+          continue;
+        next_span = (ch & 63u);
+        if (ch & 64u) {
+          assert(next_i < size-1u);
+          next_i += 1;
+          next_span = (next_span << 8) + data[next_i] + 64u;
+        }
+        fwd->i = next_i+1;
+        fwd->command_span = next_span;
+        break;
+      }
+    } break;
+  case tcmplxA_BrCvt_Distance:
+    {
+      unsigned char const root = data[fwd->i];
+      if (root < 128) {
+        /* bdict command */
+        tcmplxA_uint32 const past_window = (tcmplxA_uint32)((1ul<<wbits_select)-16ul);
+        unsigned const n_words = tcmplxA_bdict_word_count(fwd->command_span);
+        unsigned short const filter = root & 127u;
+        tcmplxA_uint32 word_id = filter * n_words;
+        tcmplxA_uint32 past_counter = 0;
+        unsigned selector = 0;
+        if (n_words == 0 || size < 3 || fwd->i > size-3) {
+          out.state = tcmplxA_BrCvt_BadToken;
+          break;
+        }
+        fwd->i += 1;
+        selector = (data[fwd->i]<<8)|data[fwd->i+1];
+        if (selector >= n_words) {
+          out.state = tcmplxA_BrCvt_BadToken;
+          break;
+        }
+        fwd->i += 2;
+        word_id += selector;
+        past_counter = (fwd->accum > past_window) ? past_window : fwd->accum;
+        out.state = tcmplxA_BrCvt_BDict;
+        out.first = past_counter + word_id;
+      } else {
+        tcmplxA_uint32 distance = 0;
+        unsigned const byte_count = (root&64u) ? 4 : 2;
+        unsigned j;
+        if (size < byte_count || fwd->i > size-byte_count) {
+          out.state = tcmplxA_BrCvt_BadToken;
+          break;
+        }
+        for (j = 0; j < byte_count; ++j, ++fwd->i) {
+          unsigned const digit = data[fwd->i] & (j ? 255u : 63u);
+          distance = (distance<<8) | digit;
+        }
+        out.state = tcmplxA_BrCvt_Distance;
+        out.first = distance + ((root&64u)<<8); /* +16384 when 30-bit sequence */
+      }
+      fwd->accum += fwd->command_span;
+      fwd->ostate = (fwd->i >= size ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_DataInsertCopy);
     } break;
   default:
     out.state = tcmplxA_BrCvt_BadToken;
@@ -2451,9 +2569,12 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   size_t accum = 0;
   size_t btypes = 0;
   size_t btype_j;
+  size_t try_bit_count = 0;
   int blocktype_tree = tcmplxA_FixList_BrotliComplex;
   /* calculate the guesses */
   tcmplxA_uint32 ctxt_histogram[4] = {0};
+  if (tcmplxA_inscopy_lengthsort(ps->values) != tcmplxA_Success)
+    return tcmplxA_ErrInit;
   ps->guesses = tcmplxA_brcvt_guess_zero;
   tcmplxA_ctxtspan_subdivide(&ps->guesses,
     tcmplxA_blockbuf_input_data(ps->buffer), tcmplxA_blockbuf_input_size(ps->buffer),
@@ -2526,30 +2647,70 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
     size_t i = 0;
     tcmplxA_uint32 literal_counter = 0;
+    tcmplxA_uint32 next_copy = 0;
     unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
+    //TODO: try_fwd.accum = ps->fwd.accum;
     /* compute histogram addresses for literals */{
       tcmplxA_uint32 *const literal_start = distance_histogram+tcmplxA_brcvt_DistHistoSize;
-      for (btype_j = 0; btype_j < btypes; ++btype_j)
+      for (btype_j = 0; btype_j < 4u; ++btype_j)
         literal_histograms[btype_j] = literal_start+tcmplxA_brcvt_LitHistoSize*btype_j;
     }
+    ctxt_i = 0;
     memset(ps->histogram, 0, sizeof(tcmplxA_uint32)*tcmplxA_brcvt_HistogramSize);
     for (i = 0; i < size; ++i) {
       struct tcmplxA_brcvt_token next =
-        tcmplxA_brcvt_next_token(&try_fwd, &ps->guesses, data, size);
+        tcmplxA_brcvt_next_token(&try_fwd, &ps->guesses, data, size, ps->wbits_select);
       if (try_fwd.i <= i)
         return tcmplxA_ErrSanitize;
       i = try_fwd.i-1;
       switch (next.state) {
       case tcmplxA_BrCvt_DataInsertCopy:
-        /* TODO use the inscopy instance to update the histogram */
+        /* */{
+          size_t const icv = tcmplxA_inscopy_encode(ps->values, next.first,
+            next.second ? next.second : 2, 0);
+          struct tcmplxA_inscopy_row const* const icv_row =
+            tcmplxA_inscopy_at_c(ps->values, icv);
+          if (!icv_row)
+            return tcmplxA_ErrSanitize;
+          assert(icv_row->code < 704u);
+          insert_histogram[icv_row->code] += 1;
+          try_bit_count += icv_row->insert_bits;
+          try_bit_count += icv_row->copy_bits;
+          next_copy = next.second;
+        } break;
+      case tcmplxA_BrCvt_LiteralRestart:
+        assert(ctxt_i < tcmplxA_CtxtSpan_Size);
+        literal_lengths[ctxt_i] = literal_counter;
+        literal_counter = 0;
+        ctxt_i = try_fwd.ctxt_i;
         break;
+      case tcmplxA_BrCvt_Literal:
+        /* */{
+          tcmplxA_uint32* const hist = literal_histograms[ps->guesses.modes[ctxt_i]];
+          hist[next.first&255u] += 1;
+        } break;
+      case tcmplxA_BrCvt_Distance:
+      case tcmplxA_BrCvt_BDict:
+        /* */{
+          int const to_record = (next.state==tcmplxA_BrCvt_Distance);
+          tcmplxA_uint32 extra = 0;
+          // TODO: use `to_record`
+          unsigned const cmd = tcmplxA_ringdist_encode(ps->try_ring, next.first, &extra);
+          if (cmd >= tcmplxA_brcvt_DistHistoSize)
+            return tcmplxA_ErrSanitize;
+          try_bit_count += extra;
+          distance_histogram[cmd] += 1;
+        } break;
       default:
         return tcmplxA_ErrSanitize;
       }
     }
-    /* TODO parse the output buffer */
+    assert(ctxt_i < tcmplxA_CtxtSpan_Size);
+    literal_lengths[ctxt_i] = literal_counter;
+    /* TODO apply histograms to the trees */
+    /* TODO count the bits*histogram for each tree leaf */
   }
-  /* TODO the rest */
+  /* TODO compare to the uncompress byte count */
   return tcmplxA_Success;
 }
 
@@ -2762,6 +2923,7 @@ int tcmplxA_brcvt_strrtozs_bits
           ps->state = tcmplxA_BrCvt_Uncompress;
           ps->backward = tcmplxA_blockbuf_output_size(ps->buffer);
           ps->count = 0;
+          //TODO: ps->fwd.accum += ps->backward;
           assert(ps->backward);
           break;
         }
@@ -3252,6 +3414,10 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_ContextRepeatD:
     case tcmplxA_BrCvt_ContextInvertD:
     case tcmplxA_BrCvt_GaspVectorL:
+    case tcmplxA_BrCvt_Literal:
+    case tcmplxA_BrCvt_DataInsertCopy:
+    case tcmplxA_BrCvt_LiteralRestart:
+    case tcmplxA_BrCvt_Distance:
     case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
@@ -3357,6 +3523,10 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_ContextRepeatD:
     case tcmplxA_BrCvt_ContextInvertD:
     case tcmplxA_BrCvt_GaspVectorL:
+    case tcmplxA_BrCvt_Literal:
+    case tcmplxA_BrCvt_DataInsertCopy:
+    case tcmplxA_BrCvt_LiteralRestart:
+    case tcmplxA_BrCvt_Distance:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
