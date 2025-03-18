@@ -68,6 +68,7 @@ enum tcmplxA_brcvt_uconst {
   tcmplxA_BrCvt_Margin = 16,
   tcmplxA_brcvt_BlockCountBits = 5,
   tcmplxA_brcvt_NoSkip = SHRT_MAX,
+  tcmplxA_brcvt_TreetyOutflowMax = 4096,
   tcmplxA_brcvt_RepeatBit = 128,
   tcmplxA_brcvt_ZeroBit = 64,
   tcmplxA_brcvt_ContextHistogram = 10,
@@ -528,6 +529,19 @@ static int tcmplxA_brcvt_encode_map(struct tcmplxA_blockstr* buffer, size_t zero
  * @param ps state to prepare
  */
 static void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps);
+/**
+ * @brief Apply a histogram to a prefix list.
+ * @param tree prefix list to replace and update
+ * @param histogram item frequencies
+ * @param histogram_size size of frequency array, also number of
+ *   entries in the prefix list
+ * @param[in,out] ae error code on failure; fast-quits if set
+ * @return the number of bits that would be used to encode the prefix list
+ *   @em and the stream that uses the new prefix list
+ */
+static size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_fixlist* tree,
+  tcmplxA_uint32 const* histogram, size_t histogram_size,
+  int *ae);
 /**
  * @brief Get the active forest.
  * @param ps state to inspect
@@ -2614,6 +2628,8 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
       return tcmplxA_ErrMemory;
   }
   for (btype_j = 0; btype_j < btypes; ++btype_j) {
+    struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, btype_j);
+    tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j, (int)line->value);
     for (ctxt_i = 0; ctxt_i < 64; ++ctxt_i)
       tcmplxA_ctxtmap_set(ps->literals_map, btype_j, ctxt_i, (int)btype_j);
   }
@@ -2649,6 +2665,7 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     tcmplxA_uint32 literal_counter = 0;
     tcmplxA_uint32 next_copy = 0;
     unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
+    int ae = tcmplxA_Success;
     //TODO: try_fwd.accum = ps->fwd.accum;
     /* compute histogram addresses for literals */{
       tcmplxA_uint32 *const literal_start = distance_histogram+tcmplxA_brcvt_DistHistoSize;
@@ -2705,13 +2722,70 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
         return tcmplxA_ErrSanitize;
       }
     }
-    assert(ctxt_i < tcmplxA_CtxtSpan_Size);
+    assert(ctxt_i <= tcmplxA_CtxtSpan_Size);
     literal_lengths[ctxt_i] = literal_counter;
-    /* TODO apply histograms to the trees */
-    /* TODO count the bits*histogram for each tree leaf */
+    /* apply histograms to the trees */
+    try_bit_count += tcmplxA_brcvt_apply_histogram(
+      tcmplxA_gaspvec_at(ps->distance_forest,0), distance_histogram,
+      tcmplxA_brcvt_DistHistoSize, &ae);
+    try_bit_count += tcmplxA_brcvt_apply_histogram(
+      tcmplxA_gaspvec_at(ps->insert_forest,0), insert_histogram,
+      tcmplxA_brcvt_InsHistoSize, &ae);
+    for (btype_j = 0; btype_j < btypes; ++btype_j) {
+      int const btype = tcmplxA_ctxtmap_get_mode(ps->literals_map, btype_j);
+      try_bit_count += tcmplxA_brcvt_apply_histogram(
+        tcmplxA_gaspvec_at(ps->literals_forest,btype_j),
+        literal_histograms[btype],
+        tcmplxA_brcvt_LitHistoSize, &ae);
+    }
   }
-  /* TODO compare to the uncompress byte count */
+  if (try_bit_count/8+1 > tcmplxA_blockbuf_input_size(ps->buffer))
+    return tcmplxA_ErrBlockOverflow;
   return tcmplxA_Success;
+}
+
+size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_fixlist* tree,
+  tcmplxA_uint32 const* histogram, size_t histogram_size,
+  int *ae)
+{
+  size_t i;
+  size_t bit_count;
+  unsigned const alphabits = tcmplxA_util_bitwidth((unsigned)(histogram_size-1));
+  struct tcmplxA_brcvt_treety attempt = {0};
+  if (*ae)
+    return 0;
+  if (tcmplxA_fixlist_size(tree) != histogram_size) {
+    *ae = tcmplxA_fixlist_resize(tree, histogram_size);
+    if (*ae)
+      return 0;
+  }
+  for (i = 0; i < histogram_size; ++i) {
+    struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(tree, i);
+    line->value = (unsigned)i;
+  }
+  *ae = tcmplxA_fixlist_gen_lengths(tree, histogram, 15);
+  if (*ae)
+    return 0;
+  *ae = tcmplxA_fixlist_gen_codes(tree);
+  if (*ae)
+    return 0;
+  for (i = 0; i < histogram_size; ++i) {
+    struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(tree, i);
+    bit_count += line->len * (size_t)histogram[i];
+  }
+  for (i = 0; i < tcmplxA_brcvt_TreetyOutflowMax; ++i) {
+    unsigned sink = 0;
+    int const res = tcmplxA_brcvt_outflow19(&attempt, tree, &sink, alphabits);
+    if (res == tcmplxA_EOF)
+      break;
+    else if (res != tcmplxA_Success) {
+      *ae = res;
+      tcmplxA_brcvt_close19(&attempt);
+      return 0;
+    } else bit_count += 1;
+  }
+  tcmplxA_brcvt_close19(&attempt);
+  return bit_count;
 }
 
 
