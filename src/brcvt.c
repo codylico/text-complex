@@ -1486,9 +1486,10 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->bit_length = 1;
         tcmplxA_brcvt_reset19(&ps->treety);
         if (ps->state == tcmplxA_BrCvt_GaspVectorD) {
-          ps->alphabits = (16 + tcmplxA_ringdist_get_direct(ps->ring)
+          ps->treety.count = (16 + tcmplxA_ringdist_get_direct(ps->ring)
             + (48 << tcmplxA_ringdist_get_postfix(ps->ring)));
-        } else ps->alphabits = ((ps->state == tcmplxA_BrCvt_GaspVectorL) ? 256 : 704);
+        } else ps->treety.count = ((ps->state == tcmplxA_BrCvt_GaspVectorL) ? 256 : 704);
+        ps->alphabits = tcmplxA_util_bitwidth(ps->treety.count-1);
       }
       if (ps->bit_length > 0) {
         struct tcmplxA_brcvt_treety* const treety = &ps->treety;
@@ -1995,8 +1996,12 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
       break;
     else {
       int const res = tcmplxA_brcvt_post19(treety, prefixes, treety->bits);
+      tcmplxA_brcvt_countbits(treety->bits, treety->bit_length, "... x%u", treety->bits);
       if (res != tcmplxA_Success)
         return res;
+      treety->state = tcmplxA_BrCvt_TSymbols;
+      treety->bit_length = 0;
+      treety->bits = 0;
     }
     if (treety->nonzero != 1)
       break;
@@ -2028,6 +2033,17 @@ int tcmplxA_brcvt_inflow19(struct tcmplxA_brcvt_treety* treety,
     } break;
   default:
     return tcmplxA_ErrSanitize;
+  }
+  return tcmplxA_Success;
+}
+int tcmplxA_brcvt_zerofill(struct tcmplxA_brcvt_treety* treety,
+  struct tcmplxA_fixlist* prefixes)
+{
+  unsigned i;
+  for (i = treety->index; i < treety->count; ++i) {
+    struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(prefixes, i);
+    line->len = 0;
+    line->value = i;
   }
   return tcmplxA_Success;
 }
@@ -2098,6 +2114,7 @@ int tcmplxA_brcvt_post19(struct tcmplxA_brcvt_treety* treety,
     } else return tcmplxA_ErrSanitize;
   } else return tcmplxA_ErrSanitize;
   if (treety->index >= treety->count || treety->len_check >= 32768) {
+    int const fill = tcmplxA_brcvt_zerofill(treety, prefixes);
     int const sort_res = tcmplxA_fixlist_valuesort(prefixes);
     int const res = tcmplxA_fixlist_gen_codes(prefixes);
     int const code_res = tcmplxA_fixlist_codesort(prefixes);
@@ -3488,6 +3505,8 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_ContextRepeatD:
     case tcmplxA_BrCvt_ContextInvertD:
     case tcmplxA_BrCvt_GaspVectorL:
+    case tcmplxA_BrCvt_GaspVectorI:
+    case tcmplxA_BrCvt_GaspVectorD:
     case tcmplxA_BrCvt_Literal:
     case tcmplxA_BrCvt_DataInsertCopy:
     case tcmplxA_BrCvt_LiteralRestart:
@@ -3597,6 +3616,8 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_ContextRepeatD:
     case tcmplxA_BrCvt_ContextInvertD:
     case tcmplxA_BrCvt_GaspVectorL:
+    case tcmplxA_BrCvt_GaspVectorI:
+    case tcmplxA_BrCvt_GaspVectorD:
     case tcmplxA_BrCvt_Literal:
     case tcmplxA_BrCvt_DataInsertCopy:
     case tcmplxA_BrCvt_LiteralRestart:
