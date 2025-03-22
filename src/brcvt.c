@@ -906,8 +906,31 @@ int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert) {
   return tcmplxA_Success;
 }
 int tcmplxA_brcvt_inflow_distextra(struct tcmplxA_brcvt* ps) {
+  size_t const window = (size_t)((1ul<<ps->wbits_select)-16u);
+  size_t const cutoff = (ps->fwd.accum > window ? window : ps->fwd.accum);
   ps->state = tcmplxA_BrCvt_DoCopy;
   ps->fwd.pos = tcmplxA_ringdist_decode(ps->ring, ps->fwd.pos, ps->bits);
+  if (ps->fwd.pos > cutoff) {
+    ps->state = tcmplxA_BrCvt_BDict;
+    /* RFC-7932 Section 8: */
+    unsigned size = (unsigned)ps->fwd.literal_total;
+    unsigned const word_id = ps->fwd.pos - (cutoff + 1);
+    unsigned const word_count = tcmplxA_bdict_word_count(size);
+    unsigned index;
+    unsigned transform;
+    unsigned char const* text;
+    if (word_count == 0)
+      return tcmplxA_ErrSanitize;
+    index = word_id % word_count;
+    transform = word_id / word_count;
+    text = tcmplxA_bdict_get_word(size, index);
+    if (!text)
+      return tcmplxA_ErrSanitize;
+    memcpy(ps->fwd.bstore, text, size);
+    if (tcmplxA_bdict_transform(ps->fwd.bstore, &size, transform) != tcmplxA_Success)
+      return tcmplxA_ErrSanitize;
+    ps->fwd.literal_total = size;
+  }
   return tcmplxA_ErrPartial;
 }
 
@@ -989,6 +1012,16 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         if (*ret >= dstsz)
           return tcmplxA_ErrPartial;
         tcmplxA_brcvt_inflow_literal(ps, '.', ret, dst, dstsz);
+      }
+      ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
+        : tcmplxA_BrCvt_InsertRestart);
+      break;
+    case tcmplxA_BrCvt_BDict:
+      assert(fwd->literal_total <= sizeof(fwd->bstore));
+      for (; fwd->literal_i < fwd->literal_total; ++fwd->literal_i) {
+        if (*ret >= dstsz)
+          return tcmplxA_ErrPartial;
+        tcmplxA_brcvt_inflow_literal(ps, fwd->bstore[fwd->literal_i], ret, dst, dstsz);
       }
       ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
         : tcmplxA_BrCvt_InsertRestart);
@@ -1762,6 +1795,10 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->count = 0;
         ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
+    case tcmplxA_BrCvt_DoCopy:
+    case tcmplxA_BrCvt_BDict:
+      ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
@@ -3764,6 +3801,8 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_DistanceRestart:
     case tcmplxA_BrCvt_InsertRestart:
     case tcmplxA_BrCvt_DataDistanceExtra:
+    case tcmplxA_BrCvt_DoCopy:
+    case tcmplxA_BrCvt_BDict:
     case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
