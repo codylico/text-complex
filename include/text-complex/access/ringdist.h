@@ -57,6 +57,8 @@ unsigned int tcmplxA_ringdist_bit_count
  * @return a flat distance, or zero on conversion error
  * @note On successful conversion, the distance ring buffer is advanced
  *   as necessary.
+ * @todo Add a norecord parameter, equal to minimum result
+ *   value to prevent recording.
  */
 TCMPLX_A_API
 tcmplxA_uint32 tcmplxA_ringdist_decode
@@ -70,6 +72,7 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
  * @return a distance code, or UINT_MAX on error
  * @note On successful conversion, the distance ring buffer is advanced
  *   as necessary.
+ * @todo Add a norecord Boolean parameter.
  */
 TCMPLX_A_API
 unsigned int tcmplxA_ringdist_encode

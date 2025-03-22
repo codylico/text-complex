@@ -116,12 +116,18 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_GaspVectorI = 45,
   tcmplxA_BrCvt_GaspVectorD = 46,
   tcmplxA_BrCvt_DataInsertCopy = 47,
+  tcmplxA_BrCvt_DoCopy = 48,
+  tcmplxA_BrCvt_DataInsertExtra = 49,
+  tcmplxA_BrCvt_DataCopyExtra = 50,
 
   tcmplxA_BrCvt_TempGap = 55,
   tcmplxA_BrCvt_Literal = 56,
   tcmplxA_BrCvt_Distance = 57,
   tcmplxA_BrCvt_LiteralRestart = 58,
   tcmplxA_BrCvt_BDict = 59,
+  tcmplxA_BrCvt_InsertRestart = 60,
+  tcmplxA_BrCvt_DistanceRestart = 61,
+  tcmplxA_BrCvt_DataDistanceExtra = 62,
 };
 
 /** @brief Treety machine states. */
@@ -182,11 +188,19 @@ struct tcmplxA_brcvt_forward {
   tcmplxA_uint32 literal_i;
   tcmplxA_uint32 literal_total;
   tcmplxA_uint32 pos;
+  /**
+   * @note Used as temporary storage of copy length during
+   *   inflow of Literal and LiteralRestart.
+   */
   tcmplxA_uint32 stop;
   tcmplxA_uint32 accum;
   unsigned short command_span;
   unsigned char ostate;
+  /**
+   * @note Used as temporary storage of zero distance flag.
+   */
   unsigned char ctxt_i;
+  unsigned char bstore[38];
 };
 
 struct tcmplxA_brcvt {
@@ -255,7 +269,11 @@ struct tcmplxA_brcvt {
   unsigned char bit_index;
   /** @brief Maximum metadatum length to store aside. */
   tcmplxA_uint32 max_len_meta;
-  /** @brief Backward distance value. */
+  /**
+   * @brief Block length.
+   * @note[intent] Backward distance value.
+   * @todo Rename this field and create a new `backward` with the original intent.
+   */
   tcmplxA_uint32 backward;
   /** @brief Byte count for the active state. */
   tcmplxA_uint32 count;
@@ -331,6 +349,8 @@ struct tcmplxA_brcvt {
   unsigned short distance_skip;
   /** @brief Context map prefix tree skip code. */
   unsigned short context_skip;
+  /** @brief Token forwarding. */
+  struct tcmplxA_brcvt_forward fwd;
   /**
    * @brief Built-in tree type for block type outflow.
    * @todo Test for removal.
@@ -344,6 +364,7 @@ unsigned char tcmplxA_brcvt_clen[tcmplxA_brcvt_CLenExtent] =
 
 static struct tcmplxA_brcvt_treety const tcmplxA_brcvt_treety_zero = {0};
 static struct tcmplxA_ctxtspan const tcmplxA_brcvt_guess_zero = {0};
+static struct tcmplxA_brcvt_forward const tcmplxA_brcvt_fwd_zero = {0};
 
 /**
  * @brief Initialize a zcvt state.
@@ -843,6 +864,139 @@ unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps) {
   }
 }
 
+unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
+  struct tcmplxA_fixlist const* tree, unsigned x)
+{
+  size_t line_index = 0;
+  struct tcmplxA_fixline const* line = NULL;
+  if (ps->bit_length >= 15) {
+    ps->state = tcmplxA_BrCvt_BadToken;
+    return UINT_MAX;
+  }
+  ps->bits = (ps->bits<<1)|x;
+  ps->bit_length += 1;
+  line_index = tcmplxA_fixlist_codebsearch(tree, ps->bit_length, ps->bits);
+  if (line_index >= tcmplxA_fixlist_size(tree))
+    return UINT_MAX;
+  return (unsigned)tcmplxA_fixlist_at_c(tree, line_index)->value;
+}
+
+int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert) {
+  struct tcmplxA_inscopy_row const* const row = tcmplxA_inscopy_at_c(ps->values, insert);
+  ps->blocktypeI_remaining -= 1;
+  if (!row)
+    return tcmplxA_ErrSanitize;
+  ps->state = (ps->blocktypeL_remaining
+    ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
+  ps->extra_length = row->copy_bits;
+  if (row->copy_bits)
+    ps->state = tcmplxA_BrCvt_DataCopyExtra;
+  if (row->insert_bits) {
+    ps->extra_length = (ps->extra_length<<5) | row->insert_bits;
+    ps->state = tcmplxA_BrCvt_DataInsertExtra;
+  }
+  ps->bits = 0;
+  ps->bit_length = 0;
+  ps->count = 0;
+  ps->fwd.literal_i = 0;
+  ps->fwd.literal_total = row->insert_first;
+  ps->fwd.stop = row->copy_first;
+  ps->fwd.ctxt_i = row->zero_distance_tf;
+  return tcmplxA_Success;
+}
+int tcmplxA_brcvt_inflow_distextra(struct tcmplxA_brcvt* ps) {
+  ps->state = tcmplxA_BrCvt_DoCopy;
+  ps->fwd.pos = tcmplxA_ringdist_decode(ps->ring, ps->fwd.pos, ps->bits);
+  return tcmplxA_ErrPartial;
+}
+
+int tcmplxA_brcvt_inflow_distance(struct tcmplxA_brcvt* ps, unsigned distance) {
+  ps->fwd.pos = distance;
+  ps->extra_length = tcmplxA_ringdist_bit_count(ps->ring, distance);
+  ps->bit_length = 0;
+  ps->bits = 0;
+  ps->count = 0;
+  if (ps->extra_length > 0) {
+    ps->state = tcmplxA_BrCvt_DataDistanceExtra;
+    return tcmplxA_Success;
+  }
+  return tcmplxA_brcvt_inflow_distextra(ps);
+}
+
+int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
+  size_t* ret, unsigned char* dst, size_t dstsz)
+{
+  dst[*ret] = (unsigned char)ch;
+  ps->fwd.accum += 1;
+  // TODO: add `ch` to the slide ring
+  (*ret)++;
+  return tcmplxA_Success;
+}
+
+
+int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
+  size_t* ret, unsigned char* dst, size_t dstsz)
+{
+  int skip = 1;
+  long int repeat;
+  struct tcmplxA_brcvt_forward *const fwd = &ps->fwd;
+  for (repeat = 0; repeat < 134217728L && skip; ++repeat) {
+    switch (ps->state) {
+    case tcmplxA_BrCvt_DataInsertCopy:
+      if (ps->insert_skip != tcmplxA_brcvt_NoSkip) {
+        int const res = tcmplxA_brcvt_inflow_insert(ps, ps->insert_skip);
+        tcmplxA_brcvt_countbits(0, 0, "[[INSCOPY %u]]", ps->insert_skip);
+        if (res != tcmplxA_Success)
+          return res;
+        continue;
+      } else return tcmplxA_Success;
+    case tcmplxA_BrCvt_Literal:
+      if (ps->fwd.literal_i >= ps->fwd.literal_total) {
+        ps->state = (ps->blocktypeD_remaining
+          ? tcmplxA_BrCvt_Distance : tcmplxA_BrCvt_DistanceRestart);
+        ps->fwd.literal_i = 0;
+        ps->fwd.literal_total = ps->fwd.stop;
+        ps->fwd.stop = 0;
+        ps->bit_length = 0;
+        ps->bits = 0;
+        continue;
+      } else if (ps->literal_skip != tcmplxA_brcvt_NoSkip) {
+        tcmplxA_brcvt_inflow_literal(ps, ps->literal_skip, ret, dst, dstsz);
+        tcmplxA_brcvt_countbits(0, 0, "[[LITERAL %u]]", ps->literal_skip);
+        continue;
+      } else return tcmplxA_Success;
+    case tcmplxA_BrCvt_Distance:
+      if (ps->fwd.ctxt_i) {
+        int const res = tcmplxA_brcvt_inflow_distance(ps, 0);
+        ps->fwd.ctxt_i = 0;
+        tcmplxA_brcvt_countbits(0, 0, "[[DIST -]]");
+        if (res == tcmplxA_Success)
+          return res;
+        continue;
+      } else if (ps->distance_skip != tcmplxA_brcvt_NoSkip) {
+        int const res = tcmplxA_brcvt_inflow_distance(ps, ps->distance_skip);
+        ps->blocktypeD_remaining -= 1;
+        tcmplxA_brcvt_countbits(0, 0, "[[DIST %u]]", ps->distance_skip);
+        if (res == tcmplxA_Success)
+          return res;
+        continue;
+      } else return tcmplxA_Success;
+    case tcmplxA_BrCvt_DoCopy:
+      for (; fwd->literal_i < fwd->literal_total; ++fwd->literal_i) {
+        if (*ret >= dstsz)
+          return tcmplxA_ErrPartial;
+        tcmplxA_brcvt_inflow_literal(ps, '.', ret, dst, dstsz);
+      }
+      ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
+        : tcmplxA_BrCvt_InsertRestart);
+      break;
+    default:
+      return tcmplxA_ErrSanitize;
+    }
+  }
+  return tcmplxA_Success;
+}
+
 int tcmplxA_brcvt_zsrtostr_bits
   ( struct tcmplxA_brcvt* ps, unsigned int y,
     size_t* ret, unsigned char* dst, size_t dstsz)
@@ -879,6 +1033,9 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_LastCheck:
       if (ps->bit_length == 0) {
         ps->h_end = (x!=0);
+        /* prevent wraparound */
+        if (ps->fwd.accum >= 16777216)
+          ps->fwd.accum = 16777216;
         tcmplxA_brcvt_countbits(x, 1, "ISLAST %i", ps->h_end);
         ps->bit_length = x?4:3;
         ps->count = 0;
@@ -1501,19 +1658,101 @@ int tcmplxA_brcvt_zsrtostr_bits
             *tcmplxA_brcvt_active_skip(ps) = tcmplxA_brcvt_resolve_skip(tree);
           ps->bit_length = 0;
           ps->index += 1;
+          ps->bits = 0;
           if (ps->index >= tcmplxA_gaspvec_size(forest)) {
+            tcmplxA_uint32 const old_accum = ps->fwd.accum;
             ps->state += 1;
             ps->index = 0;
+            ps->fwd = tcmplxA_brcvt_fwd_zero;
+            ps->fwd.accum = old_accum;
             if (ps->state != tcmplxA_BrCvt_DataInsertCopy || ps->insert_skip == tcmplxA_brcvt_NoSkip)
               break;
-            /* TODO handle an insert skip */
+            ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
           }
         } else if (res != tcmplxA_Success)
           ae = res;
       } break;
     case tcmplxA_BrCvt_DataInsertCopy:
-      /* TODO this state */
-      break;
+      {
+        unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
+          tcmplxA_gaspvec_at(ps->insert_forest, ps->blocktypeI_index), x);
+        if (line >= 704)
+          break;
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert-and-copy %u", line);
+        tcmplxA_brcvt_inflow_insert(ps, line);
+        //ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      } break;
+    case tcmplxA_BrCvt_DataInsertExtra:
+      if (ps->count < (ps->extra_length&31)) {
+        ps->bits |= (((tcmplxA_uint32)x)<<ps->count);
+        ps->count++;
+      }
+      if (ps->count >= (ps->extra_length&31)) {
+        tcmplxA_brcvt_countbits(ps->bits, ps->extra_length&31u, "insert-extra %u", ps->bits);
+        ps->fwd.literal_total += ps->bits;
+        ps->extra_length >>= 5;
+        ps->bits = 0;
+        ps->count = 0;
+        if (ps->extra_length > 0)
+          ps->state = tcmplxA_BrCvt_DataCopyExtra;
+        else {
+          ps->state = (ps->blocktypeL_remaining
+            ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
+          ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+        }
+      } break;
+    case tcmplxA_BrCvt_DataCopyExtra:
+      if (ps->count < ps->extra_length) {
+        ps->bits |= (((tcmplxA_uint32)x)<<ps->count);
+        ps->count++;
+      }
+      if (ps->count >= ps->extra_length) {
+        tcmplxA_brcvt_countbits(ps->bits, ps->extra_length, "copy-extra %u", ps->bits);
+        ps->fwd.stop += ps->bits;
+        ps->bits = 0;
+        ps->state = (ps->blocktypeL_remaining
+          ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
+        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      } break;
+    case tcmplxA_BrCvt_Literal:
+      {
+        unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
+          tcmplxA_gaspvec_at(ps->literals_forest, ps->blocktypeL_index), x);
+        if (line >= 256)
+          break;
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal %u", line);
+        tcmplxA_brcvt_inflow_literal(ps, line, &ret_out, dst, dstsz);
+        ps->fwd.literal_i ++;
+        ps->bit_length = 0;
+        ps->bits = 0;
+        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      } break;
+    case tcmplxA_BrCvt_Distance:
+      {
+        unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
+          tcmplxA_gaspvec_at(ps->distance_forest, ps->blocktypeD_index), x);
+        int res;
+        if (line >= 520)
+          break;
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance-code %u", line);
+        res = tcmplxA_brcvt_inflow_distance(ps, line);
+        if (res == tcmplxA_ErrPartial)
+          ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      } break;
+    case tcmplxA_BrCvt_DataDistanceExtra:
+      if (ps->count < ps->extra_length) {
+        ps->bits |= (((tcmplxA_uint32)x)<<ps->count);
+        ps->count++;
+      }
+      if (ps->count >= ps->extra_length) {
+        tcmplxA_brcvt_countbits(ps->bits, ps->extra_length, "distance-extra %u", ps->bits);
+        tcmplxA_brcvt_inflow_distextra(ps);
+        ps->extra_length = 0;
+        ps->bit_length = 0;
+        ps->bits = 0;
+        ps->count = 0;
+        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      } break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
@@ -3509,8 +3748,12 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_GaspVectorD:
     case tcmplxA_BrCvt_Literal:
     case tcmplxA_BrCvt_DataInsertCopy:
+    case tcmplxA_BrCvt_DataInsertExtra:
+    case tcmplxA_BrCvt_DataCopyExtra:
     case tcmplxA_BrCvt_LiteralRestart:
     case tcmplxA_BrCvt_Distance:
+    case tcmplxA_BrCvt_DistanceRestart:
+    case tcmplxA_BrCvt_InsertRestart:
     case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
@@ -3618,10 +3861,12 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_GaspVectorL:
     case tcmplxA_BrCvt_GaspVectorI:
     case tcmplxA_BrCvt_GaspVectorD:
-    case tcmplxA_BrCvt_Literal:
     case tcmplxA_BrCvt_DataInsertCopy:
-    case tcmplxA_BrCvt_LiteralRestart:
+    case tcmplxA_BrCvt_DataInsertExtra:
+    case tcmplxA_BrCvt_DataCopyExtra:
+    case tcmplxA_BrCvt_Literal:
     case tcmplxA_BrCvt_Distance:
+    case tcmplxA_BrCvt_LiteralRestart:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
