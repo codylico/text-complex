@@ -201,6 +201,7 @@ struct tcmplxA_brcvt_forward {
    */
   unsigned char ctxt_i;
   unsigned char bstore[38];
+  unsigned char literal_ctxt[2];
 };
 
 struct tcmplxA_brcvt {
@@ -930,6 +931,8 @@ int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
   ps->fwd.accum += 1;
   // TODO: add `ch` to the slide ring
   (*ret)++;
+  ps->fwd.literal_ctxt[0] = ps->fwd.literal_ctxt[1];
+  ps->fwd.literal_ctxt[1] = (unsigned char)ch;
   return tcmplxA_Success;
 }
 
@@ -1716,8 +1719,12 @@ int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_Literal:
       {
+        int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, ps->blocktypeL_index);
+        int const column = tcmplxA_ctxtmap_literal_context(mode, ps->fwd.literal_ctxt[0],
+          ps->fwd.literal_ctxt[1]);
+        int const index = tcmplxA_ctxtmap_get(ps->literals_map, ps->blocktypeL_index, column);
         unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
-          tcmplxA_gaspvec_at(ps->literals_forest, ps->blocktypeL_index), x);
+          tcmplxA_gaspvec_at(ps->literals_forest, index), x);
         if (line >= 256)
           break;
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal %u", line);
@@ -1729,8 +1736,10 @@ int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_Distance:
       {
+        int const column = tcmplxA_ctxtmap_distance_context(ps->fwd.literal_total);
+        int const index = tcmplxA_ctxtmap_get(ps->distance_map, ps->blocktypeD_index, column);
         unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
-          tcmplxA_gaspvec_at(ps->distance_forest, ps->blocktypeD_index), x);
+          tcmplxA_gaspvec_at(ps->distance_forest, index), x);
         int res;
         if (line >= 520)
           break;
@@ -3754,6 +3763,7 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_Distance:
     case tcmplxA_BrCvt_DistanceRestart:
     case tcmplxA_BrCvt_InsertRestart:
+    case tcmplxA_BrCvt_DataDistanceExtra:
     case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
