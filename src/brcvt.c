@@ -1768,7 +1768,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           tcmplxA_gaspvec_at(ps->literals_forest, index), x);
         if (line >= 256)
           break;
-        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal %u", line);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal %u (tree %i)", line, index);
         tcmplxA_brcvt_inflow_literal(ps, line, &ret_out, dst, dstsz);
         ps->fwd.literal_i ++;
         ps->bit_length = 0;
