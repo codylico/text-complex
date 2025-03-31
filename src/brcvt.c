@@ -1761,8 +1761,8 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_Literal:
       {
         int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, ps->blocktypeL_index);
-        int const column = tcmplxA_ctxtmap_literal_context(mode, ps->fwd.literal_ctxt[0],
-          ps->fwd.literal_ctxt[1]);
+        int const column = tcmplxA_ctxtmap_literal_context(mode, ps->fwd.literal_ctxt[1],
+          ps->fwd.literal_ctxt[0]);
         int const index = tcmplxA_ctxtmap_get(ps->literals_map, ps->blocktypeL_index, column);
         unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
           tcmplxA_gaspvec_at(ps->literals_forest, index), x);
