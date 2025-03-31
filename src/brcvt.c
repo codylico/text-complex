@@ -887,7 +887,7 @@ int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert) {
   ps->blocktypeI_remaining -= 1;
   if (!row)
     return tcmplxA_ErrSanitize;
-  ps->state = (ps->blocktypeL_remaining
+  ps->state = ((ps->blocktypeL_remaining || (row->insert_first==0))
     ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
   ps->extra_length = row->copy_bits;
   if (row->copy_bits)
@@ -985,6 +985,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         ps->fwd.stop = 0;
         ps->bit_length = 0;
         ps->bits = 0;
+        tcmplxA_brcvt_countbits(0, 0, "[[-> distance%s]]",
+          ps->state == tcmplxA_BrCvt_Distance ? "" : "-restart");
         continue;
       } else if (ps->literal_skip != tcmplxA_brcvt_NoSkip) {
         tcmplxA_brcvt_inflow_literal(ps, ps->literal_skip, ret, dst, dstsz);
@@ -1017,7 +1019,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         : tcmplxA_BrCvt_InsertRestart);
       break;
     case tcmplxA_BrCvt_BDict:
-      assert(fwd->literal_total <= sizeof(fwd->bstore));
+      if (fwd->literal_total > sizeof(fwd->bstore))
+        return tcmplxA_ErrSanitize;
       for (; fwd->literal_i < fwd->literal_total; ++fwd->literal_i) {
         if (*ret >= dstsz)
           return tcmplxA_ErrPartial;
@@ -1026,7 +1029,12 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
         : tcmplxA_BrCvt_InsertRestart);
       break;
+    case tcmplxA_BrCvt_DataInsertExtra:
+    case tcmplxA_BrCvt_DataCopyExtra:
+    case tcmplxA_BrCvt_DataDistanceExtra:
+      return tcmplxA_Success;
     default:
+      tcmplxA_brcvt_countbits(0, 0, "[[sanitize-fail %i]]", ps->state);
       return tcmplxA_ErrSanitize;
     }
   }
@@ -1716,7 +1724,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           break;
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert-and-copy %u", line);
         tcmplxA_brcvt_inflow_insert(ps, line);
-        //ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_DataInsertExtra:
       if (ps->count < (ps->extra_length&31)) {
