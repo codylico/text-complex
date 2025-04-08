@@ -10,7 +10,7 @@
 #include <limits.h>
 
 
-struct test_ringdist_params {
+struct test_ringdist_fixture {
   int special_tf;
   unsigned int direct_count;
   unsigned int postfix_size;
@@ -95,8 +95,8 @@ MunitResult test_ringdist_cycle
 void* test_ringdist_1951_setup
     (const MunitParameter params[], void* user_data)
 {
-  struct test_ringdist_params *out = (struct test_ringdist_params*)calloc
-    (1,sizeof(struct test_ringdist_params));
+  struct test_ringdist_fixture *out = (struct test_ringdist_fixture*)calloc
+    (1,sizeof(struct test_ringdist_fixture));
   if (out != NULL) {
     out->special_tf = 0;
     out->direct_count = 4;
@@ -114,8 +114,8 @@ void* test_ringdist_1951_setup
 void* test_ringdist_7932_setup
     (const MunitParameter params[], void* user_data)
 {
-  struct test_ringdist_params *out = (struct test_ringdist_params*)calloc
-    (1,sizeof(struct test_ringdist_params));
+  struct test_ringdist_fixture *out = (struct test_ringdist_fixture*)calloc
+    (1,sizeof(struct test_ringdist_fixture));
   if (out != NULL) {
     out->special_tf = 1;
     /* inspect params */{
@@ -153,7 +153,7 @@ void* test_ringdist_7932_setup
 }
 
 void test_ringdist_teardown(void* fixture) {
-  struct test_ringdist_params *fixt = (struct test_ringdist_params*)fixture;
+  struct test_ringdist_fixture *fixt = (struct test_ringdist_fixture*)fixture;
   if (fixt != NULL) {
     tcmplxA_ringdist_destroy(fixt->rd);
     free(fixt);
@@ -164,8 +164,8 @@ void test_ringdist_teardown(void* fixture) {
 MunitResult test_ringdist_1951_bit_count
   (const MunitParameter params[], void* data)
 {
-  struct test_ringdist_params *const fixt =
-    (struct test_ringdist_params*)data;
+  struct test_ringdist_fixture *const fixt =
+    (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
     return MUNIT_SKIP;
@@ -185,8 +185,8 @@ MunitResult test_ringdist_1951_bit_count
 MunitResult test_ringdist_7932_bit_count
   (const MunitParameter params[], void* data)
 {
-  struct test_ringdist_params *const fixt =
-    (struct test_ringdist_params*)data;
+  struct test_ringdist_fixture *const fixt =
+    (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   unsigned int alpha_size;
   if (p == NULL)
@@ -220,8 +220,8 @@ MunitResult test_ringdist_7932_bit_count
 MunitResult test_ringdist_1951_decode
   (const MunitParameter params[], void* data)
 {
-  struct test_ringdist_params *const fixt =
-    (struct test_ringdist_params*)data;
+  struct test_ringdist_fixture *const fixt =
+    (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   unsigned int back_dist;
   unsigned int decomposed_code;
@@ -266,8 +266,8 @@ MunitResult test_ringdist_1951_decode
 MunitResult test_ringdist_7932_decode
   (const MunitParameter params[], void* data)
 {
-  struct test_ringdist_params *const fixt =
-    (struct test_ringdist_params*)data;
+  struct test_ringdist_fixture *const fixt =
+    (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
     return MUNIT_SKIP;
@@ -278,8 +278,8 @@ MunitResult test_ringdist_7932_decode
 MunitResult test_ringdist_encode
   (const MunitParameter params[], void* data)
 {
-  struct test_ringdist_params *const fixt =
-    (struct test_ringdist_params*)data;
+  struct test_ringdist_fixture *const fixt =
+    (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
     return MUNIT_SKIP;
