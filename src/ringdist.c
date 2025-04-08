@@ -64,17 +64,9 @@ int tcmplxA_ringdist_init
   (struct tcmplxA_ringdist* x, int s_tf, unsigned int d, unsigned int p)
 {
   static tcmplxA_uint32 const base_ring[4] = { 4u, 11u, 15u, 16u };
-  if (d > 120 || p > 3)
-    return tcmplxA_ErrParam;
   x->i = 0u;
   memcpy(x->ring, base_ring, 4*sizeof(tcmplxA_uint32));
-  x->special_size = s_tf?16u:0u;
-  x->sum_direct = d+x->special_size;
-  x->direct_one = d+1u;
-  x->postfix = p;
-  x->bit_adjust = p+1u;
-  x->postmask = (1u<<p)-1u;
-  return tcmplxA_Success;
+  return tcmplxA_ringdist_reconfigure(x, s_tf, d, p);
 }
 
 void tcmplxA_ringdist_close(struct tcmplxA_ringdist* x) {
@@ -357,5 +349,20 @@ unsigned int tcmplxA_ringdist_get_direct(struct tcmplxA_ringdist const* x) {
 
 unsigned int tcmplxA_ringdist_get_postfix(struct tcmplxA_ringdist const* x) {
   return x->postfix;
+}
+
+int tcmplxA_ringdist_reconfigure
+  (struct tcmplxA_ringdist* ring, int special_tf, unsigned int direct, unsigned int postfix)
+{
+  unsigned const special_addend = special_tf?16u:0u;
+  if (direct > 120 || postfix > 3)
+    return tcmplxA_ErrParam;
+  ring->special_size = special_addend;
+  ring->sum_direct = direct+special_addend;
+  ring->direct_one = direct+1u;
+  ring->postfix = postfix;
+  ring->bit_adjust = postfix+1u;
+  ring->postmask = (1u<<postfix)-1u;
+  return tcmplxA_Success;
 }
 /* END   distance ring / public */

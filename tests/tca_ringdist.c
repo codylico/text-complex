@@ -41,6 +41,8 @@ static MunitResult test_ringdist_7932_decode
   (const MunitParameter params[], void* data);
 static MunitResult test_ringdist_encode
   (const MunitParameter params[], void* data);
+static MunitResult test_ringdist_reconfigure
+  (const MunitParameter params[], void* data);
 static void* test_ringdist_1951_setup
     (const MunitParameter params[], void* user_data);
 static void* test_ringdist_7932_setup
@@ -70,6 +72,9 @@ static MunitTest tests_ringdist[] = {
     MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
   {"7932/encode", test_ringdist_encode,
     test_ringdist_7932_setup,test_ringdist_teardown,0,test_ringdist_params},
+  {"7932/reconfigure", test_ringdist_reconfigure,
+    test_ringdist_7932_setup,test_ringdist_teardown,
+    0,test_ringdist_params},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -307,6 +312,28 @@ MunitResult test_ringdist_encode
   }
   return MUNIT_OK;
 }
+
+MunitResult test_ringdist_reconfigure
+  (const MunitParameter params[], void* data)
+{
+  struct test_ringdist_fixture *const fixt = (struct test_ringdist_fixture*)data;
+  struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
+  tcmplxA_uint32 decomposed_extra = 0;
+  unsigned int decomposed_code = 0;
+  unsigned int back_dist = testfont_rand_uint_range(1u,32768u);
+  int res = 0;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra);
+  munit_assert(decomposed_code != UINT_MAX);
+  res = tcmplxA_ringdist_reconfigure(p, 1, testfont_rand_uint_range(0,120), fixt->postfix_size);
+  munit_assert(res == tcmplxA_Success);
+  decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra);
+  munit_assert(decomposed_code == 0);
+  return MUNIT_OK;
+}
+
 
 
 

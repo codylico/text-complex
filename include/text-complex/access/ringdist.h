@@ -103,6 +103,18 @@ unsigned int tcmplxA_ringdist_get_direct(struct tcmplxA_ringdist const* x);
  */
 TCMPLX_A_API
 unsigned int tcmplxA_ringdist_get_postfix(struct tcmplxA_ringdist const* x);
+
+/**
+ * @brief Configure an existing distance ring without resetting its
+ *   history.
+ * @param special_tf nonzero to support Brotli distance codes
+ * @param direct number of direct codes (0..120)
+ * @param postfix postfix bit count (0..3)
+ * @return Success on success, nonzero otherwise
+ */
+TCMPLX_A_API
+int tcmplxA_ringdist_reconfigure
+  (struct tcmplxA_ringdist* ring, int special_tf, unsigned int direct, unsigned int postfix);
 /* END   distance ring */
 
 #ifdef __cplusplus
