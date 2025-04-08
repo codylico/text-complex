@@ -909,7 +909,7 @@ int tcmplxA_brcvt_inflow_distextra(struct tcmplxA_brcvt* ps) {
   size_t const window = (size_t)((1ul<<ps->wbits_select)-16u);
   size_t const cutoff = (ps->fwd.accum > window ? window : ps->fwd.accum);
   ps->state = tcmplxA_BrCvt_DoCopy;
-  ps->fwd.pos = tcmplxA_ringdist_decode(ps->ring, ps->fwd.pos, ps->bits);
+  ps->fwd.pos = tcmplxA_ringdist_decode(ps->ring, ps->fwd.pos, ps->bits, (tcmplxA_uint32)cutoff);
   if (ps->fwd.pos > cutoff) {
     ps->state = tcmplxA_BrCvt_BDict;
     /* RFC-7932 Section 8: */
@@ -1864,7 +1864,7 @@ int tcmplxA_brcvt_zsrtostr_bits
             ps->backward = alpha;
           } else {
             ps->state = 12;
-            ps->backward = tcmplxA_ringdist_decode(ps->ring, alpha, 0u);
+            ps->backward = tcmplxA_ringdist_decode(ps->ring, alpha, 0u, 0);
             if (ps->backward == 0u) {
               ae = tcmplxA_ErrSanitize;
               break;
@@ -1904,7 +1904,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       }
       if (ps->bit_length >= ps->extra_length) {
         ps->backward = tcmplxA_ringdist_decode
-          (ps->ring, ps->backward, ps->bits);
+          (ps->ring, ps->backward, ps->bits, 0);
         if (ps->backward == 0u) {
           ae = tcmplxA_ErrSanitize;
           break;
@@ -3022,7 +3022,8 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
           int const to_record = (next.state==tcmplxA_BrCvt_Distance);
           tcmplxA_uint32 extra = 0;
           // TODO: use `to_record`
-          unsigned const cmd = tcmplxA_ringdist_encode(ps->try_ring, next.first, &extra);
+          unsigned const cmd = tcmplxA_ringdist_encode(ps->try_ring, next.first, &extra,
+            to_record ? 0xFFffFFff : 0);
           if (cmd >= tcmplxA_brcvt_DistHistoSize)
             return tcmplxA_ErrSanitize;
           try_bit_count += extra;

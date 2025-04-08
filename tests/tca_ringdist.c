@@ -261,7 +261,7 @@ MunitResult test_ringdist_1951_decode
   }
   /* inspect */{
     munit_assert_uint32(
-        tcmplxA_ringdist_decode(p,decomposed_code,decomposed_extra),
+        tcmplxA_ringdist_decode(p,decomposed_code,decomposed_extra,0),
           ==,back_dist
       );
   }
@@ -301,10 +301,10 @@ MunitResult test_ringdist_encode
       tcmplxA_uint32 decomposed_extra;
       unsigned int decomposed_code;
       decomposed_code =
-        tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra);
+        tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra,0);
       munit_assert_uint(decomposed_code,!=,UINT_MAX);
       munit_assert_uint32(
-          tcmplxA_ringdist_decode(q,decomposed_code,decomposed_extra),
+          tcmplxA_ringdist_decode(q,decomposed_code,decomposed_extra,0),
             ==,back_dist
         );
     }
@@ -325,11 +325,11 @@ MunitResult test_ringdist_reconfigure
   if (p == NULL)
     return MUNIT_SKIP;
   (void)params;
-  decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra);
+  decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra, 32768u);
   munit_assert(decomposed_code != UINT_MAX);
   res = tcmplxA_ringdist_reconfigure(p, 1, testfont_rand_uint_range(0,120), fixt->postfix_size);
   munit_assert(res == tcmplxA_Success);
-  decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra);
+  decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra, 32768u);
   munit_assert(decomposed_code == 0);
   return MUNIT_OK;
 }

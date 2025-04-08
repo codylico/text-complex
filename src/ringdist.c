@@ -40,9 +40,11 @@ static void tcmplxA_ringdist_close(struct tcmplxA_ringdist* x);
  * @param ring the buffer
  * @param i index
  * @param v the value to record
+ * @param norecord result value strictly above which to prevent recording
  */
 static void tcmplxA_ringdist_record
-  (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v);
+  (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v,
+    tcmplxA_uint32 norecord);
 /**
  * @brief Retrieve a back distance from a ring buffer.
  * @param ring the buffer
@@ -74,9 +76,12 @@ void tcmplxA_ringdist_close(struct tcmplxA_ringdist* x) {
 }
 
 void tcmplxA_ringdist_record
-  (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v)
+  (tcmplxA_uint32* ring, unsigned short* i, tcmplxA_uint32 v,
+    tcmplxA_uint32 norecord)
 {
   unsigned short int const xi = *i;
+  if (v > norecord)
+    return;
   ring[xi] = v;
   (*i) = (xi+1u)%4u;
   return;
@@ -130,7 +135,8 @@ unsigned int tcmplxA_ringdist_bit_count
 }
 
 tcmplxA_uint32 tcmplxA_ringdist_decode
-  (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra)
+  (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra,
+    tcmplxA_uint32 norecord)
 {
   if (dcode < x->special_size) {
     tcmplxA_uint32 out;
@@ -211,12 +217,12 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
       } break;
     }
     if (dcode != 0u) {
-      tcmplxA_ringdist_record(x->ring, &x->i, out);
+      tcmplxA_ringdist_record(x->ring, &x->i, out, norecord);
     }
     return out;
   } else if (dcode < x->sum_direct) {
     tcmplxA_uint32 const out = (dcode - x->special_size) + 1u;
-    tcmplxA_ringdist_record(x->ring, &x->i, out);
+    tcmplxA_ringdist_record(x->ring, &x->i, out, norecord);
     return out;
   } else {
     unsigned int const xcode = dcode - x->sum_direct;
@@ -227,14 +233,15 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
     tcmplxA_uint32 const out =
       ((offset + extra)<<x->postfix) + low + x->direct_one;
     /* record the new flat distance */{
-      tcmplxA_ringdist_record(x->ring, &x->i, out);
+      tcmplxA_ringdist_record(x->ring, &x->i, out, norecord);
     }
     return out;
   }
 }
 
 unsigned int tcmplxA_ringdist_encode
-  (struct tcmplxA_ringdist* x, unsigned int back_dist, tcmplxA_uint32 *extra)
+  (struct tcmplxA_ringdist* x, unsigned int back_dist, tcmplxA_uint32 *extra,
+    tcmplxA_uint32 norecord)
 {
   if (back_dist == 0u) {
     /* zero not allowed */
@@ -252,7 +259,7 @@ unsigned int tcmplxA_ringdist_encode
         unsigned int const last = (x->i+3u)%4u/* == (i minus 1) mod 4 */;
         *extra = 0u;
         if (last != j) {
-          tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+          tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
         }
         return (last+4u-j)%4u/* == (last minus j) mod 4 */;
       }
@@ -264,7 +271,7 @@ unsigned int tcmplxA_ringdist_encode
         ((last < 0xFFffFFfd) ? last+3u : 0xFFffFFff);
       if (back_dist >= last_min && back_dist < last) {
         *extra = 0u;
-        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
         switch (last-back_dist) {
         case 1u: return 4u;
         case 2u: return 6u;
@@ -272,7 +279,7 @@ unsigned int tcmplxA_ringdist_encode
         }
       } else if (back_dist > last && back_dist <= last_max) {
         *extra = 0u;
-        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
         switch (back_dist-last) {
         case 1u: return 5u;
         case 2u: return 7u;
@@ -288,7 +295,7 @@ unsigned int tcmplxA_ringdist_encode
         ((second < 0xFFffFFfd) ? second+3u : 0xFFffFFff);
       if (back_dist >= second_min && back_dist < second) {
         *extra = 0u;
-        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
         switch (second-back_dist) {
         case 1u: return 10u;
         case 2u: return 12u;
@@ -296,7 +303,7 @@ unsigned int tcmplxA_ringdist_encode
         }
       } else if (back_dist > second && back_dist <= second_max) {
         *extra = 0u;
-        tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+        tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
         switch (back_dist-second) {
         case 1u: return 11u;
         case 2u: return 13u;
@@ -308,7 +315,7 @@ unsigned int tcmplxA_ringdist_encode
   /* check direct distances */
   if (back_dist < x->direct_one) {
     *extra = 0u;
-    tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+    tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
     return (back_dist-1u)+(x->special_size);
   } else {
     tcmplxA_uint32 const sd = back_dist - x->direct_one;
@@ -322,7 +329,7 @@ unsigned int tcmplxA_ringdist_encode
         (((ndistbits-1u)<<(x->bit_adjust)) | midcode_x | lowcode)
       + x->sum_direct;
     /* record the new flat distance */{
-      tcmplxA_ringdist_record(x->ring, &x->i, back_dist);
+      tcmplxA_ringdist_record(x->ring, &x->i, back_dist, norecord);
     }
     *extra = out_extra;
     return dcode;

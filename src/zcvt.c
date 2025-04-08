@@ -455,7 +455,7 @@ int tcmplxA_zcvt_zsrtostr_bits
             ps->backward = alpha;
           } else {
             ps->state = 12;
-            ps->backward = tcmplxA_ringdist_decode(ps->ring, alpha, 0u);
+            ps->backward = tcmplxA_ringdist_decode(ps->ring, alpha, 0u, 0u);
             if (ps->backward == 0u) {
               ae = tcmplxA_ErrSanitize;
               break;
@@ -495,7 +495,7 @@ int tcmplxA_zcvt_zsrtostr_bits
       }
       if (ps->bit_length >= ps->extra_length) {
         ps->backward = tcmplxA_ringdist_decode
-          (ps->ring, ps->backward, ps->bits);
+          (ps->ring, ps->backward, ps->bits, 0u);
         if (ps->backward == 0u) {
           ae = tcmplxA_ErrSanitize;
           break;
@@ -929,7 +929,7 @@ int tcmplxA_zcvt_strrtozs_bits
                 /* encode distance */if (ae == tcmplxA_Success) {
                   tcmplxA_uint32 extra;
                   unsigned int const dist_code =
-                    tcmplxA_ringdist_encode(ps->try_ring, distance, &extra);
+                    tcmplxA_ringdist_encode(ps->try_ring, distance, &extra, 0u);
                   if (dist_code == UINT_MAX) {
                     ae = tcmplxA_ErrParam;
                     break;

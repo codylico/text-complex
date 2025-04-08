@@ -54,21 +54,22 @@ unsigned int tcmplxA_ringdist_bit_count
  * @param x the distance ring
  * @param dcode distance code to convert
  * @param extra any extra bits required by the code
+ * @param norecord result value strictly above which to prevent recording
  * @return a flat distance, or zero on conversion error
  * @note On successful conversion, the distance ring buffer is advanced
  *   as necessary.
- * @todo Add a norecord parameter, equal to minimum result
- *   value to prevent recording.
  */
 TCMPLX_A_API
 tcmplxA_uint32 tcmplxA_ringdist_decode
-  (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra);
+  (struct tcmplxA_ringdist* x, unsigned int dcode, tcmplxA_uint32 extra,
+    tcmplxA_uint32 norecord);
 
 /**
  * @brief Convert a flat backward distance to a distance code.
  * @param x the distance ring
  * @param back_dist backward distance to convert
  * @param[out] extra any extra bits required by the code
+ * @param norecord result value strictly above which to prevent recording
  * @return a distance code, or UINT_MAX on error
  * @note On successful conversion, the distance ring buffer is advanced
  *   as necessary.
@@ -76,7 +77,8 @@ tcmplxA_uint32 tcmplxA_ringdist_decode
  */
 TCMPLX_A_API
 unsigned int tcmplxA_ringdist_encode
-  (struct tcmplxA_ringdist* x, unsigned int back_dist, tcmplxA_uint32 *extra);
+  (struct tcmplxA_ringdist* x, unsigned int back_dist, tcmplxA_uint32 *extra,
+    tcmplxA_uint32 norecord);
 
 /**
  * @brief Copy a distance ring configuration and state
