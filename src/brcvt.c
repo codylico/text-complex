@@ -1698,8 +1698,10 @@ int tcmplxA_brcvt_zsrtostr_bits
         struct tcmplxA_fixlist* const tree = tcmplxA_gaspvec_at(forest, ps->index);
         int const res = tcmplxA_brcvt_inflow19(treety, tree, x, ps->alphabits);
         if (res == tcmplxA_EOF) {
+          unsigned short const noskip = tcmplxA_brcvt_resolve_skip(tree);
+          tcmplxA_gaspvec_set_skip(forest, ps->index, noskip);
           if (ps->index == 0)
-            *tcmplxA_brcvt_active_skip(ps) = tcmplxA_brcvt_resolve_skip(tree);
+            *tcmplxA_brcvt_active_skip(ps) = noskip;
           ps->bit_length = 0;
           ps->index += 1;
           ps->bits = 0;

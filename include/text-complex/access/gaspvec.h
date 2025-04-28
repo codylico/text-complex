@@ -60,6 +60,24 @@ TCMPLX_A_API
 struct tcmplxA_fixlist const* tcmplxA_gaspvec_at_c
   (struct tcmplxA_gaspvec const* x, size_t i);
 
+/**
+ * @brief Inspect a no-skip value in a gasp vector.
+ * @param x the vector to read
+ * @param i an array index
+ * @return a previously-set no-skip value on success, USHRT_MAX on failure
+ */
+TCMPLX_A_API
+unsigned short tcmplxA_gaspvec_get_skip(struct tcmplxA_gaspvec const* x, size_t i);
+
+/**
+ * @brief Modify a no-skip value in a gasp vector.
+ * @param x the vector to read
+ * @param i an array index
+ * @param noskip new value
+ */
+TCMPLX_A_API
+void tcmplxA_gaspvec_set_skip(struct tcmplxA_gaspvec const* x, size_t i, unsigned short noskip);
+
 #ifdef __cplusplus
 };
 #endif /*__cplusplus*/

@@ -5,10 +5,16 @@
 #include "fixlist_p.h"
 #include <text-complex/access/gaspvec.h>
 #include <text-complex/access/util.h>
+#include <limits.h>
 
+
+struct tcmplxA_gasproot {
+  struct tcmplxA_fixlist tree;
+  unsigned short noskip;
+};
 
 struct tcmplxA_gaspvec {
-  struct tcmplxA_fixlist* trees;
+  struct tcmplxA_gasproot* trees;
   unsigned count;
   unsigned cap;
 };
@@ -45,22 +51,24 @@ int tcmplxA_gaspvec_init(struct tcmplxA_gaspvec* x, size_t sz) {
 }
 
 int tcmplxA_gaspvec_resize(struct tcmplxA_gaspvec* x, size_t sz) {
-  struct tcmplxA_fixlist *ptr = NULL;
-  if (sz >= UINT_MAX/sizeof(struct tcmplxA_fixlist)) {
+  struct tcmplxA_gasproot *ptr = NULL;
+  if (sz >= UINT_MAX/sizeof(struct tcmplxA_gasproot)) {
     return tcmplxA_ErrMemory;
   } else if (sz > 0 && sz > x->cap) {
     size_t i;
-    ptr = (struct tcmplxA_fixlist*)tcmplxA_util_malloc
-            (sizeof(struct tcmplxA_fixlist)*sz);
+    ptr = (struct tcmplxA_gasproot*)tcmplxA_util_malloc
+            (sizeof(struct tcmplxA_gasproot)*sz);
     if (!ptr)
       return tcmplxA_ErrMemory;
     if (x->trees) {
       for (i = 0; i < x->count; ++i)
-        tcmplxA_fixlist_close(&x->trees[i]);
+        tcmplxA_fixlist_close(&x->trees[i].tree);
       tcmplxA_util_free(x->trees);
     }
-    for (i = 0; i < sz; ++i)
-      tcmplxA_fixlist_init(&ptr[i], 0);
+    for (i = 0; i < sz; ++i) {
+      tcmplxA_fixlist_init(&ptr[i].tree, 0);
+      ptr[i].noskip = USHRT_MAX;
+    }
     x->trees = ptr;
     x->cap = sz;
   }
@@ -71,7 +79,7 @@ int tcmplxA_gaspvec_resize(struct tcmplxA_gaspvec* x, size_t sz) {
 void tcmplxA_gaspvec_close(struct tcmplxA_gaspvec* x) {
   unsigned i;
   for (i = 0; i < x->count; ++i)
-    tcmplxA_fixlist_close(&x->trees[i]);
+    tcmplxA_fixlist_close(&x->trees[i].tree);
   tcmplxA_util_free(x->trees);
   x->trees = NULL;
   x->count = 0u;
@@ -110,7 +118,7 @@ struct tcmplxA_fixlist* tcmplxA_gaspvec_at
 {
   if (i >= x->count)
     return NULL;
-  else return &x->trees[i];
+  else return &x->trees[i].tree;
 }
 
 struct tcmplxA_fixlist const* tcmplxA_gaspvec_at_c
@@ -118,6 +126,18 @@ struct tcmplxA_fixlist const* tcmplxA_gaspvec_at_c
 {
   if (i >= x->count)
     return NULL;
-  else return &x->trees[i];
+  else return &x->trees[i].tree;
+}
+
+unsigned short tcmplxA_gaspvec_get_skip(struct tcmplxA_gaspvec const* x, size_t i) {
+  if (i >= x->count)
+    return USHRT_MAX;
+  else return x->trees[i].noskip;
+}
+
+void tcmplxA_gaspvec_set_skip(struct tcmplxA_gaspvec const* x, size_t i, unsigned short noskip) {
+  if (i >= x->count)
+    return;
+  x->trees[i].noskip = noskip;
 }
 #pragma endregion

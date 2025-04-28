@@ -14,6 +14,8 @@ static MunitResult test_gaspvec_cycle
     (const MunitParameter params[], void* data);
 static MunitResult test_gaspvec_item
   (const MunitParameter params[], void* data);
+static MunitResult test_gaspvec_skip
+  (const MunitParameter params[], void* data);
 static void* test_gaspvec_setup
     (const MunitParameter params[], void* user_data);
 static void test_gaspvec_teardown(void* fixture);
@@ -23,6 +25,8 @@ static MunitTest tests_gaspvec[] = {
   {"cycle", test_gaspvec_cycle,
     NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
   {"item", test_gaspvec_item,
+    test_gaspvec_setup,test_gaspvec_teardown,0,NULL},
+  {"skip", test_gaspvec_skip,
     test_gaspvec_setup,test_gaspvec_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
@@ -77,6 +81,27 @@ MunitResult test_gaspvec_item
   return MUNIT_OK;
 }
 
+MunitResult test_gaspvec_skip
+  (const MunitParameter params[], void* data)
+{
+  struct tcmplxA_gaspvec* const p = (struct tcmplxA_gaspvec*)data;
+  struct tcmplxA_fixlist const* dsp[2];
+  size_t sz;
+  size_t i;
+  unsigned short x;
+  if (p == NULL)
+    return MUNIT_SKIP;
+  (void)params;
+  sz = tcmplxA_gaspvec_size(p);
+  i = (size_t)munit_rand_int_range(0,(int)(sz)-1);
+  x = (unsigned short)munit_rand_int_range(0,65534);
+  munit_assert(sz >= 4);
+  munit_assert(sz <= 256);
+  munit_assert(tcmplxA_gaspvec_get_skip(p,i) == USHRT_MAX);
+  tcmplxA_gaspvec_set_skip(p, i, x);
+  munit_assert(tcmplxA_gaspvec_get_skip(p, i) == x);
+  return MUNIT_OK;
+}
 
 
 
