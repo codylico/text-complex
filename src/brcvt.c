@@ -953,7 +953,7 @@ int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
   unsigned char const ch_byte = (unsigned char)ch;
   dst[*ret] = (unsigned char)ch;
   ps->fwd.accum += 1;
-  tcmplxA_blockbuf_write(ps->buffer, &ch_byte, 1);
+  tcmplxA_blockbuf_bypass(ps->buffer, &ch_byte, 1);
   (*ret)++;
   ps->fwd.literal_ctxt[0] = ps->fwd.literal_ctxt[1];
   ps->fwd.literal_ctxt[1] = (unsigned char)ch;
