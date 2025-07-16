@@ -950,9 +950,10 @@ int tcmplxA_brcvt_inflow_distance(struct tcmplxA_brcvt* ps, unsigned distance) {
 int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
   size_t* ret, unsigned char* dst, size_t dstsz)
 {
+  unsigned char const ch_byte = (unsigned char)ch;
   dst[*ret] = (unsigned char)ch;
   ps->fwd.accum += 1;
-  // TODO: add `ch` to the slide ring
+  tcmplxA_blockbuf_write(ps->buffer, &ch_byte, 1);
   (*ret)++;
   ps->fwd.literal_ctxt[0] = ps->fwd.literal_ctxt[1];
   ps->fwd.literal_ctxt[1] = (unsigned char)ch;
@@ -1011,9 +1012,11 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       } else return tcmplxA_Success;
     case tcmplxA_BrCvt_DoCopy:
       for (; fwd->literal_i < fwd->literal_total; ++fwd->literal_i) {
+        unsigned char ch_byte = 0;
         if (*ret >= dstsz)
           return tcmplxA_ErrPartial;
-        tcmplxA_brcvt_inflow_literal(ps, '.', ret, dst, dstsz);
+        ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos-1u);
+        tcmplxA_brcvt_inflow_literal(ps, ch_byte, ret, dst, dstsz);
       }
       ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
         : tcmplxA_BrCvt_InsertRestart);
