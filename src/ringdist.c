@@ -65,7 +65,7 @@ static unsigned int tcmplxA_ringdist_bitlen(tcmplxA_uint32 n);
 int tcmplxA_ringdist_init
   (struct tcmplxA_ringdist* x, int s_tf, unsigned int d, unsigned int p)
 {
-  static tcmplxA_uint32 const base_ring[4] = { 4u, 11u, 15u, 16u };
+  static tcmplxA_uint32 const base_ring[4] = { 16u, 15u, 11u, 4u };
   x->i = 0u;
   memcpy(x->ring, base_ring, 4*sizeof(tcmplxA_uint32));
   return tcmplxA_ringdist_reconfigure(x, s_tf, d, p);
