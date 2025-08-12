@@ -919,7 +919,6 @@ unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
   struct tcmplxA_fixlist const* tree, unsigned x)
 {
   size_t line_index = 0;
-  struct tcmplxA_fixline const* line = NULL;
   if (ps->bit_length >= 15) {
     ps->state = tcmplxA_BrCvt_BadToken;
     return UINT_MAX;
