@@ -588,6 +588,56 @@ static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps);
 struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
     unsigned char const* data, size_t size, unsigned char wbits_select);
+/**
+ * @brief Process skip frameworks.
+ * @param ps state to update
+ * @param[in,out] ret write position of output buffer
+ * @param[out] dst start of output buffer
+ * @param[out] dstsz size of output buffer
+ * @return error code or success code
+ */
+static int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
+  size_t* ret, unsigned char* dst, size_t dstsz);
+/**
+ * @brief Bring in the next insert command.
+ * @param ps state to update
+ * @param insert insert code
+ * @return success code or error code
+ */
+static int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert);
+/**
+ * @brief Apply a literal byte to output.
+ * @param ps state to update
+ * @param ch byte value to apply
+ * @param[in,out] ret write position of output buffer
+ * @param[out] dst start of output buffer
+ * @param[out] dstsz size of output buffer
+ * @return error code or success code
+ */
+static int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
+  size_t* ret, unsigned char* dst, size_t dstsz);
+/**
+ * @brief Bring in the next distance command.
+ * @param ps state to update
+ * @param distance distance code to apply
+ * @return success code or error code
+ */
+static int tcmplxA_brcvt_inflow_distance(struct tcmplxA_brcvt* ps, unsigned distance);
+/**
+ * @brief Bring in the extra bits of the distance command.
+ * @param ps state to update
+ * @return success code or error code
+ */
+static int tcmplxA_brcvt_inflow_distextra(struct tcmplxA_brcvt* ps);
+/**
+ * @brief Try to find a value by bit string.
+ * @param ps state to update with the new bit for the string
+ * @param tree prefix tree to check
+ * @param x next bit in the string to check
+ * @return a value on success, `UINT_MAX` otherwise
+ */
+static unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
+  struct tcmplxA_fixlist const* tree, unsigned x);
 
 /* BEGIN zcvt state / static */
 int tcmplxA_brcvt_init
