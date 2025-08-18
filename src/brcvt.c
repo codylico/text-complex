@@ -1396,20 +1396,11 @@ int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_BlockStartI:
       if (ps->extra_length == 0) {
-        size_t code_index = ~0;
-        struct tcmplxA_fixline const* line = NULL;
-        ps->bits = (ps->bits<<1) | x;
-        ps->bit_length += 1;
-        code_index = tcmplxA_fixlist_codebsearch(&ps->insert_blockcount, ps->bit_length, ps->bits);
-        if (code_index >= 26) {
-          if (ps->bit_length >= 15)
-            ae = tcmplxA_ErrSanitize;
+        unsigned const line_value = tcmplxA_brcvt_inflow_lookup(ps, &ps->insert_blockcount, x);
+        if (line_value >= 26)
           break;
-        }
-        line = tcmplxA_fixlist_at_c(&ps->insert_blockcount, code_index);
-        assert(line);
-        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert.Block_count_code %lu", line->value);
-        ps->blocktypeI_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert.Block_count_code %lu", line_value);
+        ps->blocktypeI_remaining = tcmplxA_brcvt_config_count(ps, line_value, ps->state + 1);
       } else if (ps->bit_length < ps->extra_length) {
         ps->bits |= (x<< ps->bit_length++);
         if (ps->bit_length >= ps->extra_length) {
