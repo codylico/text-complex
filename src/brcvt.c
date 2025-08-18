@@ -531,6 +531,16 @@ static unsigned short tcmplxA_brcvt_resolve_skip(struct tcmplxA_fixlist const* p
 static tcmplxA_uint32 tcmplxA_brcvt_config_count
   (struct tcmplxA_brcvt* ps, unsigned long value, unsigned char next_state);
 /**
+ * @brief Accumulate the extra bits of a block count onto a bytes-remaining counter.
+ * @param ps Brotli conversion state for bit collection
+ * @param[in,out] sum block count to adjust
+ * @param x next bit
+ * @param next_state target state on completion
+ * @param label label used for `tcmplxA_brcvt_countbits`
+ */
+static void tcmplxA_brcvt_accum_remain(struct tcmplxA_brcvt* ps,
+  tcmplxA_uint32* sum, unsigned x, unsigned next_state, char const* label);
+/**
  * @brief Check whether to emit compression.
  * @param ps Brotli conversion state
  * @return Success to proceed with compression, nonzero to emit uncompressed
@@ -879,6 +889,19 @@ tcmplxA_uint32 tcmplxA_brcvt_config_count
   if (!ps->extra_length)
     ps->state = next_state;
   return row->insert_first;
+}
+
+void tcmplxA_brcvt_accum_remain(struct tcmplxA_brcvt* ps, tcmplxA_uint32* sum, unsigned x,
+  unsigned next_state, char const* label)
+{
+  ps->bits |= (x<< ps->bit_length++);
+  if (ps->bit_length < ps->extra_length)
+    return;
+  tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "%s %u", label, ps->bits);
+  (*sum) += ps->bits;
+  ps->bits = 0;
+  ps->bit_length = 0;
+  ps->state = (unsigned char)next_state;
 }
 
 void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps) {
@@ -1402,14 +1425,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert.Block_count_code %lu", line_value);
         ps->blocktypeI_remaining = tcmplxA_brcvt_config_count(ps, line_value, ps->state + 1);
       } else if (ps->bit_length < ps->extra_length) {
-        ps->bits |= (x<< ps->bit_length++);
-        if (ps->bit_length >= ps->extra_length) {
-          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert.extra_bits %u", ps->bits);
-          ps->blocktypeI_remaining += ps->bits;
-          ps->bits = 0;
-          ps->bit_length = 0;
-          ps->state += 1;
-        }
+        tcmplxA_brcvt_accum_remain(ps, &ps->blocktypeI_remaining, x, ps->state + 1, "insert.extra_bits");
       } else ae = tcmplxA_ErrSanitize;
       break;
     case tcmplxA_BrCvt_BlockTypesD:
