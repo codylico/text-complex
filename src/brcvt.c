@@ -129,6 +129,7 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_DistanceRestart = 61,
   tcmplxA_BrCvt_DataDistanceExtra = 62,
   tcmplxA_BrCvt_InsertRecount = 63,
+  tcmplxA_BrCvt_DistanceRecount = 64,
 };
 
 /** @brief Treety machine states. */
@@ -950,6 +951,8 @@ unsigned char tcmplxA_brcvt_next_state(unsigned char state) {
   switch (state) {
   case tcmplxA_BrCvt_BlockStartI: return tcmplxA_BrCvt_BlockTypesD;
   case tcmplxA_BrCvt_InsertRecount: return tcmplxA_BrCvt_DataInsertCopy;
+  case tcmplxA_BrCvt_BlockStartD: return tcmplxA_BrCvt_NPostfix;
+  case tcmplxA_BrCvt_DistanceRecount: return tcmplxA_BrCvt_Distance;
   default: return tcmplxA_BrCvt_BadToken;
   }
 }
@@ -1147,13 +1150,36 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
           continue;
       }
       return tcmplxA_Success;
+    case tcmplxA_BrCvt_DistanceRecount:
+      if (ps->extra_length == 0 && ps->blockcountD_skip != tcmplxA_brcvt_NoSkip) {
+        tcmplxA_brcvt_countbits(0, 0, "[distance.Block_count_code %u]", ps->blockcountD_skip);
+        ps->blocktypeD_remaining = tcmplxA_brcvt_config_count(ps, ps->blockcountD_skip, tcmplxA_BrCvt_Distance);
+        if (ps->extra_length == 0)
+          continue;
+      }
+      return tcmplxA_Success;
     case tcmplxA_BrCvt_DataInsertExtra:
     case tcmplxA_BrCvt_DataCopyExtra:
     case tcmplxA_BrCvt_DataDistanceExtra:
       return tcmplxA_Success;
     case tcmplxA_BrCvt_InsertRestart:
       ps->bit_length = 0;
-      return tcmplxA_Success;
+      if (ps->blocktypeI_skip == tcmplxA_brcvt_NoSkip)
+        return tcmplxA_Success;
+      tcmplxA_brcvt_countbits(0, 0, "[insert-restart %u]", ps->blocktypeI_skip);
+      ps->blocktypeI_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeI_index, ps->blocktypeI_max, ps->blocktypeI_skip);
+      ps->state = tcmplxA_BrCvt_InsertRecount;
+      ps->extra_length = 0;
+      break;
+    case tcmplxA_BrCvt_DistanceRestart:
+      ps->bit_length = 0;
+      if (ps->blocktypeD_skip == tcmplxA_brcvt_NoSkip)
+        return tcmplxA_Success;
+      tcmplxA_brcvt_countbits(0, 0, "[distance-restart %u]", ps->blocktypeD_skip);
+      ps->blocktypeD_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeD_index, ps->blocktypeD_max, ps->blocktypeD_skip);
+      ps->state = tcmplxA_BrCvt_DistanceRecount;
+      ps->extra_length = 0;
+      break;
     default:
       tcmplxA_brcvt_countbits(0, 0, "[[sanitize-fail %i]]", ps->state);
       return tcmplxA_ErrSanitize;
@@ -1543,30 +1569,15 @@ int tcmplxA_brcvt_zsrtostr_bits
           ae = res;
       } break;
     case tcmplxA_BrCvt_BlockStartD:
+    case tcmplxA_BrCvt_DistanceRecount:
       if (ps->extra_length == 0) {
-        size_t code_index = ~0;
-        struct tcmplxA_fixline const* line = NULL;
-        ps->bits = (ps->bits<<1) | x;
-        ps->bit_length += 1;
-        code_index = tcmplxA_fixlist_codebsearch(&ps->distance_blockcount, ps->bit_length, ps->bits);
-        if (code_index >= 26) {
-          if (ps->bit_length >= 15)
-            ae = tcmplxA_ErrSanitize;
+        unsigned const line_value = tcmplxA_brcvt_inflow_lookup(ps, &ps->distance_blockcount, x);
+        if (line_value >= 26)
           break;
-        }
-        line = tcmplxA_fixlist_at_c(&ps->distance_blockcount, code_index);
-        assert(line);
-        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance.Block_count_code %lu", line->value);
-        ps->blocktypeD_remaining = tcmplxA_brcvt_config_count(ps, line->value, ps->state + 1);
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance.Block_count_code %u", line_value);
+        ps->blocktypeD_remaining = tcmplxA_brcvt_config_count(ps, line_value, tcmplxA_brcvt_next_state(ps->state));
       } else if (ps->bit_length < ps->extra_length) {
-        ps->bits |= (x<< ps->bit_length++);
-        if (ps->bit_length >= ps->extra_length) {
-          tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance.extra_bits %u", ps->bits);
-          ps->blocktypeD_remaining += ps->bits;
-          ps->bits = 0;
-          ps->bit_length = 0;
-          ps->state += 1;
-        }
+        tcmplxA_brcvt_accum_remain(ps, &ps->blocktypeD_remaining, x, tcmplxA_brcvt_next_state(ps->state), "distance.extra_bits");
       } else ae = tcmplxA_ErrSanitize;
       break;
     case tcmplxA_BrCvt_NPostfix:
@@ -1915,6 +1926,20 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_BDict:
       ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       break;
+    case tcmplxA_BrCvt_DistanceRestart:
+      if (ps->bit_length == 0)
+        ps->bits = 0;
+      {
+        unsigned const line = tcmplxA_brcvt_inflow_lookup(ps, &ps->distance_blocktype, x);
+        if (line > ps->blocktypeD_max+2)
+          break;
+        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance-restart %u", line);
+        ps->blocktypeD_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeD_index, ps->blocktypeD_max, line);
+        ps->state = tcmplxA_BrCvt_DistanceRecount;
+        ps->bit_length = 0;
+        ps->extra_length = 0;
+        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      } break;
     case tcmplxA_BrCvt_InsertRestart:
       if (ps->bit_length == 0)
         ps->bits = 0;
