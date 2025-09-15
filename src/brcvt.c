@@ -903,6 +903,7 @@ tcmplxA_uint32 tcmplxA_brcvt_config_count
   ps->extra_length = row->insert_bits;
   ps->bits = 0;
   ps->bit_length = 0;
+  ps->count = 0;
   if (!ps->extra_length)
     ps->state = next_state;
   return row->insert_first;
@@ -1530,7 +1531,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->treety.count = (unsigned short)alphasize;
           ps->alphabits = (unsigned char)tcmplxA_util_bitwidth(alphasize+1u); /* BITWIDTH(NBLTYPESx + 2)*/
           ps->state += 1;
-          ps->blocktypeI_max = (unsigned char)(alphasize-1u);
+          ps->blocktypeD_max = (unsigned char)(alphasize-1u);
         }
         tcmplxA_ctxtmap_destroy(ps->distance_map);
         ps->distance_map = tcmplxA_ctxtmap_new(ps->treety.count, 4);
@@ -1905,6 +1906,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           break;
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance-code %u", line);
         res = tcmplxA_brcvt_inflow_distance(ps, line);
+        ps->blocktypeD_remaining -= 1;
         if (res == tcmplxA_ErrPartial)
           ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
@@ -3960,6 +3962,7 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_DoCopy:
     case tcmplxA_BrCvt_BDict:
     case tcmplxA_BrCvt_InsertRecount:
+    case tcmplxA_BrCvt_DistanceRecount:
     case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
