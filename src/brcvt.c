@@ -1938,6 +1938,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance-restart %u", line);
         ps->blocktypeD_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeD_index, ps->blocktypeD_max, line);
         ps->state = tcmplxA_BrCvt_DistanceRecount;
+        ps->bits = 0;
         ps->bit_length = 0;
         ps->extra_length = 0;
         ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
@@ -1953,6 +1954,7 @@ int tcmplxA_brcvt_zsrtostr_bits
         ps->blocktypeI_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeI_index, ps->blocktypeI_max, line);
         ps->state = tcmplxA_BrCvt_InsertRecount;
         ps->bit_length = 0;
+        ps->bits = 0;
         ps->extra_length = 0;
         ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
