@@ -617,6 +617,20 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
 static int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
   size_t* ret, unsigned char* dst, size_t dstsz);
 /**
+ * @brief Handle restarting a prefix forest mid-block.
+ * @param ps state structure to update
+ * @param fix prefix tree for determining next block type
+ * @param[in,out] blocktype_index block type to update
+ * @param blocktype_max maximum block type for the current meta-block
+ * @param next new machine state to enter on success
+ * @param x current input bit
+ * @param label label for diagnostics
+ * @return whether a state transition occurred
+ */
+static int tcmplxA_brcvt_inflow_restart(struct tcmplxA_brcvt* ps, struct tcmplxA_fixlist const* fix,
+  unsigned char *blocktype_index, unsigned char blocktype_max, enum tcmplxA_brcvt_istate next,
+  unsigned x, char const* label);
+/**
  * @brief Bring in the next insert command.
  * @param ps state to update
  * @param insert insert code
@@ -1187,6 +1201,24 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
     }
   }
   return tcmplxA_Success;
+}
+
+static int tcmplxA_brcvt_inflow_restart(struct tcmplxA_brcvt* ps, struct tcmplxA_fixlist const* fix,
+  unsigned char *blocktype_index, unsigned char blocktype_max, enum tcmplxA_brcvt_istate next,
+  unsigned x, char const* label)
+{
+  if (ps->bit_length == 0)
+    ps->bits = 0;
+  unsigned const line = tcmplxA_brcvt_inflow_lookup(ps, fix, x);
+  if (line > blocktype_max+2)
+    return 0;
+  tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "%s %u", label, line);
+  *blocktype_index = tcmplxA_brcvt_switch_blocktype(*blocktype_index, blocktype_max, line);
+  ps->state = next;
+  ps->bit_length = 0;
+  ps->bits = 0;
+  ps->extra_length = 0;
+  return 1;
 }
 
 int tcmplxA_brcvt_zsrtostr_bits
@@ -1929,35 +1961,23 @@ int tcmplxA_brcvt_zsrtostr_bits
       ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_DistanceRestart:
-      if (ps->bit_length == 0)
-        ps->bits = 0;
+      if (!tcmplxA_brcvt_inflow_restart(ps, &ps->distance_blocktype,
+          &ps->blocktypeD_index, ps->blocktypeD_max, tcmplxA_BrCvt_DistanceRecount, x,
+          "distance-restart"))
       {
-        unsigned const line = tcmplxA_brcvt_inflow_lookup(ps, &ps->distance_blocktype, x);
-        if (line > ps->blocktypeD_max+2)
-          break;
-        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "distance-restart %u", line);
-        ps->blocktypeD_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeD_index, ps->blocktypeD_max, line);
-        ps->state = tcmplxA_BrCvt_DistanceRecount;
-        ps->bits = 0;
-        ps->bit_length = 0;
-        ps->extra_length = 0;
-        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
-      } break;
+        break;
+      }
+      ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      break;
     case tcmplxA_BrCvt_InsertRestart:
-      if (ps->bit_length == 0)
-        ps->bits = 0;
+      if (!tcmplxA_brcvt_inflow_restart(ps, &ps->insert_blocktype,
+          &ps->blocktypeI_index, ps->blocktypeI_max, tcmplxA_BrCvt_InsertRecount, x,
+          "insert-restart"))
       {
-        unsigned const line = tcmplxA_brcvt_inflow_lookup(ps, &ps->insert_blocktype, x);
-        if (line > ps->blocktypeI_max+2)
-          break;
-        tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert-restart %u", line);
-        ps->blocktypeI_index = tcmplxA_brcvt_switch_blocktype(ps->blocktypeI_index, ps->blocktypeI_max, line);
-        ps->state = tcmplxA_BrCvt_InsertRecount;
-        ps->bit_length = 0;
-        ps->bits = 0;
-        ps->extra_length = 0;
-        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
-      } break;
+        break;
+      }
+      ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      break;
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
