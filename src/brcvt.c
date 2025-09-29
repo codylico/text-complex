@@ -2315,6 +2315,7 @@ int tcmplxA_brcvt_transfer19(struct tcmplxA_fixlist* prefixes,
   }
   tcmplxA_fixlist_valuesort(prefixes);
   tcmplxA_fixlist_gen_codes(prefixes);
+  tcmplxA_fixlist_codesort(prefixes);
   return tcmplxA_EOF;
 }
 
