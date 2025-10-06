@@ -207,6 +207,11 @@ struct tcmplxA_brcvt_forward {
   unsigned char literal_ctxt[2];
 };
 
+struct tcmplxA_brcvt_block {
+  unsigned char current;
+  unsigned char previous;
+};
+
 struct tcmplxA_brcvt {
   /**
    * @brief ...
@@ -309,16 +314,16 @@ struct tcmplxA_brcvt {
   struct tcmplxA_ctxtspan guesses;
   /** @brief Context mode offset for outflow. */
   unsigned char guess_offset;
-  /** @brief Current literal block type. */
-  unsigned char blocktypeL_index;
+  /** @brief Current and previous literal block type. */
+  struct tcmplxA_brcvt_block blocktypeL_index;
   /** @brief Maximum literal block type. */
   unsigned char blocktypeL_max;
-  /** @brief Current insert-and-copy block type. */
-  unsigned char blocktypeI_index;
+  /** @brief Current and previous insert-and-copy block type. */
+  struct tcmplxA_brcvt_block blocktypeI_index;
   /** @brief Maximum insert-and-copy block type. */
   unsigned char blocktypeI_max;
-  /** @brief Current distances block type. */
-  unsigned char blocktypeD_index;
+  /** @brief Current and previous distances block type. */
+  struct tcmplxA_brcvt_block blocktypeD_index;
   /** @brief Maximum distances block type. */
   unsigned char blocktypeD_max;
   /** @brief Field for context map transcoding. */
@@ -369,6 +374,17 @@ unsigned char tcmplxA_brcvt_clen[tcmplxA_brcvt_CLenExtent] =
 static struct tcmplxA_brcvt_treety const tcmplxA_brcvt_treety_zero = {0};
 static struct tcmplxA_ctxtspan const tcmplxA_brcvt_guess_zero = {0};
 static struct tcmplxA_brcvt_forward const tcmplxA_brcvt_fwd_zero = {0};
+/**
+ * @see RFC 7932, section 6, paragraph 2
+ * @verbatim
+A block type symbol 0 means that the new block type is the
+same as the type of the previous block from the same block category,
+i.e., the block type that preceded the current type. ...
+The previous and current block types are initialized
+to 1 and 0, respectively, at the end of the meta-block header.
+ @endverbatim
+ */
+static struct tcmplxA_brcvt_block const tcmplxA_brcvt_btype_zero = {0,1};
 
 /**
  * @brief Initialize a zcvt state.
@@ -629,7 +645,7 @@ static int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
  * @return whether a state transition occurred
  */
 static int tcmplxA_brcvt_inflow_restart(struct tcmplxA_brcvt* ps, struct tcmplxA_fixlist const* fix,
-  unsigned char *blocktype_index, unsigned char blocktype_max, enum tcmplxA_brcvt_istate next,
+  struct tcmplxA_brcvt_block *blocktype_index, unsigned char blocktype_max, enum tcmplxA_brcvt_istate next,
   unsigned x, char const* label);
 /**
  * @brief Bring in the next insert command.
@@ -678,11 +694,12 @@ static unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
  * @param cmd switch command to apply
  * @return result block type
  */
-static unsigned char tcmplxA_brcvt_switch_blocktype(unsigned char current,
+static struct tcmplxA_brcvt_block tcmplxA_brcvt_switch_blocktype(
+    struct tcmplxA_brcvt_block current,
     unsigned char max_value, unsigned cmd);
 
-/* BEGIN zcvt state / static */
-int tcmplxA_brcvt_init
+/* BEGIN brcvt state / static */
+static int tcmplxA_brcvt_init
     ( struct tcmplxA_brcvt* x, tcmplxA_uint32 block_size,
       tcmplxA_uint32 n, size_t chain_length)
 {
@@ -824,13 +841,13 @@ int tcmplxA_brcvt_init
     x->emptymeta = 0u;
     x->meta_index = 0u;
     x->metatext = NULL;
-    x->blocktypeL_index = 0u;
+    x->blocktypeL_index = tcmplxA_brcvt_btype_zero;
     x->blocktypeL_max = 0u;
     x->blocktypeL_remaining = 0u;
-    x->blocktypeI_index = 0u;
+    x->blocktypeI_index = tcmplxA_brcvt_btype_zero;
     x->blocktypeI_max = 0u;
     x->blocktypeI_remaining = 0u;
-    x->blocktypeD_index = 0u;
+    x->blocktypeD_index = tcmplxA_brcvt_btype_zero;
     x->blocktypeD_max = 0u;
     x->blocktypeD_remaining = 0u;
     x->rlemax = 0u;
@@ -1000,14 +1017,22 @@ unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
   return (unsigned)tcmplxA_fixlist_at_c(tree, line_index)->value;
 }
 
-unsigned char tcmplxA_brcvt_switch_blocktype(unsigned char current,
+struct tcmplxA_brcvt_block tcmplxA_brcvt_switch_blocktype(struct tcmplxA_brcvt_block box,
     unsigned char max_value, unsigned cmd)
 {
+  struct tcmplxA_brcvt_block out = {};
+  out.previous = box.current;
   switch (cmd) {
-    case 0: return current;
-    case 1: return current >= max_value ? 0 : current+1;
-    default: return cmd - 2;
+    case 0:
+      out.current = box.previous;
+      break;
+    case 1:
+      out.current = (unsigned char)(box.current >= max_value ? 0 : box.current+1);
+      break;
+    default:
+      out.current = (unsigned char)(cmd - 2);
   }
+  return out;
 }
 
 int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert) {
@@ -1226,7 +1251,7 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
 }
 
 static int tcmplxA_brcvt_inflow_restart(struct tcmplxA_brcvt* ps, struct tcmplxA_fixlist const* fix,
-  unsigned char *blocktype_index, unsigned char blocktype_max, enum tcmplxA_brcvt_istate next,
+  struct tcmplxA_brcvt_block *blocktype_index, unsigned char blocktype_max, enum tcmplxA_brcvt_istate next,
   unsigned x, char const* label)
 {
   if (ps->bit_length == 0)
@@ -1396,7 +1421,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       if (ps->count >= ps->bit_length) {
         /* extract encoded count */
         tcmplxA_brcvt_reset19(&ps->treety);
-        ps->blocktypeL_index = 0;
+        ps->blocktypeL_index = tcmplxA_brcvt_btype_zero;
         if (ps->count == 1) {
           tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESL 1");
           ps->treety.count = 1;
@@ -1442,7 +1467,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bits = 0;
           ps->count = 0;
           ps->extra_length = 0;
-          ps->blocktypeL_index = 0;
+          ps->blocktypeL_index = tcmplxA_brcvt_btype_zero;
           ps->blocktypeL_remaining = 0;
           tcmplxA_fixlist_codesort(&ps->literal_blockcount);
           if (ps->blockcountL_skip != tcmplxA_brcvt_NoSkip)
@@ -1475,7 +1500,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       if (ps->count >= ps->bit_length) {
         /* extract encoded count */
         tcmplxA_brcvt_reset19(&ps->treety);
-        ps->blocktypeI_index = 0;
+        ps->blocktypeI_index = tcmplxA_brcvt_btype_zero;
         if (ps->count == 1) {
           tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESI 1");
           ps->treety.count = 1;
@@ -1521,7 +1546,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bits = 0;
           ps->count = 0;
           ps->extra_length = 0;
-          ps->blocktypeI_index = 0;
+          ps->blocktypeI_index = tcmplxA_brcvt_btype_zero;
           ps->blocktypeI_remaining = 0;
           tcmplxA_fixlist_codesort(&ps->insert_blockcount);
           if (ps->blockcountI_skip != tcmplxA_brcvt_NoSkip)
@@ -1554,7 +1579,7 @@ int tcmplxA_brcvt_zsrtostr_bits
       if (ps->count >= ps->bit_length) {
         /* extract encoded count */
         tcmplxA_brcvt_reset19(&ps->treety);
-        ps->blocktypeD_index = 0;
+        ps->blocktypeD_index = tcmplxA_brcvt_btype_zero;
         if (ps->count == 1) {
           tcmplxA_brcvt_countbits(ps->bits, ps->count, "NBLTYPESD 1");
           ps->treety.count = 1;
@@ -1600,7 +1625,7 @@ int tcmplxA_brcvt_zsrtostr_bits
           ps->bits = 0;
           ps->count = 0;
           ps->extra_length = 0;
-          ps->blocktypeD_index = 0;
+          ps->blocktypeD_index = tcmplxA_brcvt_btype_zero;
           ps->blocktypeD_remaining = 0;
           tcmplxA_fixlist_codesort(&ps->distance_blockcount);
           if (ps->blockcountD_skip != tcmplxA_brcvt_NoSkip)
@@ -1878,7 +1903,7 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_DataInsertCopy:
       {
         unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
-          tcmplxA_gaspvec_at(ps->insert_forest, ps->blocktypeI_index), x);
+          tcmplxA_gaspvec_at(ps->insert_forest, ps->blocktypeI_index.current), x);
         if (line >= 704)
           break;
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert-and-copy %u", line);
@@ -1919,10 +1944,10 @@ int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_Literal:
       {
-        int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, ps->blocktypeL_index);
+        int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, ps->blocktypeL_index.current);
         int const column = tcmplxA_ctxtmap_literal_context(mode, ps->fwd.literal_ctxt[1],
           ps->fwd.literal_ctxt[0]);
-        int const index = tcmplxA_ctxtmap_get(ps->literals_map, ps->blocktypeL_index, column);
+        int const index = tcmplxA_ctxtmap_get(ps->literals_map, ps->blocktypeL_index.current, column);
         unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
           tcmplxA_gaspvec_at(ps->literals_forest, index), x);
         if (line >= 256)
@@ -1937,7 +1962,7 @@ int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_Distance:
       {
         int const column = tcmplxA_ctxtmap_distance_context(ps->fwd.literal_total);
-        int const index = tcmplxA_ctxtmap_get(ps->distance_map, ps->blocktypeD_index, column);
+        int const index = tcmplxA_ctxtmap_get(ps->distance_map, ps->blocktypeD_index.current, column);
         unsigned const line = tcmplxA_brcvt_inflow_lookup(ps,
           tcmplxA_gaspvec_at(ps->distance_forest, index), x);
         int res;
