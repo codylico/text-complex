@@ -1143,6 +1143,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         unsigned char ch_byte = 0;
         if (*ret >= dstsz)
           return tcmplxA_ErrPartial;
+        else if (ps->fwd.pos > tcmplxA_blockbuf_ring_size(ps->buffer))
+          return tcmplxA_ErrOutOfRange;
         ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos-1u);
         tcmplxA_brcvt_inflow_literal(ps, ch_byte, ret, dst, dstsz);
       }
