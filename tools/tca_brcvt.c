@@ -10,7 +10,7 @@ int do_zsrtostr(FILE *in, FILE* out) {
   unsigned char outbuf[256] = {};
   int ec = EXIT_SUCCESS;
   int done = 0;
-  struct tcmplxA_brcvt* state = tcmplxA_brcvt_new(1, 32768, 1);
+  struct tcmplxA_brcvt* state = tcmplxA_brcvt_new(1, 16777200u, 1);
   if (state == NULL)
     return EXIT_FAILURE;
   else while (ec == EXIT_SUCCESS && !done) {
