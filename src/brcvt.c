@@ -861,6 +861,7 @@ static int tcmplxA_brcvt_init
     x->insert_skip = tcmplxA_brcvt_NoSkip;
     x->distance_skip = tcmplxA_brcvt_NoSkip;
     x->context_skip = tcmplxA_brcvt_NoSkip;
+    x->fwd = tcmplxA_brcvt_fwd_zero;
     return tcmplxA_Success;
   }
 }
