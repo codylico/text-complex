@@ -1144,6 +1144,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
           ps->state == tcmplxA_BrCvt_Distance ? "" : "-restart");
         continue;
       } else if (ps->literal_skip != tcmplxA_brcvt_NoSkip) {
+        if (*ret >= dstsz)
+          return tcmplxA_ErrPartial;
         tcmplxA_brcvt_inflow_literal(ps, ps->literal_skip, ret, dst, dstsz);
         tcmplxA_brcvt_countbits(0, 0, "[[LITERAL %u]]", ps->literal_skip);
         continue;
@@ -1944,7 +1946,9 @@ int tcmplxA_brcvt_zsrtostr_bits
         ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_Literal:
-      {
+      if (ret_out >= dstsz)
+        ae = tcmplxA_ErrPartial;
+      else {
         int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, ps->blocktypeL_index.current);
         int const column = tcmplxA_ctxtmap_literal_context(mode, ps->fwd.literal_ctxt[1],
           ps->fwd.literal_ctxt[0]);
