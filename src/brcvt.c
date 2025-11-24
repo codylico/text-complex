@@ -284,6 +284,8 @@ struct tcmplxA_brcvt {
    * @todo Rename this field and create a new `backward` with the original intent.
    */
   tcmplxA_uint32 backward;
+  /** @brief Byte count for the current meta block. */
+  tcmplxA_uint32 metablock_pos;
   /** @brief Byte count for the active state. */
   tcmplxA_uint32 count;
   /** @brief Byte index for the active state. */
@@ -834,6 +836,7 @@ static int tcmplxA_brcvt_init
     x->state = tcmplxA_BrCvt_WBits;
     x->bit_index = 0u;
     x->backward = 0u;
+    x->metablock_pos = 0u;
     x->count = 0u;
     x->checksum = 0u;
     x->write_scratch = 0u;
@@ -1392,6 +1395,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_countbits(ps->backward, ps->bit_length, "MLEN-1 %lu", (long unsigned)ps->backward);
         ps->bit_length = 0;
         ps->count = 0;
+        ps->metablock_pos = 0;
         if (ps->bit_length > 16 && (ps->backward>>(ps->bit_length-4))==0)
           ae = tcmplxA_ErrSanitize;
         ps->backward += 1;
