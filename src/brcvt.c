@@ -2032,6 +2032,9 @@ static int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
       break;
+    default:
+      ae = tcmplxA_ErrSanitize;
+      break;
     }
     if (ae > tcmplxA_Success)
       /* halt the read position here: */break;
@@ -3797,8 +3800,11 @@ int tcmplxA_brcvt_zsrtostr
         if (ps->h_end)
           ae = tcmplxA_EOF;
       } break;
-    case 7: /* end of stream */
+    case tcmplxA_BrCvt_Done: /* end of stream */
       ae = tcmplxA_EOF;
+      break;
+    default:
+      ae = tcmplxA_ErrSanitize;
       break;
     }
     if (ae > tcmplxA_Success)
