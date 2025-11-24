@@ -1373,6 +1373,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
         if (!(ps->backward>>(ps->count-8)))
           ae = tcmplxA_ErrSanitize;
         ps->count = 0;
+        ps->metablock_pos = 0;
         ps->state = tcmplxA_BrCvt_MetaText;
       }
       break;
@@ -3757,7 +3758,7 @@ int tcmplxA_brcvt_zsrtostr
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
-      if (ps->count == 0) {
+      if (ps->metablock_pos == 0) {
         /* allocate */
         size_t const use_backward = (ps->backward >= ps->max_len_meta)
           ? ps->max_len_meta : ps->backward;
@@ -3768,12 +3769,12 @@ int tcmplxA_brcvt_zsrtostr
         ps->metatext = tcmplxA_brmeta_itemdata(ps->metadata, ps->meta_index);
         ps->index = tcmplxA_brmeta_itemsize(ps->metadata, ps->meta_index);
       }
-      if (ps->count < ps->backward) {
-        if (ps->count < ps->index)
-          ps->metatext[ps->count] = (*p);
-        ps->count += 1;
+      if (ps->metablock_pos < ps->backward) {
+        if (ps->metablock_pos < ps->index)
+          ps->metatext[ps->metablock_pos] = (*p);
+        ps->metablock_pos += 1;
       }
-      if (ps->count >= ps->backward) {
+      if (ps->metablock_pos >= ps->backward) {
         ps->metatext = NULL;
         ps->state = (ps->h_end
           ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
