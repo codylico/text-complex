@@ -699,6 +699,21 @@ static unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
 static struct tcmplxA_brcvt_block tcmplxA_brcvt_switch_blocktype(
     struct tcmplxA_brcvt_block current,
     unsigned char max_value, unsigned cmd);
+/**
+ * @brief Determine if a meta block should end.
+ * @param ps inflow conversion state
+ * @param term_ok whether the stream is at a good place to stop
+ * @return true on end or error, false otherwise
+ * @note On success, the converter state is updated.
+ */
+static int tcmplxA_brcvt_metaterm(struct tcmplxA_brcvt* ps, int term_ok);
+/**
+ * @brief Generate a status code depending on the "last block" bit.
+ * @param ps conversion state
+ * @return EOF if nonzero, Success otherwise
+ */
+static int tcmplxA_brcvt_meta_endcode(struct tcmplxA_brcvt const* ps);
+
 
 /* BEGIN brcvt state / static */
 static int tcmplxA_brcvt_init
@@ -1111,11 +1126,33 @@ int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
   dst[*ret] = (unsigned char)ch;
   ps->fwd.accum += 1;
   tcmplxA_blockbuf_bypass(ps->buffer, &ch_byte, 1);
+  ps->metablock_pos += 1;
   (*ret)++;
   ps->fwd.literal_ctxt[0] = ps->fwd.literal_ctxt[1];
   ps->fwd.literal_ctxt[1] = (unsigned char)ch;
   return tcmplxA_Success;
 }
+
+static int tcmplxA_brcvt_metaterm(struct tcmplxA_brcvt* ps, int term_ok) {
+  if (ps->metablock_pos < ps->backward)
+    return 0;
+  else if (ps->metablock_pos > ps->backward || !term_ok) {
+    ps->state = tcmplxA_BrCvt_BadToken;
+    return 1;
+  }
+  ps->state = (ps->h_end
+    ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
+  ps->bit_length = 0;
+  ps->bits = 0;
+  return 1;
+}
+
+static int tcmplxA_brcvt_meta_endcode(struct tcmplxA_brcvt const* ps) {
+  if (ps->state == tcmplxA_BrCvt_BadToken)
+    return tcmplxA_ErrSanitize;
+  return ps->h_end ? tcmplxA_EOF : tcmplxA_Success;
+}
+
 
 
 int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
@@ -1136,6 +1173,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       } else return tcmplxA_Success;
     case tcmplxA_BrCvt_Literal:
       if (ps->fwd.literal_i >= ps->fwd.literal_total) {
+        if (tcmplxA_brcvt_metaterm(ps, 1))
+          return tcmplxA_brcvt_meta_endcode(ps);
         ps->state = (ps->blocktypeD_remaining
           ? tcmplxA_BrCvt_Distance : tcmplxA_BrCvt_DistanceRestart);
         ps->fwd.literal_i = 0;
@@ -1179,6 +1218,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos-1u);
         tcmplxA_brcvt_inflow_literal(ps, ch_byte, ret, dst, dstsz);
       }
+      if (tcmplxA_brcvt_metaterm(ps, 1))
+        return tcmplxA_brcvt_meta_endcode(ps);
       ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
         : tcmplxA_BrCvt_InsertRestart);
       break;
