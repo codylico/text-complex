@@ -1271,7 +1271,7 @@ static int tcmplxA_brcvt_inflow_restart(struct tcmplxA_brcvt* ps, struct tcmplxA
   return 1;
 }
 
-int tcmplxA_brcvt_zsrtostr_bits
+static int tcmplxA_brcvt_zsrtostr_bits
   ( struct tcmplxA_brcvt* ps, unsigned int y,
     size_t* ret, unsigned char* dst, size_t dstsz)
 {
