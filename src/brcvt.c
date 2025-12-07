@@ -2698,7 +2698,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   }
   if (fwd->i >= size)
     return out;
-  else if (fwd->pos >= fwd->stop && fwd->i < size) {
+  else if (fwd->ostate == tcmplxA_BrCvt_Literal && fwd->pos >= fwd->stop && fwd->i < size) {
     fwd->ctxt_i += 1;
     for (; fwd->ctxt_i < guesses->count; ++fwd->ctxt_i) {
       fwd->stop = (tcmplxA_uint32)(fwd->ctxt_i+1 < guesses->count
@@ -2718,7 +2718,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
       tcmplxA_uint32 literals = 0;
       tcmplxA_uint32 first_literals = 0;
       out.state = tcmplxA_BrCvt_DataInsertCopy;
-      /* compose insert length */
+      /* compose insert length, collapsing adjacent insertions together */
       for (next_i = fwd->i; next_i < size; ++next_i) {
         unsigned short next_span = 0;
         unsigned char const ch = data[next_i];
@@ -2733,6 +2733,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
           next_i += 1;
           next_span = (next_span << 8) + data[next_i] + 64u;
         }
+        /* skip over empty spans (or quit at end of command sequence) */
         if (next_span == 0 && first_literals == 0) {
           fwd->i = next_i+1;
           if (fwd->i >= size) {
@@ -2783,7 +2784,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
     if (fwd->i >= size)
       fwd->ostate = tcmplxA_BrCvt_Done;
     else if (fwd->literal_i >= fwd->literal_total) {
-      /* check for copy count */
+      /* end of insertion sequence, so check for copy count */
       unsigned char const ch = data[fwd->i];
       unsigned short next_span = (ch & 63u);
       if (ch & 64u) {
@@ -2796,6 +2797,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
       fwd->pos += next_span;
       fwd->command_span = next_span;
     } else if (fwd->literal_i >= fwd->command_span) {
+      /* more insertion commands follow; read in the next non-empty insertion command */
       size_t next_i;
       assert(fwd->command_span <= fwd->literal_total);
       fwd->literal_total -= fwd->command_span;
@@ -2804,10 +2806,11 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
         unsigned short next_span = 0;
         unsigned char const ch = data[next_i];
         if (ch & 128u) {
+          /* inconsistency detected, so give up. */
           out.state = tcmplxA_BrCvt_BadToken;
           return out;
         } else if ((ch & 63u) == 0u)
-          continue;
+          /* insertion is empty, so */continue;
         next_span = (ch & 63u);
         if (ch & 64u) {
           assert(next_i < size-1u);
@@ -2870,7 +2873,16 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   return out;
 }
 
-int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
+static unsigned tcmplxA_brcvt_shift4(unsigned mode, unsigned offset) {
+  /* todo: documentation */
+  return (mode+4u-offset)%4u;
+}
+static unsigned tcmplxA_brcvt_unshift4(unsigned mode, unsigned offset) {
+  /* todo: documentation */
+  return (mode+offset)%4u;
+}
+
+static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   unsigned int ctxt_i;
   int guess_nonzero = 0;
   size_t accum = 0;
@@ -2892,11 +2904,11 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   for (ctxt_i = 0; ctxt_i < ps->guesses.count; ++ctxt_i) {
     unsigned const mode = ps->guesses.modes[ctxt_i];
     assert(mode < 4);
-    ctxt_histogram[(mode+4u-ps->guess_offset)%4u] += 1;
+    ctxt_histogram[tcmplxA_brcvt_shift4(mode, ps->guess_offset)] += 1;
   }
   for (ctxt_i = 0; ctxt_i < 4u; ++ctxt_i) {
     struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(&ps->literal_blocktype, ctxt_i);
-    line->value = ctxt_i;
+    line->value = ctxt_i+2;
     if (ctxt_histogram[ctxt_i] > 0)
       guess_nonzero += 1;
   }
@@ -2922,7 +2934,8 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   }
   for (btype_j = 0; btype_j < btypes; ++btype_j) {
     struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, btype_j);
-    tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j, (int)line->value);
+    tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j,
+      tcmplxA_brcvt_unshift4((int)line->value-2, ps->guess_offset));
     for (ctxt_i = 0; ctxt_i < 64; ++ctxt_i)
       tcmplxA_ctxtmap_set(ps->literals_map, btype_j, ctxt_i, (int)btype_j);
   }
@@ -2959,7 +2972,7 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     tcmplxA_uint32 next_copy = 0;
     unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
     int ae = tcmplxA_Success;
-    //TODO: try_fwd.accum = ps->fwd.accum;
+    try_fwd.accum = ps->fwd.accum;
     /* compute histogram addresses for literals */{
       tcmplxA_uint32 *const literal_start = distance_histogram+tcmplxA_brcvt_DistHistoSize;
       for (btype_j = 0; btype_j < 4u; ++btype_j)
@@ -2998,6 +3011,7 @@ int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
         /* */{
           tcmplxA_uint32* const hist = literal_histograms[ps->guesses.modes[ctxt_i]];
           hist[next.first&255u] += 1;
+          literal_counter += 1;
         } break;
       case tcmplxA_BrCvt_Distance:
       case tcmplxA_BrCvt_BDict:
@@ -3281,7 +3295,7 @@ int tcmplxA_brcvt_strrtozs_bits
       break;
     case tcmplxA_BrCvt_CompressCheck:
       if (ps->bit_length == 0) {
-        int const want_compress = tcmplxA_brcvt_check_compress(ps)==tcmplxA_Success;
+        int const want_compress = (tcmplxA_brcvt_check_compress(ps)==tcmplxA_Success);
         if (!want_compress) {
           x = 1;
           tcmplxA_blockbuf_clear_output(ps->buffer);
