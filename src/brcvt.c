@@ -3574,7 +3574,7 @@ int tcmplxA_brcvt_strrtozs_bits
         ps->count += 1;
       }
       if (ps->count >= ps->bit_length) {
-        size_t const btypes = tcmplxA_ctxtmap_contexts(&ps->literals_map);
+        size_t const btypes = tcmplxA_ctxtmap_contexts(ps->literals_map);
         tcmplxA_uint32 histogram[tcmplxA_brcvt_ContextHistogram] = {0};
         size_t j;
         unsigned int const rlemax = ps->rlemax;
