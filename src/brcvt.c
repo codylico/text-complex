@@ -3476,7 +3476,7 @@ int tcmplxA_brcvt_strrtozs_bits
           ae = tcmplxA_ErrSanitize;
           break;
         }
-        ps->bits = postfix|(direct>>postfix);
+        ps->bits = postfix|((direct>>postfix)<<2);
       }
       if (ps->bit_length < 6) {
         x = (ps->bits>>ps->bit_length)&1u;
@@ -3489,11 +3489,11 @@ int tcmplxA_brcvt_strrtozs_bits
       } break;
     case tcmplxA_BrCvt_ContextTypesL:
       if (ps->bit_length == 0) {
-        size_t const contexts = tcmplxA_fixlist_size(&ps->literal_blocktype);
-        size_t i;
-        for (i = 0; i < contexts; ++i) {
-          struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, i);
-          ps->bits |= ((line->value&3u)<<ps->bit_length);
+        size_t const contexts = tcmplxA_ctxtmap_contexts(ps->literals_map);
+        size_t j;
+        for (j = 0; j < contexts; ++j) {
+          int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, i);
+          ps->bits |= ((mode&3u)<<ps->bit_length);
           ps->bit_length += 2;
         }
       }
