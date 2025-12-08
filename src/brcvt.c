@@ -3684,9 +3684,9 @@ int tcmplxA_brcvt_strrtozs_bits
   *src = p;
   return ae;
 }
-/* END   zcvt state / static */
+/* END   brcvt state / static */
 
-/* BEGIN zcvt state / public */
+/* BEGIN brcvt state / public */
 struct tcmplxA_brcvt* tcmplxA_brcvt_new
   ( tcmplxA_uint32 block_size,
     tcmplxA_uint32 n, size_t chain_length)
@@ -3949,4 +3949,4 @@ struct tcmplxA_brmeta const* tcmplxA_brcvt_metadata_c
 {
   return ps->metadata;
 }
-/* END   zcvt state / public */
+/* END   brcvt state / public */
