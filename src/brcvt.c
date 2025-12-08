@@ -2682,7 +2682,7 @@ void tcmplxA_brcvt_next_block(struct tcmplxA_brcvt* ps) {
     ps->state = tcmplxA_BrCvt_MetaStart;
   else if (ps->emptymeta)
     ps->state = tcmplxA_BrCvt_MetaStart;
-  else if (!(ps->h_end&1u))
+  else if (!(ps->h_end&2u))
     ps->state = tcmplxA_BrCvt_Nibbles;
   else {
     ps->state = tcmplxA_BrCvt_LastCheck;
