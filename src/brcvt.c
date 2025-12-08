@@ -362,6 +362,8 @@ struct tcmplxA_brcvt {
   unsigned short context_skip;
   /** @brief Token forwarding. */
   struct tcmplxA_brcvt_forward fwd;
+  /** @brief Extended pool of output bits. */
+  tcmplxA_uint32 extra_bits[2];
   /** @brief Map from mode to outflow context index. */
   unsigned char ctxt_mode_map[4];
   /**
@@ -622,11 +624,13 @@ static unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps);
  * @param data output data in block buffer format
  * @param size length of output data in bytes
  * @param wbits_select window size bits indirectly selected by user
+ * @param skip set to NoSkip to disable LiteralRestart tokens, other value
+ *   to enable
  * @return a token
  */
 struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
-    unsigned char const* data, size_t size, unsigned char wbits_select);
+    unsigned char const* data, size_t size, unsigned char wbits_select, unsigned short skip);
 /**
  * @brief Process skip frameworks.
  * @param ps state to update
@@ -722,6 +726,7 @@ static int tcmplxA_brcvt_meta_endcode(struct tcmplxA_brcvt const* ps);
  * @param value value for which to search
  * @param[out] ae set to ErrSanitize on failure
  * @return nonzero on success, zero otherwise
+ * @todo Account for skip values.
  */
 static int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
   struct tcmplxA_fixlist const* fix, unsigned long value, int *ae);
@@ -892,6 +897,7 @@ static int tcmplxA_brcvt_init
     x->distance_skip = tcmplxA_brcvt_NoSkip;
     x->context_skip = tcmplxA_brcvt_NoSkip;
     x->fwd = tcmplxA_brcvt_fwd_zero;
+    memset(x->extra_bits, 0, 2*sizeof(tcmplxA_uint32));
     memset(x->ctxt_mode_map, 0, 4*sizeof(unsigned char));
     return tcmplxA_Success;
   }
@@ -2701,7 +2707,7 @@ int tcmplxA_brcvt_can_add_input(struct tcmplxA_brcvt const* ps) {
 
 struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   (struct tcmplxA_brcvt_forward* fwd, struct tcmplxA_ctxtspan const* guesses,
-    unsigned char const* data, size_t size, unsigned char wbits_select)
+    unsigned char const* data, size_t size, unsigned char wbits_select, unsigned short skip)
 {
   struct tcmplxA_brcvt_token out = {0};
   if (fwd->ostate == 0) {
@@ -2711,7 +2717,9 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   }
   if (fwd->i >= size)
     return out;
-  else if (fwd->ostate == tcmplxA_BrCvt_Literal && fwd->pos >= fwd->stop && fwd->i < size) {
+  else if (fwd->ostate == tcmplxA_BrCvt_Literal && fwd->pos >= fwd->stop
+    && fwd->i < size && skip == tcmplxA_brcvt_NoSkip)
+  {
     fwd->ctxt_i += 1;
     for (; fwd->ctxt_i < guesses->count; ++fwd->ctxt_i) {
       fwd->stop = (tcmplxA_uint32)(fwd->ctxt_i+1 < guesses->count
@@ -2886,6 +2894,89 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
   return out;
 }
 
+
+int tcmplxA_brcvt_apply_token(struct tcmplxA_brcvt* ps,
+    struct tcmplxA_brcvt_token next)
+{
+  int ae = 0;
+  ps->extra_length = 0;
+  ps->bit_length = 0;
+  switch (next.state) {
+  case tcmplxA_BrCvt_DataInsertCopy:
+    {
+      size_t const icv = tcmplxA_inscopy_encode(ps->values, next.first,
+        next.second ? next.second : 2, 0);
+      struct tcmplxA_inscopy_row const* const icv_row =
+        tcmplxA_inscopy_at_c(ps->values, icv);
+      if (!icv_row)
+        return tcmplxA_ErrSanitize;
+      if (!tcmplxA_brcvt_outflow_lookup(ps, tcmplxA_gaspvec_at_c(ps->insert_forest, 0), icv_row->code, &ae))
+        return ae;
+      ps->extra_length = icv_row->insert_bits;
+      ps->bit_length = icv_row->copy_bits;
+      ps->extra_bits[0] = (next.first - icv_row->insert_first);
+      ps->extra_bits[1] = (next.second - icv_row->copy_first);
+    }
+    break;
+  case tcmplxA_BrCvt_Literal:
+    /* all contexts for the current block type point to the same prefix tree,
+    so just fetch that tree
+    */
+    {
+      unsigned const mode = ps->guesses.modes[ps->fwd.ctxt_i];
+      unsigned const context = ps->ctxt_mode_map[mode];
+      struct tcmplxA_fixlist const* const fix =
+          tcmplxA_gaspvec_at_c(ps->literals_forest, context);
+      if (!tcmplxA_brcvt_outflow_lookup(ps, fix, next.first, &ae))
+        return ae;
+    }
+    break;
+  case tcmplxA_BrCvt_Distance:
+  case tcmplxA_BrCvt_BDict:
+    {
+      int const to_record = (next.state==tcmplxA_BrCvt_Distance);
+      tcmplxA_uint32 extra = 0;
+      // TODO: use `to_record`
+      unsigned const cmd = tcmplxA_ringdist_encode(ps->ring, next.first, &extra,
+        to_record ? 0xFFffFFff : 0);
+      unsigned const sum_direct = tcmplxA_ringdist_get_direct(ps->ring) + 16u;
+      if (cmd >= tcmplxA_brcvt_DistHistoSize)
+        return tcmplxA_ErrSanitize;
+      ps->extra_length = 1 + ((cmd - sum_direct) >> (tcmplxA_ringdist_get_postfix(ps->ring)+1));
+      if (ps->extra_length > 0) {
+        ps->extra_bits[0] = extra;
+      }
+      if (!tcmplxA_brcvt_outflow_lookup(ps, tcmplxA_gaspvec_at_c(ps->distance_forest,0), cmd, &ae))
+        return ae;
+    }
+    break;
+  case tcmplxA_BrCvt_LiteralRestart:
+    {
+      unsigned const mode = ps->guesses.modes[ps->fwd.ctxt_i];
+      unsigned const context = ps->ctxt_mode_map[mode];
+      tcmplxA_uint32 const len = ps->guess_lengths[ps->fwd.ctxt_i];
+      size_t const icv = tcmplxA_inscopy_encode(ps->blockcounts, len, 0, 0);
+      struct tcmplxA_inscopy_row const* const icv_row =
+        tcmplxA_inscopy_at_c(ps->blockcounts, icv);
+      if (!icv_row)
+        return tcmplxA_ErrSanitize;
+      ps->bit_length = icv_row->insert_bits;
+      ps->extra_bits[1] = len - icv_row->insert_first;
+      if (!tcmplxA_brcvt_outflow_lookup(ps, &ps->literal_blockcount, icv_row->code, &ae))
+        return ae;
+      ps->extra_bits[0] = ps->bits;
+      ps->extra_length = ps->bit_cap;
+      ps->bit_cap = 0;
+      if (!tcmplxA_brcvt_outflow_lookup(ps, &ps->literal_blocktype, context, &ae))
+        return ae;
+    }
+    break;
+  default:
+    return tcmplxA_ErrSanitize;
+  }
+  return tcmplxA_Success;
+}
+
 static unsigned tcmplxA_brcvt_shift4(unsigned mode, unsigned offset) {
   /* todo: documentation */
   return (mode+4u-offset)%4u;
@@ -2982,6 +3073,10 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
       if (!ps->literals_forest)
         return tcmplxA_ErrMemory;
     }
+    if (btypes <= 1)
+      ps->blocktypeL_skip = 0;
+    else
+      ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
   }
   /* fill the histograms */{
     tcmplxA_uint32 *const insert_histogram = ps->histogram;
@@ -3005,7 +3100,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     memset(ps->histogram, 0, sizeof(tcmplxA_uint32)*tcmplxA_brcvt_HistogramSize);
     for (i = 0; i < size; ++i) {
       struct tcmplxA_brcvt_token next =
-        tcmplxA_brcvt_next_token(&try_fwd, &ps->guesses, data, size, ps->wbits_select);
+        tcmplxA_brcvt_next_token(&try_fwd, &ps->guesses, data, size, ps->wbits_select, ps->blocktypeL_skip);
       if (try_fwd.i <= i)
         return tcmplxA_ErrSanitize;
       i = try_fwd.i-1;
@@ -3714,6 +3809,66 @@ int tcmplxA_brcvt_strrtozs_bits
           ae = tcmplxA_fixlist_valuesort(tree);
         } else if (res != tcmplxA_Success)
           ae = res;
+      }
+      break;
+    case tcmplxA_BrCvt_DataInsertCopy:
+    case tcmplxA_BrCvt_Literal:
+    case tcmplxA_BrCvt_LiteralRestart:
+    case tcmplxA_BrCvt_Distance:
+    case tcmplxA_BrCvt_BDict:
+      if (ps->bit_cap == 0) {
+        /* Acquire the next token. */
+        unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
+        size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
+        size_t const old_fwd_index = ps->fwd.i;
+        struct tcmplxA_brcvt_token const next =
+          tcmplxA_brcvt_next_token(&ps->fwd, &ps->guesses, data, size, ps->wbits_select,
+            ps->blocktypeL_skip);
+        if (ps->fwd.i <= old_fwd_index)
+          return tcmplxA_ErrSanitize;
+        ps->state = next.state;
+        tcmplxA_brcvt_apply_token(ps, next);
+      }
+      if (ps->bit_cap > 0)
+        x = (ps->bits>>(--ps->bit_cap))&1u;
+      if (ps->bit_cap == 0) {
+        ps->bits = 0;
+        if (ps->extra_length > 0) {
+          ps->state = tcmplxA_BrCvt_DataInsertExtra;
+        } else if (ps->bit_length > 0) {
+          ps->state = tcmplxA_BrCvt_DataCopyExtra;
+        } else if (ps->fwd.i >= tcmplxA_blockbuf_output_size(ps->buffer)) {
+          /* end of block! */
+          tcmplxA_brcvt_next_block(ps);
+        }
+        /* otherwise process the next token */;
+      } break;
+    case tcmplxA_BrCvt_DataInsertExtra:
+    case tcmplxA_BrCvt_DataDistanceExtra:
+      if (ps->extra_length > 0)
+        x = (ps->extra_bits[0]>>(--ps->extra_length))&1u;
+      if (ps->extra_length == 0) {
+        if (ps->bit_length > 0) {
+          ps->state = tcmplxA_BrCvt_DataCopyExtra;
+        } else if (ps->fwd.i >= tcmplxA_blockbuf_output_size(ps->buffer)) {
+          /* end of block! */
+          tcmplxA_brcvt_next_block(ps);
+        } else {
+          /* otherwise process the next token */;
+          ps->state = tcmplxA_BrCvt_DataInsertCopy;
+        }
+      }
+      break;
+    case tcmplxA_BrCvt_DataCopyExtra:
+      if (ps->bit_length > 0)
+        x = (ps->extra_bits[1]>>(--ps->bit_length))&1u;
+      if (ps->bit_length == 0) {
+        if (ps->fwd.i >= tcmplxA_blockbuf_output_size(ps->buffer)) {
+          tcmplxA_brcvt_next_block(ps);
+        } else {
+          /* otherwise process the next token */;
+          ps->state = tcmplxA_BrCvt_DataInsertCopy;
+        }
       }
       break;
     case tcmplxA_BrCvt_ContextRunMaxD:
