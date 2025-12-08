@@ -3615,29 +3615,24 @@ int tcmplxA_brcvt_strrtozs_bits
           ps->count = (tcmplxA_uint32)ps->context_encode.sz;
           tcmplxA_brcvt_reset19(&ps->treety);
           ps->state += 1;
+          ps->bit_cap = 0;
           ae = tcmplxA_fixlist_valuesort(&ps->context_tree);
         } else if (res != tcmplxA_Success)
           ae = res;
       } break;
     case tcmplxA_BrCvt_ContextValuesL:
-      if (ps->bit_length == 0) {
+      if (ps->bit_cap == 0) {
         unsigned char const code = ps->context_encode.p[ps->index];
         unsigned int const extra = (code&tcmplxA_brcvt_ZeroBit)
           ? code & (tcmplxA_brcvt_ZeroBit-1u) : 0;
         unsigned int const value = extra ? extra : (code?code+ps->rlemax:0);
-        size_t const line_index = tcmplxA_fixlist_valuebsearch(&ps->context_tree, value);
-        struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->context_tree, line_index);
-        if (!line) {
-          ae = tcmplxA_ErrSanitize;
+        if (!tcmplxA_brcvt_outflow_lookup(ps, &ps->context_tree, value, &ae))
           break;
-        }
-        ps->bits = line->code;
-        ps->bit_length = (unsigned char)line->len;
         ps->extra_length = extra;
       }
-      if (ps->bit_length > 0)
-        x = (ps->bits>>(--ps->bit_length))&1u;
-      if (ps->bit_length == 0) {
+      if (ps->bit_cap > 0)
+        x = (ps->bits>>(--ps->bit_cap))&1u;
+      if (ps->bit_cap == 0) {
         ps->index += 1;
         ps->bits = 0;
         if (ps->index >= ps->count)
