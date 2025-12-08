@@ -3046,6 +3046,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
         literal_histograms[btype],
         tcmplxA_brcvt_LitHistoSize, &ae);
     }
+    memcpy(ps->guess_lengths, literal_lengths+1, tcmplxA_CtxtSpan_Size*sizeof(tcmplxA_uint32));
   }
   if (try_bit_count/8+1 > tcmplxA_blockbuf_input_size(ps->buffer))
     return tcmplxA_ErrBlockOverflow;
@@ -3363,74 +3364,29 @@ int tcmplxA_brcvt_strrtozs_bits
       } break;
     case tcmplxA_BrCvt_BlockCountLAlpha:
       if (ps->bit_length == 0) {
-        ps->bit_length += 1;
+        /* Populate histogram. */
         tcmplxA_uint32 histogram[26] = {0};
-        size_t const output_len = tcmplxA_blockbuf_output_size(ps->buffer);
-        size_t i;
-        size_t guess_i = 0;
         size_t total = 0;
-        size_t literals = 0;
-        size_t coverage = 0;
-        unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
-        // Reparse the text.
-        for (i = 0; i < output_len; ++i) {
-          int const copy = (data[i]&128u);
-          unsigned len = data[i]&63u;
-          if (data[i] & 64u && i+1 < output_len) {
-            i += 1;
-            len = (len<<8) | data[i];
-          }
-          if (copy && i+i < output_len) {
-            unsigned extend = 0;
-            i += 1;
-            if (data[i] < 128)
-              extend = 3;
-            else if (data[i] < 192)
-              extend = 2;
-            else extend = 4;
-            if (extend >= output_len - i)
-              break;
-            i += (extend-1);
-          } else if (len > output_len - i) {
-            ae = tcmplxA_ErrSanitize;
-            break;
-          } else i += len;
-          for (; guess_i < ps->guesses.count; ++guess_i) {
-            size_t const limit = (guess_i >= ps->guesses.count-1)
-              ? ps->guesses.total_bytes : ps->guesses.offsets[guess_i+1];
-            size_t const remaining = total - limit;
-            if (len < remaining) {
-              literals += len;
-              break;
-            }
-            len -= remaining;
-            literals += remaining;
-            ps->guess_lengths[guess_i] = literals;
-            literals = 0;
-          }
-          total += len;
-        }
-        if (ae != tcmplxA_Success)
-          break;
-        assert(total == output_len);
-        // Populate histogram.
+        size_t j = 0;
+        ps->bit_length = 1;
         tcmplxA_inscopy_lengthsort(ps->blockcounts);
-        for (i = 0; i < ps->guesses.count; ++i) {
-          size_t const v = tcmplxA_inscopy_encode(ps->blockcounts, ps->guess_lengths[i], 0, 0);
+        for (j = 0; j < ps->guesses.count; ++j) {
+          size_t const v = tcmplxA_inscopy_encode(ps->blockcounts, ps->guess_lengths[j], 0, 0);
           if (v >= 26) {
             ae = tcmplxA_ErrSanitize;
             break;
           }
           histogram[v] += 1;
+          total += ps->guess_lengths[j];
         }
+        assert(total <= tcmplxA_blockbuf_input_size(ps->buffer));
         if (ae != tcmplxA_Success)
           break;
         ae = tcmplxA_fixlist_resize(&ps->literal_blockcount, 26);
         if (ae != tcmplxA_Success)
           break;
-        for (i = 0; i < 26; ++i) {
-          tcmplxA_fixlist_at(&ps->literal_blockcount, i)->value = i;
-          coverage += (histogram[i] != 0);
+        for (j = 0; j < 26; ++j) {
+          tcmplxA_fixlist_at(&ps->literal_blockcount, j)->value = j;
         }
         ae = tcmplxA_fixlist_gen_lengths(&ps->literal_blockcount, histogram, 15);
         if (ae != tcmplxA_Success)
