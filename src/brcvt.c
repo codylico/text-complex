@@ -3306,7 +3306,7 @@ int tcmplxA_brcvt_strrtozs_bits
           ps->state = tcmplxA_BrCvt_Uncompress;
           ps->backward = tcmplxA_blockbuf_output_size(ps->buffer);
           ps->count = 0;
-          //TODO: ps->fwd.accum += ps->backward;
+          ps->fwd.accum += ps->backward;
           assert(ps->backward);
           break;
         }
