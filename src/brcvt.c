@@ -713,6 +713,16 @@ static int tcmplxA_brcvt_metaterm(struct tcmplxA_brcvt* ps, int term_ok);
  * @return EOF if nonzero, Success otherwise
  */
 static int tcmplxA_brcvt_meta_endcode(struct tcmplxA_brcvt const* ps);
+/**
+ * @brief Load a prefix bit string onto an output state.
+ * @param[in,out] ps Brotli conversion state to update
+ * @param fix prefix tree to search
+ * @param value value for which to search
+ * @param[out] ae set to ErrSanitize on failure
+ * @return nonzero on success, zero otherwise
+ */
+static int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
+  struct tcmplxA_fixlist const* fix, unsigned long value, int *ae);
 
 
 /* BEGIN brcvt state / static */
@@ -3121,6 +3131,20 @@ int tcmplxA_brcvt_encode_map(struct tcmplxA_blockstr* buffer, size_t zeroes,
   return tcmplxA_blockstr_append(buffer, code, len);
 }
 
+int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
+  struct tcmplxA_fixlist const* fix, unsigned long value, int *ae)
+{
+  size_t const line_index = tcmplxA_fixlist_valuebsearch(&ps->literal_blockcount, value);
+  struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blockcount, line_index);
+  if (!line) {
+    *ae = tcmplxA_ErrSanitize;
+    return 0;
+  }
+  ps->bits = line->code;
+  ps->bit_cap = line->len;
+  return 1;
+}
+
 int tcmplxA_brcvt_strrtozs_bits
   ( struct tcmplxA_brcvt* ps, unsigned char* y,
     unsigned char const** src, unsigned char const* src_end)
@@ -3417,16 +3441,10 @@ int tcmplxA_brcvt_strrtozs_bits
           ae = tcmplxA_ErrSanitize;
           break;
         }
-        line_index = tcmplxA_fixlist_valuebsearch(&ps->literal_blockcount, row->code);
-        line = tcmplxA_fixlist_at_c(&ps->literal_blockcount, line_index);
-        if (!line) {
-          ae = tcmplxA_ErrSanitize;
+        if (!tcmplxA_brcvt_outflow_lookup(ps, &ps->literal_blockcount, row->code, &ae))
           break;
-        }
         ps->count = (ps->guess_lengths[0] - row->insert_first);
         ps->extra_length = row->insert_bits;
-        ps->bits = line->code;
-        ps->bit_cap = line->len;
       }
       if (ps->bit_length < ps->bit_cap) {
         x = (ps->bits >> (ps->bit_cap - ps->bit_length - 1u))&1u;
