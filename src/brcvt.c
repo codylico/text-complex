@@ -362,6 +362,8 @@ struct tcmplxA_brcvt {
   unsigned short context_skip;
   /** @brief Token forwarding. */
   struct tcmplxA_brcvt_forward fwd;
+  /** @brief Map from mode to outflow context index. */
+  unsigned char ctxt_mode_map[4];
   /**
    * @brief Built-in tree type for block type outflow.
    * @todo Test for removal.
@@ -890,6 +892,7 @@ static int tcmplxA_brcvt_init
     x->distance_skip = tcmplxA_brcvt_NoSkip;
     x->context_skip = tcmplxA_brcvt_NoSkip;
     x->fwd = tcmplxA_brcvt_fwd_zero;
+    memset(x->ctxt_mode_map, 0, 4*sizeof(unsigned char));
     return tcmplxA_Success;
   }
 }
@@ -2902,6 +2905,10 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   int blocktype_tree = tcmplxA_FixList_BrotliComplex;
   /* calculate the guesses */
   tcmplxA_uint32 ctxt_histogram[4] = {0};
+  /** @brief Map from outflow context index to mode. */
+  unsigned char ctxt_mode_revmap[4] = {255,255,255,255};
+  unsigned char ctxt_mode_alloc = 0;
+  memset(ps->ctxt_mode_map, 255, 4*sizeof(char));
   if (tcmplxA_inscopy_lengthsort(ps->values) != tcmplxA_Success)
     return tcmplxA_ErrInit;
   ps->guesses = tcmplxA_brcvt_guess_zero;
@@ -2914,7 +2921,14 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   for (ctxt_i = 0; ctxt_i < ps->guesses.count; ++ctxt_i) {
     unsigned const mode = ps->guesses.modes[ctxt_i];
     assert(mode < 4);
-    ctxt_histogram[tcmplxA_brcvt_shift4(mode, ps->guess_offset)] += 1;
+    if (ps->ctxt_mode_map[mode] >= 4) {
+      /* allocate a spot */
+      assert(ctxt_mode_alloc < 4);
+      ps->ctxt_mode_map[mode] = ctxt_mode_alloc;
+      ctxt_mode_revmap[ctxt_mode_alloc] = mode;
+      ctxt_mode_alloc += 1;
+    }
+    ctxt_histogram[ps->ctxt_mode_map[mode]] += 1;
   }
   for (ctxt_i = 0; ctxt_i < 4u; ++ctxt_i) {
     struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(&ps->literal_blocktype, ctxt_i);
@@ -2944,8 +2958,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   }
   for (btype_j = 0; btype_j < btypes; ++btype_j) {
     struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, btype_j);
-    tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j,
-      tcmplxA_brcvt_unshift4((int)line->value-2, ps->guess_offset));
+    tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j, ctxt_mode_revmap[line->value-2]);
     for (ctxt_i = 0; ctxt_i < 64; ++ctxt_i)
       tcmplxA_ctxtmap_set(ps->literals_map, btype_j, ctxt_i, (int)btype_j);
   }
