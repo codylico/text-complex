@@ -3664,10 +3664,44 @@ int tcmplxA_brcvt_strrtozs_bits
       break;
     case tcmplxA_BrCvt_TreeCountD:
       x = 0;
+      ps->bit_length = 0;
+      ps->count = 0;
       ps->state = tcmplxA_BrCvt_GaspVectorL;
       break;
     case tcmplxA_BrCvt_GaspVectorL:
-      /* TODO this state */
+    case tcmplxA_BrCvt_GaspVectorI:
+    case tcmplxA_BrCvt_GaspVectorD:
+      if (ps->bit_length == 0) {
+        /* prepare the next tree */
+        unsigned int treety_count = 0;
+        tcmplxA_brcvt_reset19(&ps->treety);
+        if (ps->state == tcmplxA_BrCvt_GaspVectorD) {
+          treety_count = (16 + tcmplxA_ringdist_get_direct(ps->ring)
+            + (48 << tcmplxA_ringdist_get_postfix(ps->ring)));
+        } else treety_count = ((ps->state == tcmplxA_BrCvt_GaspVectorL) ? 256 : 704);
+        ps->alphabits = tcmplxA_util_bitwidth(treety_count-1);
+      }
+      /* Render the prefix tree. */
+      {
+        struct tcmplxA_gaspvec* const forest = tcmplxA_brcvt_active_forest(ps);
+        struct tcmplxA_fixlist* const tree = tcmplxA_gaspvec_at(forest, ps->count);
+        int const res = tcmplxA_brcvt_outflow19(&ps->treety, tree, &x, ps->alphabits);
+        if (res == tcmplxA_EOF) {
+          ps->bit_length = 0;
+          ps->count += 1;
+          if (ps->count >= tcmplxA_gaspvec_size(forest)) {
+            tcmplxA_uint32 const accum = ps->fwd.accum;
+            ps->fwd = tcmplxA_brcvt_fwd_zero;
+            ps->fwd.accum = accum;
+            ps->state += 1;
+            ps->count = 0;
+          }
+          tcmplxA_brcvt_reset19(&ps->treety);
+          ps->bit_cap = 0;
+          ae = tcmplxA_fixlist_valuesort(tree);
+        } else if (res != tcmplxA_Success)
+          ae = res;
+      }
       break;
     case tcmplxA_BrCvt_ContextRunMaxD:
     case tcmplxA_BrCvt_ContextPrefixD:
