@@ -3261,8 +3261,10 @@ static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
   size_t loop_i;
   size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
   unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
-  if (ps->fwd.i >= size)
-    return tcmplxA_EOF;
+  if (ps->fwd.i >= size) {
+    tcmplxA_brcvt_next_block(ps);
+    return tcmplxA_Success;
+  }
   for (loop_i = 0; loop_i < size; ++loop_i) {
     size_t const old_fwd_index = ps->fwd.i;
     struct tcmplxA_brcvt_token const next =
@@ -3275,11 +3277,14 @@ static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
     ae = tcmplxA_brcvt_apply_token(ps, next);
     if (ae != tcmplxA_ErrPartial)
       return ae;
-    else if (ps->fwd.i >= size)
-      return tcmplxA_EOF;
+    else if (ps->fwd.i >= size) {
+      tcmplxA_brcvt_next_block(ps);
+      return tcmplxA_Success;
+    }
   }
   /* Guaranteed progress means this line only reached by end of buffer. */
-  return tcmplxA_EOF;
+  tcmplxA_brcvt_next_block(ps);
+  return tcmplxA_Success;
 }
 
 int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
@@ -3846,6 +3851,11 @@ int tcmplxA_brcvt_strrtozs_bits
             ps->fwd.accum = accum;
             ps->state += 1;
             ps->count = 0;
+            if (ps->state == tcmplxA_BrCvt_DataInsertCopy) {
+              ae = tcmplxA_brcvt_apply_token_checked(ps);
+              if (ae != tcmplxA_Success)
+                break;
+            }
           }
           tcmplxA_brcvt_reset19(&ps->treety);
           ps->bit_cap = 0;
@@ -3859,11 +3869,6 @@ int tcmplxA_brcvt_strrtozs_bits
     case tcmplxA_BrCvt_LiteralRestart:
     case tcmplxA_BrCvt_Distance:
     case tcmplxA_BrCvt_BDict:
-      if (ps->bit_cap == 0) {
-        ae = tcmplxA_brcvt_apply_token_checked(ps);
-        if (ae != tcmplxA_Success)
-          break;
-      }
       if (ps->bit_cap > 0)
         x = (ps->bits>>(--ps->bit_cap))&1u;
       if (ps->bit_cap == 0) {
@@ -3872,11 +3877,10 @@ int tcmplxA_brcvt_strrtozs_bits
           ps->state = tcmplxA_BrCvt_DataInsertExtra;
         } else if (ps->bit_length > 0) {
           ps->state = tcmplxA_BrCvt_DataCopyExtra;
-        } else if (ps->fwd.i >= tcmplxA_blockbuf_output_size(ps->buffer)) {
-          /* end of block! */
-          tcmplxA_brcvt_next_block(ps);
+        } else {
+          /* otherwise process the next no-skip token */
+          ae = tcmplxA_brcvt_apply_token_checked(ps);
         }
-        /* otherwise process the next token */;
       } break;
     case tcmplxA_BrCvt_DataInsertExtra:
     case tcmplxA_BrCvt_DataDistanceExtra:
@@ -3885,12 +3889,9 @@ int tcmplxA_brcvt_strrtozs_bits
       if (ps->extra_length == 0) {
         if (ps->bit_length > 0) {
           ps->state = tcmplxA_BrCvt_DataCopyExtra;
-        } else if (ps->fwd.i >= tcmplxA_blockbuf_output_size(ps->buffer)) {
-          /* end of block! */
-          tcmplxA_brcvt_next_block(ps);
         } else {
-          /* otherwise process the next token */;
-          ps->state = tcmplxA_BrCvt_DataInsertCopy;
+          /* otherwise process the next no-skip token */
+          ae = tcmplxA_brcvt_apply_token_checked(ps);
         }
       }
       break;
@@ -3898,12 +3899,8 @@ int tcmplxA_brcvt_strrtozs_bits
       if (ps->bit_length > 0)
         x = (ps->extra_bits[1]>>(--ps->bit_length))&1u;
       if (ps->bit_length == 0) {
-        if (ps->fwd.i >= tcmplxA_blockbuf_output_size(ps->buffer)) {
-          tcmplxA_brcvt_next_block(ps);
-        } else {
-          /* otherwise process the next token */;
-          ps->state = tcmplxA_BrCvt_DataInsertCopy;
-        }
+        /* process the next no-skip token */;
+        ae = tcmplxA_brcvt_apply_token_checked(ps);
       }
       break;
     case tcmplxA_BrCvt_ContextRunMaxD:
