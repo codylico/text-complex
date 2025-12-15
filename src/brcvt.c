@@ -3182,6 +3182,8 @@ size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_gaspvec* tree_list,
   unsigned const alphabits = tcmplxA_util_bitwidth((unsigned)(histogram_size-1));
   struct tcmplxA_brcvt_treety attempt = {0};
   struct tcmplxA_fixlist* const tree = tcmplxA_gaspvec_at(tree_list, tree_index);
+  unsigned short skip_value = tcmplxA_brcvt_NoSkip;
+  unsigned int skip_assigned = 0;
   if (*ae)
     return 0;
   if (tcmplxA_fixlist_size(tree) != histogram_size) {
@@ -3202,7 +3204,12 @@ size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_gaspvec* tree_list,
   for (i = 0; i < histogram_size; ++i) {
     struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(tree, i);
     bit_count += line->len * (size_t)histogram[i];
+    if (line->len > 0) {
+      skip_assigned += 1;
+      skip_value = (skip_assigned == 1 ? (unsigned short)i : tcmplxA_brcvt_NoSkip);
+    }
   }
+  tcmplxA_gaspvec_set_skip(tree_list, tree_index, skip_value);
   for (i = 0; i < tcmplxA_brcvt_TreetyOutflowMax; ++i) {
     unsigned sink = 0;
     int const res = tcmplxA_brcvt_outflow19(&attempt, tree, &sink, alphabits);
