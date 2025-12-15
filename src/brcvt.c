@@ -731,6 +731,14 @@ static int tcmplxA_brcvt_meta_endcode(struct tcmplxA_brcvt const* ps);
  */
 static int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
   struct tcmplxA_fixlist const* fix, unsigned long value, int *ae);
+/**
+ * @brief Acquire and apply the next token, skipping zero-bit tokens.
+ * @param ps Brotli compressor state to update
+ * @return Success on success, EndOfFile at end of block buffer,
+ *   other negative code on failure
+ */
+static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps);
+
 
 
 /* BEGIN brcvt state / static */
@@ -3249,6 +3257,31 @@ int tcmplxA_brcvt_encode_map(struct tcmplxA_blockstr* buffer, size_t zeroes,
   return tcmplxA_blockstr_append(buffer, code, len);
 }
 
+static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
+  size_t loop_i;
+  size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
+  unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
+  if (ps->fwd.i >= size)
+    return tcmplxA_EOF;
+  for (loop_i = 0; loop_i < size; ++loop_i) {
+    size_t const old_fwd_index = ps->fwd.i;
+    struct tcmplxA_brcvt_token const next =
+      tcmplxA_brcvt_next_token(&ps->fwd, &ps->guesses, data, size, ps->wbits_select,
+        ps->blocktypeL_skip);
+    int ae = tcmplxA_Success;
+    if (ps->fwd.i <= old_fwd_index)
+      return tcmplxA_ErrSanitize;
+    ps->state = next.state;
+    ae = tcmplxA_brcvt_apply_token(ps, next);
+    if (ae != tcmplxA_ErrPartial)
+      return ae;
+    else if (ps->fwd.i >= size)
+      return tcmplxA_EOF;
+  }
+  /* Guaranteed progress means this line only reached by end of buffer. */
+  return tcmplxA_EOF;
+}
+
 int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
   struct tcmplxA_fixlist const* fix, unsigned long value, int *ae)
 {
@@ -3827,17 +3860,9 @@ int tcmplxA_brcvt_strrtozs_bits
     case tcmplxA_BrCvt_Distance:
     case tcmplxA_BrCvt_BDict:
       if (ps->bit_cap == 0) {
-        /* Acquire the next token. */
-        unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
-        size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
-        size_t const old_fwd_index = ps->fwd.i;
-        struct tcmplxA_brcvt_token const next =
-          tcmplxA_brcvt_next_token(&ps->fwd, &ps->guesses, data, size, ps->wbits_select,
-            ps->blocktypeL_skip);
-        if (ps->fwd.i <= old_fwd_index)
-          return tcmplxA_ErrSanitize;
-        ps->state = next.state;
-        tcmplxA_brcvt_apply_token(ps, next);
+        ae = tcmplxA_brcvt_apply_token_checked(ps);
+        if (ae != tcmplxA_Success)
+          break;
       }
       if (ps->bit_cap > 0)
         x = (ps->bits>>(--ps->bit_cap))&1u;
