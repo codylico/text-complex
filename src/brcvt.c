@@ -596,7 +596,8 @@ static void tcmplxA_brcvt_reset_compress(struct tcmplxA_brcvt* ps);
  * @return the number of bits that would be used to encode the prefix list
  *   @em and the stream that uses the new prefix list
  */
-static size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_fixlist* tree,
+static size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_gaspvec* tree_list,
+  size_t tree_index,
   tcmplxA_uint32 const* histogram, size_t histogram_size,
   int *ae);
 /**
@@ -3152,15 +3153,15 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     literal_lengths[ctxt_i] = literal_counter;
     /* apply histograms to the trees */
     try_bit_count += tcmplxA_brcvt_apply_histogram(
-      tcmplxA_gaspvec_at(ps->distance_forest,0), distance_histogram,
+      ps->distance_forest,0, distance_histogram,
       tcmplxA_brcvt_DistHistoSize, &ae);
     try_bit_count += tcmplxA_brcvt_apply_histogram(
-      tcmplxA_gaspvec_at(ps->insert_forest,0), insert_histogram,
+      ps->insert_forest,0, insert_histogram,
       tcmplxA_brcvt_InsHistoSize, &ae);
     for (btype_j = 0; btype_j < btypes; ++btype_j) {
       int const btype = tcmplxA_ctxtmap_get_mode(ps->literals_map, btype_j);
       try_bit_count += tcmplxA_brcvt_apply_histogram(
-        tcmplxA_gaspvec_at(ps->literals_forest,btype_j),
+        ps->literals_forest,btype_j,
         literal_histograms[btype],
         tcmplxA_brcvt_LitHistoSize, &ae);
     }
@@ -3171,7 +3172,8 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   return tcmplxA_Success;
 }
 
-size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_fixlist* tree,
+size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_gaspvec* tree_list,
+  size_t tree_index,
   tcmplxA_uint32 const* histogram, size_t histogram_size,
   int *ae)
 {
@@ -3179,6 +3181,7 @@ size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_fixlist* tree,
   size_t bit_count;
   unsigned const alphabits = tcmplxA_util_bitwidth((unsigned)(histogram_size-1));
   struct tcmplxA_brcvt_treety attempt = {0};
+  struct tcmplxA_fixlist* const tree = tcmplxA_gaspvec_at(tree_list, tree_index);
   if (*ae)
     return 0;
   if (tcmplxA_fixlist_size(tree) != histogram_size) {
