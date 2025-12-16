@@ -2910,6 +2910,7 @@ int tcmplxA_brcvt_apply_token(struct tcmplxA_brcvt* ps,
   int ae = 0;
   ps->extra_length = 0;
   ps->bit_length = 0;
+  ps->bit_cap = 0;
   switch (next.state) {
   case tcmplxA_BrCvt_DataInsertCopy:
     {
@@ -2983,7 +2984,18 @@ int tcmplxA_brcvt_apply_token(struct tcmplxA_brcvt* ps,
   default:
     return tcmplxA_ErrSanitize;
   }
-  return tcmplxA_Success;
+  /* Check for zero-length sequences. */
+  if (ps->bit_cap > 0)
+    return tcmplxA_Success;
+  else if (ps->extra_length > 0) {
+    ps->state = tcmplxA_BrCvt_DataInsertExtra;
+    return tcmplxA_Success;
+  } else if (ps->bit_length > 0) {
+    ps->state = tcmplxA_BrCvt_DataCopyExtra;
+    return tcmplxA_Success;
+  }
+  /* The whole token produces zero bits! */
+  return tcmplxA_ErrPartial;
 }
 
 static unsigned tcmplxA_brcvt_shift4(unsigned mode, unsigned offset) {
