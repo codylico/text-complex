@@ -3548,6 +3548,8 @@ int tcmplxA_brcvt_strrtozs_bits
         tcmplxA_uint32 histogram[26] = {0};
         size_t total = 0;
         size_t j = 0;
+        unsigned short blockcountL_skip = tcmplxA_brcvt_NoSkip;
+        unsigned blockcountL_population = 0;
         ps->bit_length = 1;
         tcmplxA_inscopy_lengthsort(ps->blockcounts);
         for (j = 0; j < ps->guesses.count; ++j) {
@@ -3555,6 +3557,10 @@ int tcmplxA_brcvt_strrtozs_bits
           if (v >= 26) {
             ae = tcmplxA_ErrSanitize;
             break;
+          }
+          if (histogram[v] == 0) {
+            blockcountL_population += 1;
+            blockcountL_skip = (unsigned short)v;
           }
           histogram[v] += 1;
           total += ps->guess_lengths[j];
@@ -3573,6 +3579,8 @@ int tcmplxA_brcvt_strrtozs_bits
           break;
         ae = tcmplxA_fixlist_gen_codes(&ps->literal_blockcount);
         assert(ae == tcmplxA_Success);
+        ps->blockcountL_skip = (blockcountL_population == 1
+          ? blockcountL_skip : tcmplxA_brcvt_NoSkip);
       }
       /* render tree to output */
       {
