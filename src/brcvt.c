@@ -1394,7 +1394,8 @@ static int tcmplxA_brcvt_zsrtostr_bits
           ae = tcmplxA_EOF;
         }
       } else if (ps->count >= ps->bit_length-2) {
-        ps->bits |= (x<<(ps->count-2));
+        unsigned const reversal = ps->bit_length-2;
+        ps->bits |= (x<<(ps->count-reversal));
       }
       if (ps->count < ps->bit_length)
         ps->count += 1;
