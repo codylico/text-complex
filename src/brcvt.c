@@ -3311,8 +3311,8 @@ static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
 int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
   struct tcmplxA_fixlist const* fix, unsigned long value, int *ae)
 {
-  size_t const line_index = tcmplxA_fixlist_valuebsearch(&ps->literal_blockcount, value);
-  struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blockcount, line_index);
+  size_t const line_index = tcmplxA_fixlist_valuebsearch(fix, value);
+  struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(fix, line_index);
   if (!line) {
     *ae = tcmplxA_ErrSanitize;
     return 0;
