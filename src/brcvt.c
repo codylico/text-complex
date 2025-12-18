@@ -3207,7 +3207,7 @@ size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_gaspvec* tree_list,
   int *ae)
 {
   size_t i;
-  size_t bit_count;
+  size_t bit_count = 0;
   unsigned const alphabits = tcmplxA_util_bitwidth((unsigned)(histogram_size-1));
   struct tcmplxA_brcvt_treety attempt = {0};
   struct tcmplxA_fixlist* const tree = tcmplxA_gaspvec_at(tree_list, tree_index);
