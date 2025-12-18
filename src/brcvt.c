@@ -2543,7 +2543,7 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
       case 2: treety->bit_length = 3; treety->bits = 6u; break;
       case 3: treety->bit_length = 2; treety->bits = 1u; break;
       case 4: treety->bit_length = 2; treety->bits = 2u; break;
-      case 5: treety->bit_length = 2; treety->bits = 15u; break;
+      case 5: treety->bit_length = 4; treety->bits = 15u; break;
       default: return tcmplxA_ErrSanitize;
       }
     }
