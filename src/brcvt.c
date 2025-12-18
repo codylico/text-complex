@@ -3889,6 +3889,7 @@ int tcmplxA_brcvt_strrtozs_bits
         if (res == tcmplxA_EOF) {
           ps->bit_length = 0;
           ps->count += 1;
+          ps->bit_cap = 0;
           if (ps->count >= tcmplxA_gaspvec_size(forest)) {
             tcmplxA_uint32 const accum = ps->fwd.accum;
             ps->fwd = tcmplxA_brcvt_fwd_zero;
@@ -3902,7 +3903,6 @@ int tcmplxA_brcvt_strrtozs_bits
             }
           }
           tcmplxA_brcvt_reset19(&ps->treety);
-          ps->bit_cap = 0;
           ae = tcmplxA_fixlist_valuesort(tree);
         } else if (res != tcmplxA_Success)
           ae = res;
