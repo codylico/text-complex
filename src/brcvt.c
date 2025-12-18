@@ -395,6 +395,9 @@ static struct tcmplxA_brcvt_block const tcmplxA_brcvt_btype_zero = {0,1};
 /**
  * @brief Initialize a zcvt state.
  * @param x the zcvt state to initialize
+ * @param block_size amount of input data to process at once
+ * @param n maximum sliding window size (use 16777200 for Brotli default)
+ * @param chain_length run-time parameter limiting hash chain length
  * @return zero on success, nonzero otherwise
  */
 static int tcmplxA_brcvt_init
