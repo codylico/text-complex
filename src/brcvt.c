@@ -2451,7 +2451,7 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
         int res = 0;
         tcmplxA_uint32 histogram[sizeof(tcmplxA_brcvt_clen)] = {0};
         tcmplxA_uint32 i;
-        tcmplxA_uint32 nonzero = 0;
+        tcmplxA_uint32 nonzero_count = 0;
         if (tcmplxA_brcvt_make_sequence(treety, prefixes) != tcmplxA_Success)
           return tcmplxA_ErrMemory;
         for (i = 0; i < treety->sequence_list.sz; ++i) {
@@ -2484,11 +2484,11 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
           else if (!treety->nonzero)
             treety->nonzero = clen;
           treety->count = i+1;
-          nonzero += 1;
+          nonzero_count += 1;
         }
-        if (nonzero < 2)
+        if (nonzero_count < 2)
           treety->count = (unsigned short)lines;
-        else nonzero = 0;
+        else treety->nonzero = 0;
       }
     }
     *x = (treety->bits>>treety->bit_length++)&1u;
@@ -2575,6 +2575,7 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
     *x = (treety->bits>>treety->bit_length++)&1u;
     if (treety->bit_length >= treety->count) {
       treety->index += 1;
+      treety->bit_length = 0;
       if (treety->index >= treety->sequence_list.sz) {
         treety->state = tcmplxA_BrCvt_TDone;
         return tcmplxA_EOF;
