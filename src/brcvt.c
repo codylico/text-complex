@@ -3112,7 +3112,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     tcmplxA_uint32 *const insert_histogram = ps->histogram;
     tcmplxA_uint32 *const distance_histogram = insert_histogram+tcmplxA_brcvt_InsHistoSize;
     tcmplxA_uint32 *literal_histograms[4] = {NULL};
-    tcmplxA_uint32 literal_lengths[tcmplxA_CtxtSpan_Size+1] = {0};
+    tcmplxA_uint32 literal_lengths[tcmplxA_CtxtSpan_Size] = {0};
     struct tcmplxA_brcvt_forward try_fwd = {0};
     size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
     size_t i = 0;
@@ -3194,7 +3194,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
         literal_histograms[btype],
         tcmplxA_brcvt_LitHistoSize, &ae);
     }
-    memcpy(ps->guess_lengths, literal_lengths+1, tcmplxA_CtxtSpan_Size*sizeof(tcmplxA_uint32));
+    memcpy(ps->guess_lengths, literal_lengths, tcmplxA_CtxtSpan_Size*sizeof(tcmplxA_uint32));
   }
   if (try_bit_count/8+1 > tcmplxA_blockbuf_input_size(ps->buffer))
     return tcmplxA_ErrBlockOverflow;
