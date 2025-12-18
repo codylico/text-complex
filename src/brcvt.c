@@ -2452,6 +2452,9 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
         tcmplxA_uint32 histogram[sizeof(tcmplxA_brcvt_clen)] = {0};
         tcmplxA_uint32 i;
         tcmplxA_uint32 nonzero_count = 0;
+        int const valuesort_ae = tcmplxA_fixlist_valuesort(prefixes);
+        if (valuesort_ae != tcmplxA_Success)
+          return valuesort_ae;
         if (tcmplxA_brcvt_make_sequence(treety, prefixes) != tcmplxA_Success)
           return tcmplxA_ErrMemory;
         for (i = 0; i < treety->sequence_list.sz; ++i) {
