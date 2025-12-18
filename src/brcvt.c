@@ -2672,25 +2672,33 @@ int tcmplxA_brcvt_post_sequence
     return tcmplxA_blockstr_append(s, buf, count);
   } else if (len == 0u) {
     int i;
-    unsigned const recount = count-3;
-    int width = (int)tcmplxA_util_bitwidth(recount);
-    for (i = width-width%3; i >= 0 && ae == tcmplxA_Success; i -= 3) {
-      unsigned int const x = (recount>>i)&7u;
+    unsigned const recount = count-2;
+    int const width = (int)tcmplxA_util_bitwidth(recount);
+    unsigned const scaffold = 0111111u;
+    unsigned const rescaffold = scaffold & ~(~0u << width);
+    int const rewidth = (recount >= rescaffold ? width : width-3);
+    unsigned const reduced = recount - (scaffold & ~(~0u << rewidth));
+    for (i = (rewidth-1)/3*3; i >= 0 && ae == tcmplxA_Success; i -= 3) {
+      unsigned int const x = (reduced>>i)&7u;
       unsigned char buf[2] = {17u};
       buf[1] = (unsigned char)x;
       ae = tcmplxA_blockstr_append(s, buf, 2u);
     }
   } else {
-    unsigned const recount = count-3;
-    int width = (int)tcmplxA_util_bitwidth(recount);
+    unsigned const recount = count-3; /* account for leading literal */
+    int const width = (int)tcmplxA_util_bitwidth(recount);
+    unsigned const scaffold = 0x5555u;
+    unsigned const rescaffold = scaffold & ~(~0u << width);
+    int const rewidth = (recount >= rescaffold ? width : width-2);
+    unsigned const reduced = recount - (scaffold & ~(~0u << rewidth));
     int i;
     /* */{
       unsigned char buf[1];
       buf[0] = (unsigned char)len;
       ae = tcmplxA_blockstr_append(s, buf, 1u);
     }
-    for (i = (int)(width&~1u); i >= 0 && ae == tcmplxA_Success; i -= 2) {
-      unsigned int const x = (recount>>i)&3u;
+    for (i = (int)((rewidth-1)&~1u); i >= 0 && ae == tcmplxA_Success; i -= 2) {
+      unsigned int const x = (reduced>>i)&3u;
       unsigned char buf[2] = {16u};
       buf[1] = (unsigned char)x;
       ae = tcmplxA_blockstr_append(s, buf, 2u);
