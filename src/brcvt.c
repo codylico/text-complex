@@ -2476,6 +2476,7 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
         assert(res == tcmplxA_Success);
         treety->count = 0;
         treety->nonzero = 0;
+        /* Determine stopping point for emitting code lengths. */
         for (i = 0; i < lines; ++i) {
           unsigned char clen = tcmplxA_brcvt_clen[i];
           if (histogram[clen] == 0)
@@ -2534,7 +2535,8 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
     return tcmplxA_EOF;
   case tcmplxA_BrCvt_TNineteen:
     if (treety->bit_length == 0) {
-      unsigned short const len = tcmplxA_fixlist_at_c(&treety->nineteen, treety->index)->len;
+      unsigned char clen = tcmplxA_brcvt_clen[treety->index];
+      unsigned short const len = tcmplxA_fixlist_at_c(&treety->nineteen, clen)->len;
       switch (len) {
       case 0: treety->bit_length = 2; treety->bits = 0u; break;
       case 1: treety->bit_length = 4; treety->bits = 14u; break;
