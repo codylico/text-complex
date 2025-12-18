@@ -2788,6 +2788,15 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
       fwd->accum += total;
       if (fwd->accum >= 16777200u)
         fwd->accum = 16777200u;
+      fwd->i += (1 + ((data[fwd->i]&64u)!=0));
+      /* Update the forwarder state for the later token. */
+      if (out.first == 0)
+        fwd->ostate = tcmplxA_BrCvt_Distance;
+      else
+        fwd->ostate = tcmplxA_BrCvt_Literal;
+      fwd->literal_i = 0;
+      fwd->command_span = (unsigned short)first_literals;
+      fwd->literal_total = total;
       if (next_i >= size)
         break;
       /* parse copy length */{
@@ -2802,14 +2811,6 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
         }
         out.second = next_span;
       }
-      fwd->i += (1 + ((data[fwd->i]&64u)!=0));
-      if (out.first == 0)
-        fwd->ostate = tcmplxA_BrCvt_Distance;
-      else
-        fwd->ostate = tcmplxA_BrCvt_Literal;
-      fwd->literal_i = 0;
-      fwd->command_span = (unsigned short)first_literals;
-      fwd->literal_total = total;
     } break;
   case tcmplxA_BrCvt_Literal:
     out.state = tcmplxA_BrCvt_Literal;
