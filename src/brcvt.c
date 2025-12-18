@@ -2633,8 +2633,8 @@ int tcmplxA_brcvt_nonzero3(int a, int b, int c) {
 int tcmplxA_brcvt_make_sequence(struct tcmplxA_brcvt_treety* x, struct tcmplxA_fixlist const* literals) {
   unsigned int len = UINT_MAX, len_count = 0u;
   size_t i;
-  size_t end = 0;
   size_t const lit_sz = tcmplxA_fixlist_size(literals);
+  size_t end = lit_sz;
   x->sequence_list.sz = 0u;
   for (i = 0u; i < lit_sz; ++i) {
     if (tcmplxA_fixlist_at_c(literals,i)->len > 0)
@@ -2658,7 +2658,6 @@ int tcmplxA_brcvt_post_sequence
   (struct tcmplxA_blockstr* s, unsigned int len, unsigned int count)
 {
   int ae = tcmplxA_Success;
-  unsigned int i;
   if (count == 0u)
     return tcmplxA_Success;
   else if (count < 4u) {
@@ -2666,6 +2665,7 @@ int tcmplxA_brcvt_post_sequence
     memset(buf, len, count);
     return tcmplxA_blockstr_append(s, buf, count);
   } else if (len == 0u) {
+    int i;
     unsigned const recount = count-3;
     int width = (int)tcmplxA_util_bitwidth(recount);
     for (i = width-width%3; i >= 0 && ae == tcmplxA_Success; i -= 3) {
@@ -2675,13 +2675,14 @@ int tcmplxA_brcvt_post_sequence
       ae = tcmplxA_blockstr_append(s, buf, 2u);
     }
   } else {
+    unsigned const recount = count-3;
+    int width = (int)tcmplxA_util_bitwidth(recount);
+    int i;
     /* */{
       unsigned char buf[1];
       buf[0] = (unsigned char)len;
       ae = tcmplxA_blockstr_append(s, buf, 1u);
     }
-    unsigned const recount = count-3;
-    int width = (int)tcmplxA_util_bitwidth(recount);
     for (i = (int)(width&~1u); i >= 0 && ae == tcmplxA_Success; i -= 2) {
       unsigned int const x = (recount>>i)&3u;
       unsigned char buf[2] = {16u};
@@ -3021,6 +3022,9 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   /** @brief Map from outflow context index to mode. */
   unsigned char ctxt_mode_revmap[4] = {255,255,255,255};
   unsigned char ctxt_mode_alloc = 0;
+  int const block_ae = tcmplxA_blockbuf_try_block(ps->buffer);
+  if (block_ae != tcmplxA_Success)
+    return block_ae;
   memset(ps->ctxt_mode_map, 255, 4*sizeof(char));
   if (tcmplxA_inscopy_lengthsort(ps->values) != tcmplxA_Success)
     return tcmplxA_ErrInit;
@@ -3063,7 +3067,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   btypes = tcmplxA_fixlist_size(&ps->literal_blocktype);
   accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2) * btypes;
   accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple4A);
-  if (ps->literals_map && tcmplxA_ctxtmap_block_types(ps->literals_map)!=btypes) {
+  if ((!ps->literals_map) || tcmplxA_ctxtmap_block_types(ps->literals_map)!=btypes) {
     tcmplxA_ctxtmap_destroy(ps->literals_map);
     ps->literals_map = tcmplxA_ctxtmap_new(btypes, 64);
     if (!ps->literals_map)
