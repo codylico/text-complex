@@ -3674,7 +3674,7 @@ int tcmplxA_brcvt_strrtozs_bits
       } break;
     case tcmplxA_BrCvt_ContextTypesL:
       if (ps->bit_length == 0) {
-        size_t const contexts = tcmplxA_ctxtmap_contexts(ps->literals_map);
+        size_t const contexts = tcmplxA_ctxtmap_block_types(ps->literals_map);
         size_t j;
         for (j = 0; j < contexts; ++j) {
           int const mode = tcmplxA_ctxtmap_get_mode(ps->literals_map, i);
@@ -3865,6 +3865,7 @@ int tcmplxA_brcvt_strrtozs_bits
             + (48 << tcmplxA_ringdist_get_postfix(ps->ring)));
         } else treety_count = ((ps->state == tcmplxA_BrCvt_GaspVectorL) ? 256 : 704);
         ps->alphabits = tcmplxA_util_bitwidth(treety_count-1);
+        ps->bit_length = 1;
       }
       /* Render the prefix tree. */
       {
