@@ -3312,6 +3312,7 @@ static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
   size_t const size = tcmplxA_blockbuf_output_size(ps->buffer);
   unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
   if (ps->fwd.i >= size) {
+    tcmplxA_blockbuf_clear_input(ps->buffer);
     tcmplxA_brcvt_next_block(ps);
     return tcmplxA_Success;
   }
@@ -3327,12 +3328,11 @@ static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
     ae = tcmplxA_brcvt_apply_token(ps, next);
     if (ae != tcmplxA_ErrPartial)
       return ae;
-    else if (ps->fwd.i >= size) {
-      tcmplxA_brcvt_next_block(ps);
-      return tcmplxA_Success;
-    }
+    else if (ps->fwd.i >= size)
+      break;
   }
   /* Guaranteed progress means this line only reached by end of buffer. */
+  tcmplxA_blockbuf_clear_input(ps->buffer);
   tcmplxA_brcvt_next_block(ps);
   return tcmplxA_Success;
 }
