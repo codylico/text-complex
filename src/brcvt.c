@@ -2925,7 +2925,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
           distance = (distance<<8) | digit;
         }
         out.state = tcmplxA_BrCvt_Distance;
-        out.first = distance + ((root&64u)<<8); /* +16384 when 30-bit sequence */
+        out.first = distance + ((root&64u)<<8) + 1; /* +16384 when 30-bit sequence; adjust by one */
       }
       fwd->accum += fwd->command_span;
       fwd->ostate = (fwd->i >= size ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_DataInsertCopy);
