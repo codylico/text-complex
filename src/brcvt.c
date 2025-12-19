@@ -3143,7 +3143,10 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     else
       ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
   }
-  /* fill the histograms */{
+  /* synchronize the distance scratch space with actual output.
+  * (Uncompress blocks can introduce drift.) */
+  tcmplxA_ringdist_copy(ps->try_ring, ps->ring);
+  /* fill the histograms and build prefix trees */{
     tcmplxA_uint32 *const insert_histogram = ps->histogram;
     tcmplxA_uint32 *const distance_histogram = insert_histogram+tcmplxA_brcvt_InsHistoSize;
     tcmplxA_uint32 *literal_histograms[4] = {NULL};
