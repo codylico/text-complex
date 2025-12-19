@@ -4127,6 +4127,10 @@ int tcmplxA_brcvt_zsrtostr
       }
       break;
     case tcmplxA_BrCvt_Uncompress:
+      if (ret_out >= dstsz) {
+        ae = tcmplxA_ErrPartial;
+        break;
+      }
       if (ps->metablock_pos < ps->backward) {
         if (!tcmplxA_blockbuf_bypass(ps->buffer, p, 1))
           ae = tcmplxA_ErrMemory;
