@@ -1759,16 +1759,12 @@ static int tcmplxA_brcvt_zsrtostr_bits
         unsigned const postfix = ps->bits&3;
         unsigned const direct = (ps->bits>>2)<<postfix;
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "NPOSTFIX %u NDIRECT %u", postfix, direct);
-        struct tcmplxA_ringdist* const tryring = tcmplxA_ringdist_new(1,direct,postfix);
-        if (!tryring) {
-          tcmplxA_ringdist_destroy(tryring);
-          ae = tcmplxA_ErrMemory;
+        ae = tcmplxA_ringdist_reconfigure(ps->try_ring,1, direct,postfix);
+        if (ae != tcmplxA_Success)
           break;
-        }
+        ae = tcmplxA_ringdist_reconfigure(ps->ring,1, direct,postfix);
+        assert(ae == tcmplxA_Success);
         ps->state = tcmplxA_BrCvt_ContextTypesL;
-        tcmplxA_ringdist_destroy(ps->try_ring);
-        tcmplxA_ringdist_copy(ps->ring, tryring);
-        ps->try_ring = tryring;
         ps->bit_length = 0;
         ps->bits = 0;
         assert(ps->literals_map);
