@@ -741,7 +741,12 @@ static int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
  *   other negative code on failure
  */
 static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps);
-
+/**
+ * @brief Determine the state to handle the first extra bits.
+ * @param state output token state
+ * @return new output state
+ */
+static enum tcmplxA_brcvt_istate tcmplxA_brcvt_outflow_extra(unsigned state);
 
 
 /* BEGIN brcvt state / static */
@@ -1041,6 +1046,15 @@ unsigned char tcmplxA_brcvt_next_state(unsigned char state) {
   default: return tcmplxA_BrCvt_BadToken;
   }
 }
+
+static enum tcmplxA_brcvt_istate tcmplxA_brcvt_outflow_extra(unsigned state) {
+  switch (state) {
+    case tcmplxA_BrCvt_LiteralRestart: return tcmplxA_BrCvt_LiteralRecount;
+    case tcmplxA_BrCvt_Distance: return tcmplxA_BrCvt_DataDistanceExtra;
+    default: return tcmplxA_BrCvt_DataInsertExtra;
+  }
+}
+
 
 unsigned short* tcmplxA_brcvt_active_skip(struct tcmplxA_brcvt* ps) {
   switch (ps->state) {
@@ -3009,7 +3023,7 @@ int tcmplxA_brcvt_apply_token(struct tcmplxA_brcvt* ps,
   if (ps->bit_cap > 0)
     return tcmplxA_Success;
   else if (ps->extra_length > 0) {
-    ps->state = tcmplxA_BrCvt_DataInsertExtra;
+    ps->state = tcmplxA_brcvt_outflow_extra(next.state);
     return tcmplxA_Success;
   } else if (ps->bit_length > 0) {
     ps->state = tcmplxA_BrCvt_DataCopyExtra;
@@ -3919,7 +3933,7 @@ int tcmplxA_brcvt_strrtozs_bits
       if (ps->bit_cap == 0) {
         ps->bits = 0;
         if (ps->extra_length > 0) {
-          ps->state = tcmplxA_BrCvt_DataInsertExtra;
+          ps->state = tcmplxA_brcvt_outflow_extra(ps->state);
         } else if (ps->bit_length > 0) {
           ps->state = tcmplxA_BrCvt_DataCopyExtra;
         } else {
@@ -3929,8 +3943,11 @@ int tcmplxA_brcvt_strrtozs_bits
       } break;
     case tcmplxA_BrCvt_DataInsertExtra:
     case tcmplxA_BrCvt_DataDistanceExtra:
-      if (ps->extra_length > 0)
-        x = (ps->extra_bits[0]>>(--ps->extra_length))&1u;
+      if (ps->extra_length > 0) {
+        x = ps->extra_bits[0]&1u;
+        ps->extra_bits[0] >>= 1u;
+        --ps->extra_length;
+      }
       if (ps->extra_length == 0) {
         if (ps->bit_length > 0) {
           ps->state = tcmplxA_BrCvt_DataCopyExtra;
@@ -3941,11 +3958,26 @@ int tcmplxA_brcvt_strrtozs_bits
       }
       break;
     case tcmplxA_BrCvt_DataCopyExtra:
-      if (ps->bit_length > 0)
-        x = (ps->extra_bits[1]>>(--ps->bit_length))&1u;
+      if (ps->bit_length > 0) {
+        x = ps->extra_bits[1]&1u;
+        ps->extra_bits[1] >>= 1u;
+        --ps->bit_length;
+      }
       if (ps->bit_length == 0) {
         /* process the next no-skip token */;
         ae = tcmplxA_brcvt_apply_token_checked(ps);
+      }
+      break;
+    case tcmplxA_BrCvt_LiteralRecount:
+      if (ps->extra_length > 0)
+        x = (ps->extra_bits[0]>>(--ps->bit_length))&1u;
+      if (ps->extra_length == 0) {
+        if (ps->bit_length > 0) {
+          ps->state = tcmplxA_BrCvt_DataCopyExtra;
+        } else {
+          /* otherwise process the next no-skip token */
+          ae = tcmplxA_brcvt_apply_token_checked(ps);
+        }
       }
       break;
     case tcmplxA_BrCvt_ContextRunMaxD:
@@ -4173,7 +4205,9 @@ int tcmplxA_brcvt_strrtozs
     case tcmplxA_BrCvt_DataCopyExtra:
     case tcmplxA_BrCvt_Literal:
     case tcmplxA_BrCvt_Distance:
+    case tcmplxA_BrCvt_DataDistanceExtra:
     case tcmplxA_BrCvt_LiteralRestart:
+    case tcmplxA_BrCvt_LiteralRecount:
       ae = tcmplxA_brcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     case tcmplxA_BrCvt_MetaText:
