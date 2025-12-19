@@ -37,6 +37,8 @@ static void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
   __attribute__((format(printf,3,4)))
 #endif //__GNUC__
   ;
+static void tcmplxA_brcvt_skipforward(tcmplxA_uint32 byte_count);
+
 void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
   const char* description, ...)
 {
@@ -50,9 +52,14 @@ void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
   fputc('\n', stderr);
   return;
 }
+static void tcmplxA_brcvt_skipforward(tcmplxA_uint32 byte_count) {
+  tcmplxA_brcvt_counter += byte_count*8;
+}
+
 #else
 static void tcmplxA_brcvt_countbits(unsigned int bits, unsigned int bit_count,
   const char* description, ...) { return; }
+static void tcmplxA_brcvt_skipforward(tcmplxA_uint32 byte_count) { return; }
 #endif //NDEBUG && tcmplxA_BrCvt_LogErr
 
 enum tcmplxA_brcvt_uconst {
@@ -1502,6 +1509,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
     case tcmplxA_BrCvt_Uncompress:
       if (x)
         ae = tcmplxA_ErrSanitize;
+      tcmplxA_brcvt_countbits(x, 1, "[[padding]]");
       break;
     case tcmplxA_BrCvt_BlockTypesL:
       if (ps->bit_length == 0) {
@@ -4128,6 +4136,7 @@ int tcmplxA_brcvt_zsrtostr
       }
       if (ps->metablock_pos >= ps->backward) {
         ps->metatext = NULL;
+        tcmplxA_brcvt_skipforward(ps->backward);
         ps->state = (ps->h_end
           ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
         if (ps->h_end)
