@@ -3063,7 +3063,9 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   /** @brief Map from outflow context index to mode. */
   unsigned char ctxt_mode_revmap[4] = {255,255,255,255};
   unsigned char ctxt_mode_alloc = 0;
-  int const block_ae = tcmplxA_blockbuf_try_block(ps->buffer);
+  int block_ae;
+  tcmplxA_blockbuf_clear_output(ps->buffer);
+  block_ae = tcmplxA_blockbuf_try_block(ps->buffer);
   if (block_ae != tcmplxA_Success)
     return block_ae;
   memset(ps->ctxt_mode_map, 255, 4*sizeof(char));
