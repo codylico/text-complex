@@ -794,12 +794,12 @@ static int tcmplxA_brcvt_init
       res = tcmplxA_ErrMemory;
   }
   /* ring */{
-    x->ring = tcmplxA_ringdist_new(0,4u,0u);
+    x->ring = tcmplxA_ringdist_new(1,4u,0u);
     if (x->ring == NULL)
       res = tcmplxA_ErrMemory;
   }
   /* try_ring */{
-    x->try_ring = tcmplxA_ringdist_new(0,4u,0u);
+    x->try_ring = tcmplxA_ringdist_new(1,4u,0u);
     if (x->try_ring == NULL)
       res = tcmplxA_ErrMemory;
   }
@@ -2972,7 +2972,8 @@ int tcmplxA_brcvt_apply_token(struct tcmplxA_brcvt* ps,
       unsigned const sum_direct = tcmplxA_ringdist_get_direct(ps->ring) + 16u;
       if (cmd >= tcmplxA_brcvt_DistHistoSize)
         return tcmplxA_ErrSanitize;
-      ps->extra_length = 1 + ((cmd - sum_direct) >> (tcmplxA_ringdist_get_postfix(ps->ring)+1));
+      ps->extra_length = (cmd < sum_direct) ? 0
+        : 1 + ((cmd - sum_direct) >> (tcmplxA_ringdist_get_postfix(ps->ring)+1));
       if (ps->extra_length > 0) {
         ps->extra_bits[0] = extra;
       }
