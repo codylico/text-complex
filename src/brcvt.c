@@ -127,7 +127,6 @@ enum tcmplxA_brcvt_istate {
   tcmplxA_BrCvt_DataInsertExtra = 49,
   tcmplxA_BrCvt_DataCopyExtra = 50,
 
-  tcmplxA_BrCvt_TempGap = 55,
   tcmplxA_BrCvt_Literal = 56,
   tcmplxA_BrCvt_Distance = 57,
   tcmplxA_BrCvt_LiteralRestart = 58,
@@ -1775,14 +1774,6 @@ static int tcmplxA_brcvt_zsrtostr_bits
         ps->state = tcmplxA_BrCvt_TreeCountL;
         ps->bit_length = 0;
       } break;
-    case tcmplxA_BrCvt_TempGap:
-      if (ps->bit_length < 3)
-        ps->bit_length += 1;
-      if (ps->bit_length >= 3) {
-        ps->state = tcmplxA_BrCvt_TreeCountL;
-        ps->bit_length = 0;
-      }
-      break;
     case tcmplxA_BrCvt_TreeCountL:
     case tcmplxA_BrCvt_TreeCountD:
       if (ps->bit_length == 0) {
@@ -4086,7 +4077,6 @@ int tcmplxA_brcvt_zsrtostr
     case tcmplxA_BrCvt_InsertRecount:
     case tcmplxA_BrCvt_DistanceRecount:
     case tcmplxA_BrCvt_LiteralRecount:
-    case tcmplxA_BrCvt_TempGap:
       ae = tcmplxA_brcvt_zsrtostr_bits(ps, (*p), &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_MetaText:
