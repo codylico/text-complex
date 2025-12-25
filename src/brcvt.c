@@ -297,10 +297,6 @@ struct tcmplxA_brcvt {
   tcmplxA_uint32 count;
   /** @brief Byte index for the active state. */
   tcmplxA_uint32 index;
-  /** @brief [deprecated] Checksum value. */
-  unsigned short checksum
-  __attribute__((__deprecated__))
-  ;
   /** @brief Partial byte stored aside for later. */
   unsigned char write_scratch;
   /** @brief Which value to use for WBITS. */
@@ -373,12 +369,6 @@ struct tcmplxA_brcvt {
   tcmplxA_uint32 extra_bits[2];
   /** @brief Map from mode to outflow context index. */
   unsigned char ctxt_mode_map[4];
-  /**
-   * @brief Built-in tree type for block type outflow.
-   * @todo Test for removal.
-   */
-  unsigned char blocktype_simple
-  __attribute__((__deprecated__));
 };
 
 unsigned char tcmplxA_brcvt_clen[tcmplxA_brcvt_CLenExtent] =
@@ -894,7 +884,6 @@ static int tcmplxA_brcvt_init
     x->backward = 0u;
     x->metablock_pos = 0u;
     x->count = 0u;
-    x->checksum = 0u;
     x->write_scratch = 0u;
     x->bit_cap = 0u;
     x->emptymeta = 0u;
@@ -958,7 +947,6 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->metatext = NULL;
   x->meta_index = 0u;
   x->emptymeta = 0u;
-  x->checksum = 0u;
   x->count = 0u;
   x->backward = 0u;
   x->bit_index = 0u;
@@ -3101,7 +3089,6 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype);
   if (blocktype_tree == tcmplxA_FixList_BrotliComplex)
     return tcmplxA_ErrSanitize;
-  ps->blocktype_simple = (unsigned char)blocktype_tree;
   accum += 4;
   btypes = tcmplxA_fixlist_size(&ps->literal_blocktype);
   accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2) * btypes;
@@ -3360,7 +3347,7 @@ int tcmplxA_brcvt_outflow_lookup(struct tcmplxA_brcvt* ps,
   return 1;
 }
 
-int tcmplxA_brcvt_strrtozs_bits
+static int tcmplxA_brcvt_strrtozs_bits
   ( struct tcmplxA_brcvt* ps, unsigned char* y,
     unsigned char const** src, unsigned char const* src_end)
 {
