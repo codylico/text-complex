@@ -43,7 +43,7 @@ static MunitTest tests_brcvt[] = {
   {"in/none", test_brcvt_zsrtostr_none,
     test_brcvt_setup,test_brcvt_teardown,0,NULL},
   {"flush", test_brcvt_flush,
-    test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,NULL},
+    test_brcvt_setup,test_brcvt_teardown,0,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
@@ -218,24 +218,24 @@ MunitResult test_brcvt_flush
     int res;
     res = tcmplxA_brcvt_strrtozs(p, &buf_len, buf, sizeof(buf),
       &text_p, text+flush_len);
-    munit_assert(res == tcmplxA_Success);
+    munit_assert(res == tcmplxA_ErrPartial);
     munit_assert(buf_len <= sizeof(buf));
     res = tcmplxA_brcvt_flush(p, &exbuf_len,
       buf+buf_len, sizeof(buf)-buf_len);
-    munit_assert(res == tcmplxA_Success);
+    munit_assert(res == tcmplxA_ErrPartial);
     munit_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
     exbuf_len = 0;
     res = tcmplxA_brcvt_strrtozs(p,
       &exbuf_len, buf+buf_len, sizeof(buf)-buf_len,
       &text_p, text+text_len);
-    munit_assert(res == tcmplxA_Success);
+    munit_assert(res == tcmplxA_ErrPartial);
     munit_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
     exbuf_len = 0;
     res = tcmplxA_brcvt_delimrtozs(p, &exbuf_len,
       buf+buf_len, sizeof(buf)-buf_len);
-    munit_assert(res >= tcmplxA_Success);
+    munit_assert(res >= tcmplxA_EOF);
     munit_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
   }

@@ -109,7 +109,9 @@ int tcmplxA_brcvt_delimrtozs
  * @param[out] ret number of (deflated) destination bytes written
  * @param dst destination buffer
  * @param dstsz size of destination buffer
- * @return tcmplxA_Success on success, nonzero otherwise
+ * @return tcmplxA_Success on success,
+ *   tcmplxA_ErrPartial if the next meta-block is ready or more output
+ *   data can be written, other nonzero otherwise
  * @note The conversion state referred to by `ps` is updated based
  *   on the conversion result, whether successful or failed.
  *
