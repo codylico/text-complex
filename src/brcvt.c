@@ -1433,12 +1433,14 @@ static int tcmplxA_brcvt_zsrtostr_bits
           ps->bit_length = tcmplxA_brcvt_MetaHeaderLen;
           ps->bits = 0;
         }
+        tcmplxA_brcvt_countbits(x, 1, "[[reserved]]");
       } else if (ps->count < tcmplxA_brcvt_MetaHeaderLen) {
         ps->bits |= (x << (ps->count-4));
         ps->count += 1;
       }
       if (ps->count >= tcmplxA_brcvt_MetaHeaderLen) {
         ps->bit_length = ps->bits*8;
+        tcmplxA_brcvt_countbits(ps->bits, 2, "MSKIPBYTES %i", ps->bits);
         ps->state = (ps->bits
           ? tcmplxA_BrCvt_MetaLength : tcmplxA_BrCvt_MetaText);
         ps->count = 0;
@@ -1451,6 +1453,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
         ps->count += 1;
       }
       if (ps->count >= ps->bit_length) {
+        tcmplxA_brcvt_countbits(ps->backward, ps->count, "MSKIPLEN %lu", ps->backward+1UL);
         if (!(ps->backward>>(ps->count-8)))
           ae = tcmplxA_ErrSanitize;
         ps->count = 0;
@@ -1467,6 +1470,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
         if (ps->h_end)
           ae = tcmplxA_EOF;
       }
+      tcmplxA_brcvt_countbits(x, 1, "[[padding]]");
       break;
     case tcmplxA_BrCvt_InputLength:
       if (ps->count < ps->bit_length) {
@@ -4098,6 +4102,7 @@ int tcmplxA_brcvt_zsrtostr
       }
       if (ps->metablock_pos >= ps->backward) {
         ps->metatext = NULL;
+        tcmplxA_brcvt_skipforward(ps->backward);
         ps->state = (ps->h_end
           ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
         if (ps->h_end)
