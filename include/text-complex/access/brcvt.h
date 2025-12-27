@@ -74,7 +74,9 @@ int tcmplxA_brcvt_zsrtostr
  * @param dstsz size of destination buffer
  * @param[in,out] src pointer to source bytes to deflate
  * @param src_end pointer to end of source buffer
- * @return tcmplxA_Success on success, nonzero otherwise
+ * @return tcmplxA_Success on success,
+ *   tcmplxA_ErrPartial if more bytes can fit in the next meta-block,
+ *   other nonzero otherwise
  * @note The conversion state referred to by `ps` is updated based
  *   on the conversion result, whether succesful or failed.
  */
