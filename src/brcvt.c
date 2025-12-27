@@ -4033,6 +4033,10 @@ int tcmplxA_brcvt_zsrtostr
   unsigned char const* p;
   size_t ret_out = 0u;
   for (p = *src; p < src_end && ae == tcmplxA_Success; ++p) {
+    if (ps->state == tcmplxA_BrCvt_Done) {
+      ae = tcmplxA_EOF;
+      break;
+    }
     switch (ps->state) {
     case tcmplxA_BrCvt_WBits: /* initial state */
     case tcmplxA_BrCvt_LastCheck:
@@ -4138,7 +4142,7 @@ int tcmplxA_brcvt_zsrtostr
       ae = tcmplxA_ErrSanitize;
       break;
     }
-    if (ae > tcmplxA_Success)
+    if (ae >= tcmplxA_ErrPartial)
       /* halt the read position here: */break;
   }
   *src = p;
@@ -4161,6 +4165,10 @@ int tcmplxA_brcvt_strrtozs
   size_t ret_out = 0u;
   unsigned char const *p = *src;
   for (ret_out = 0u; ret_out < dstsz && ae == tcmplxA_Success; ++ret_out) {
+    if (ps->state == tcmplxA_BrCvt_Done) {
+      ae = tcmplxA_EOF;
+      break;
+    }
     switch (ps->state) {
     case tcmplxA_BrCvt_WBits: /* initial state */
     case tcmplxA_BrCvt_MetaStart:
@@ -4238,7 +4246,7 @@ int tcmplxA_brcvt_strrtozs
       ae = tcmplxA_ErrSanitize;
       break;
     }
-    if (ae > tcmplxA_Success)
+    if (ae >= tcmplxA_ErrPartial)
       break;
   }
   *ret = ret_out;
