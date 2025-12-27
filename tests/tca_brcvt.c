@@ -41,7 +41,7 @@ static MunitTest tests_brcvt[] = {
   {"metadata_cycle", test_brcvt_metadata_cycle,
     test_brcvt_setup,test_brcvt_teardown,0,test_brcvt_params},
   {"in/none", test_brcvt_zsrtostr_none,
-    test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,NULL},
+    test_brcvt_setup,test_brcvt_teardown,0,NULL},
   {"flush", test_brcvt_flush,
     test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,NULL},
   {NULL, NULL, NULL,NULL,0,NULL}
@@ -163,36 +163,34 @@ MunitResult test_brcvt_zsrtostr_none
   (const MunitParameter params[], void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
-  unsigned char buf[128+11] = {8u,29u,1u};
+  unsigned char buf[128+5] = {12u};
   size_t const len = (size_t)munit_rand_int_range(0,128);
   if (p == NULL)
     return MUNIT_SKIP;
   (void)params;
-  /* "compress" some data */{
-    uint32_t checksum;
-    unsigned char *const check_buffer = buf+7+len;
-    munit_rand_memory(len, (munit_uint8_t*)(buf+7));
-    checksum = tcmplxA_zutil_adler32(len, buf+7, 1);
-    buf[3] = (len>>8)&0xff;
-    buf[4] = (len)&0xff;
-    buf[5] = (~(len>>8))&0xff;
-    buf[6] = (~len)&0xff;
-    check_buffer[0] = (checksum>>24)&0xff;
-    check_buffer[1] = (checksum>>16)&0xff;
-    check_buffer[2] = (checksum>> 8)&0xff;
-    check_buffer[3] = (checksum    )&0xff;
+  /* See Section 11.1 of RFC 7932: `BrotliCompressTrivial` */
+  /* "compress" some data */if (len == 0) {
+    buf[0] = 6;
+  } else {
+    size_t const r = len - 1;
+    unsigned char *const check_buffer = buf+4+len;
+    munit_rand_memory(len, (munit_uint8_t*)(buf+4));
+    buf[1] = (unsigned char)((r & 31u) << 3);
+    buf[2] = (unsigned char)(r >> 5);
+    buf[3] = (unsigned char)(8 + (r >> 13));
+    check_buffer[0] = 3;
   }
   /* extract some data */{
-    size_t const total = len+11;
+    size_t const total = (len > 0) ? 5+len : 1;
     unsigned char to_buf[128];
-    size_t ret;
+    size_t ret = 0;
     unsigned char const* src = buf;
     int const res = tcmplxA_brcvt_zsrtostr
       (p, &ret, to_buf, 128, &src, src+total);
-    munit_assert_int(res, ==, tcmplxA_Success);
+    munit_assert_int(res, ==, tcmplxA_EOF);
     munit_assert_size(ret, ==, len);
     munit_assert_size(src-buf, ==, total);
-    munit_assert_memory_equal(len, to_buf, buf+7);
+    munit_assert_memory_equal(len, to_buf, buf+4);
   }
   return MUNIT_OK;
 }
