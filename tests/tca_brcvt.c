@@ -39,7 +39,7 @@ static MunitTest tests_brcvt[] = {
   {"metadata_ptr", test_brcvt_metadata_ptr,
     test_brcvt_setup,test_brcvt_teardown,0,test_brcvt_params},
   {"metadata_cycle", test_brcvt_metadata_cycle,
-    test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,test_brcvt_params},
+    test_brcvt_setup,test_brcvt_teardown,0,test_brcvt_params},
   {"in/none", test_brcvt_zsrtostr_none,
     test_brcvt_setup,test_brcvt_teardown,MUNIT_TEST_OPTION_TODO,NULL},
   {"flush", test_brcvt_flush,
@@ -128,7 +128,7 @@ MunitResult test_brcvt_metadata_cycle
     int res;
     res = tcmplxA_brcvt_strrtozs(p, &buf_len, buf, sizeof(buf),
       &dummy_p, dummy+sizeof(dummy));
-    munit_assert(res == tcmplxA_Success);
+    munit_assert(res == tcmplxA_ErrPartial);
     munit_assert(buf_len <= sizeof(buf));
     res = tcmplxA_brcvt_delimrtozs(p, &exbuf_len,
       buf+buf_len, sizeof(buf)-buf_len);

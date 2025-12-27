@@ -1458,6 +1458,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
           ae = tcmplxA_ErrSanitize;
         ps->count = 0;
         ps->metablock_pos = 0;
+        ps->backward += 1;
         ps->state = tcmplxA_BrCvt_MetaText;
       }
       break;
@@ -3407,6 +3408,7 @@ static int tcmplxA_brcvt_strrtozs_bits
         ps->bits = 6;
         ps->count = 0;
         ps->bit_length = tcmplxA_brcvt_MetaHeaderLen;
+        ps->extra_length = actual_meta;
         ps->backward = (tcmplxA_uint32)sz;
         if (sz > 65536)
           ps->bits |= 48;
@@ -3431,7 +3433,7 @@ static int tcmplxA_brcvt_strrtozs_bits
       break;
     case tcmplxA_BrCvt_MetaLength:
       if (ps->bit_length == 0u) {
-        ps->bit_length = (ps->bits>>5)*8;
+        ps->bit_length = (ps->bits>>4)*8;
         ps->backward -= 1;
         ps->count = 0;
       }
@@ -3468,7 +3470,7 @@ static int tcmplxA_brcvt_strrtozs_bits
       if (ps->bit_length == 0u) {
         size_t const input_len = tcmplxA_blockbuf_input_size(ps->buffer);
         if (input_len < tcmplxA_blockbuf_capacity(ps->buffer)
-        &&  !(ps->h_end&2u))
+        &&  !(ps->h_end&2u) && !ps->emptymeta)
         {
           ae = tcmplxA_ErrPartial;
           break;
@@ -4213,6 +4215,8 @@ int tcmplxA_brcvt_strrtozs
       ae = tcmplxA_Success;
       if (ps->count >= ps->backward) {
         ps->metatext = NULL;
+        if (ps->extra_length && ps->meta_index < tcmplxA_brmeta_size(ps->metadata))
+          ps->meta_index += 1;
         tcmplxA_brcvt_next_block(ps);
         ps->bit_length = 0;
       }
