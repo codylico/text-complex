@@ -72,6 +72,8 @@ struct tcmplxA_zcvt {
   tcmplxA_uint32 checksum;
   /** @brief Output internal bit count. */
   tcmplxA_uint32 bit_cap;
+  /** @brief Partial byte stored aside for later. */
+  unsigned char write_scratch;
 };
 
 unsigned char tcmplxA_zcvt_clen[19] =
@@ -247,6 +249,7 @@ int tcmplxA_zcvt_init
     x->count = 0u;
     x->checksum = 0u;
     x->bit_cap = 0u;
+    x->write_scratch = 0u;
     return tcmplxA_Success;
   }
 }
@@ -273,6 +276,7 @@ void tcmplxA_zcvt_close(struct tcmplxA_zcvt* x) {
   x->distances = NULL;
   x->literals = NULL;
   x->buffer = NULL;
+  x->write_scratch = 0u;
 #endif /*NDEBUG*/
   return;
 }
@@ -819,6 +823,9 @@ int tcmplxA_zcvt_strrtozs_bits
   unsigned char const* p = *src;
   unsigned int i;
   int ae = tcmplxA_Success;
+  /* restore in-progress byte */
+  *y = ps->write_scratch;
+  ps->write_scratch = 0u;
   for (i = ps->bit_index; i < 8u && ae == tcmplxA_Success; ++i) {
     unsigned int x = 0u;
     if ((!(ps->h_end&1u))/* if end marker not activated yet */
@@ -843,13 +850,10 @@ int tcmplxA_zcvt_strrtozs_bits
       }
       /* try compress the data */if (ps->count == 0u) {
         int dynamic_flag = 0;
-        /* unstash the byte */{
-          *y = (unsigned char)(ps->bits);
-        }
         if (tcmplxA_blockbuf_input_size(ps->buffer) == 0u && (!ps->h_end)) {
           /* stash the current byte to the side */
-          ps->bits = *y;
           ae = tcmplxA_ErrPartial;
+          break;
         } else {
           tcmplxA_blockbuf_clear_output(ps->buffer);
           ae = tcmplxA_blockbuf_try_block(ps->buffer);
@@ -1251,8 +1255,11 @@ int tcmplxA_zcvt_strrtozs_bits
         } else ps->state = 15u;
       } break;
     }
-    if (ae > tcmplxA_Success)
+    if (ae > tcmplxA_Success) {
+      if (ae == tcmplxA_ErrPartial)
+        ps->write_scratch = *y; /* save current byte */
       /* halt the read position here: */break;
+    }
     else *y |= (x<<i);
   }
   ps->bit_index = i&7u;
