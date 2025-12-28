@@ -1021,7 +1021,7 @@ int tcmplxA_zcvt_strrtozs_bits
             }
           }
           if (ae == tcmplxA_Success) {
-            ps->bits = (ps->h_end&1u) | (dynamic_flag?6u:0u);
+            ps->bits = (ps->h_end&1u) | (dynamic_flag?4u:0u);
             tcmplxA_blockbuf_clear_input(ps->buffer);
           }
         } else break;
