@@ -1122,7 +1122,7 @@ int tcmplxA_zcvt_strrtozs_bits
                 tcmplxA_fixlist_at_c(ps->literals, alpha);
               ps->bit_cap = line->len;
               ps->bits = line->code;
-              ps->count = len;
+              ps->count = len - irow->copy_first;
               ps->extra_length = irow->copy_bits;
             }
           }
