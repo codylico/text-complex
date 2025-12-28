@@ -860,11 +860,11 @@ int tcmplxA_zcvt_strrtozs_bits
         }
         if (ae == tcmplxA_Success) {
           /* histogram */
-          unsigned char const* const x =
+          unsigned char const* const buffer_str =
             tcmplxA_blockbuf_output_data(ps->buffer);
-          tcmplxA_uint32 const x_size =
+          tcmplxA_uint32 const buffer_size =
             tcmplxA_blockbuf_output_size(ps->buffer);
-          tcmplxA_uint32 const x_size_m1 = x_size-1u;
+          tcmplxA_uint32 const buffer_m1 = buffer_size-1u;
           unsigned long int bit_count = 0u;
           tcmplxA_uint32 *const lit_histogram = ps->histogram;
           tcmplxA_uint32 *const dist_histogram =
@@ -881,19 +881,19 @@ int tcmplxA_zcvt_strrtozs_bits
                 tcmplxA_ZCvt_SeqHistoSize*sizeof(tcmplxA_uint32));
           }
           /* calculate histogram */{
-            tcmplxA_uint32 x_i;
-            for (x_i = 0u; x_i < x_size; ++x_i) {
-              unsigned char const byt = x[x_i];
+            tcmplxA_uint32 buffer_pos;
+            for (buffer_pos = 0u; buffer_pos < buffer_size; ++buffer_pos) {
+              unsigned char const byt = buffer_str[buffer_pos];
               int const insert_flag = ((byt&128u) == 0u);
               unsigned short len;
               unsigned short j;
               if (byt&64u) {
-                if (x_i == x_size_m1) {
+                if (buffer_pos == buffer_m1) {
                   ae = tcmplxA_ErrSanitize;
                   break;
                 } else {
-                  len = ((byt&63u)<<8)|(x[x_i+1u]&255u);
-                  x_i += 1u;
+                  len = ((byt&63u)<<8)|(buffer_str[buffer_pos+1u]&255u);
+                  buffer_pos += 1u;
                 }
               } else len = byt&63u;
               if (len == 0u)
@@ -911,19 +911,19 @@ int tcmplxA_zcvt_strrtozs_bits
                   lit_histogram[lit_index] += 1u;
                   bit_count += lit->copy_bits;
                 }
-                /* distance */switch (x[x_i+1u] & 192u) {
+                /* distance */switch (buffer_str[buffer_pos+1u] & 192u) {
                 case 128u:
-                  if (x_i+2u < x_size_m1) {
-                    distance = ((x[x_i+1u]&63u)<<8) | x[x_i+2u];
-                    x_i += 2u;
+                  if (buffer_pos+2u < buffer_m1) {
+                    distance = ((buffer_str[buffer_pos+1u]&63u)<<8) | buffer_str[buffer_pos+2u];
+                    buffer_pos += 2u;
                   } else ae = tcmplxA_ErrBlockOverflow;
                   break;
                 case 192u:
-                  if (x_i+4u < x_size_m1) {
-                    distance = ((((tcmplxA_uint32)(x[x_i+1u]&63u))<<24)
-                      | (((tcmplxA_uint32)x[x_i+2u]) << 16)
-                      | (x[x_i+3u]<<8) | (x[x_i+4u])) + 16384u;
-                    x_i += 4u;
+                  if (buffer_pos+4u < buffer_m1) {
+                    distance = ((((tcmplxA_uint32)(buffer_str[buffer_pos+1u]&63u))<<24)
+                      | (((tcmplxA_uint32)buffer_str[buffer_pos+2u]) << 16)
+                      | (buffer_str[buffer_pos+3u]<<8) | (buffer_str[buffer_pos+4u])) + 16384u;
+                    buffer_pos += 4u;
                   } else ae = tcmplxA_ErrBlockOverflow;
                   break;
                 default:
@@ -942,8 +942,8 @@ int tcmplxA_zcvt_strrtozs_bits
                     dist_histogram[dist_code] += 1u;
                   }
                 }
-              } else for (j = 0u; j < len && x_i < x_size_m1; ++j, ++x_i) {
-                lit_histogram[x[x_i+1u]] += 1u;
+              } else for (j = 0u; j < len && buffer_pos < buffer_m1; ++j, ++buffer_pos) {
+                lit_histogram[buffer_str[buffer_pos+1u]] += 1u;
               }
             }
             if (ae != tcmplxA_Success)
