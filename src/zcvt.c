@@ -24,7 +24,9 @@ enum tcmplxA_zcvt_uconst {
   tcmplxA_ZCvt_HistogramSize =
       tcmplxA_ZCvt_LitHistoSize
     + tcmplxA_ZCvt_DistHistoSize
-    + tcmplxA_ZCvt_SeqHistoSize
+    + tcmplxA_ZCvt_SeqHistoSize,
+  tcmplxA_ZCvt_LitDynamicConst = 286u,
+  tcmplxA_ZCvt_DistDynamicConst = 30u,
 };
 
 struct tcmplxA_zcvt {
@@ -727,8 +729,9 @@ int tcmplxA_zcvt_make_sequence(struct tcmplxA_zcvt* x) {
   size_t const lit_sz = tcmplxA_fixlist_size(x->literals);
   size_t const dist_sz = tcmplxA_fixlist_size(x->distances);
   x->sequence_list.sz = 0u;
-  for (i = 0u; i < lit_sz; ++i) {
-    unsigned int const n = tcmplxA_fixlist_at_c(x->literals,i)->len;
+  for (i = 0u; i < tcmplxA_ZCvt_LitDynamicConst; ++i) {
+    unsigned int const n = (i >= lit_sz) ? 0
+      : tcmplxA_fixlist_at_c(x->literals,i)->len;
     if (len != n) {
       int const ae = tcmplxA_zcvt_post_sequence
         (&x->sequence_list, len, len_count);
@@ -738,8 +741,9 @@ int tcmplxA_zcvt_make_sequence(struct tcmplxA_zcvt* x) {
       len_count = 1u;
     } else len_count += 1u;
   }
-  for (i = 0u; i < dist_sz; ++i) {
-    unsigned int const n = tcmplxA_fixlist_at_c(x->distances,i)->len;
+  for (i = 0u; i < tcmplxA_ZCvt_DistDynamicConst; ++i) {
+    unsigned int const n = (i >= dist_sz) ? 0
+      : tcmplxA_fixlist_at_c(x->distances,i)->len;
     if (len != n) {
       int const ae = tcmplxA_zcvt_post_sequence
         (&x->sequence_list, len, len_count);
@@ -1178,7 +1182,9 @@ int tcmplxA_zcvt_strrtozs_bits
     case 13: /* hcounts */
       if (ps->bit_length == 0u) {
         ps->count = 19u;
-        ps->bits = (((ps->count-4u) << 10) | (31u << 5) | (31u));
+        ps->bits = (((ps->count-4u) << 10)
+          | ((tcmplxA_ZCvt_DistDynamicConst-1) << 5)
+          | (tcmplxA_ZCvt_LitDynamicConst-257));
       }
       if (ps->bit_length < 14u) {
         x = (ps->bits>>ps->bit_length)&1u;
