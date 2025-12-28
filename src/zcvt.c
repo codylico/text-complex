@@ -961,6 +961,9 @@ int tcmplxA_zcvt_strrtozs_bits
                 for (j = 0u; j < 32u; ++j) {
                   tcmplxA_fixlist_at(ps->distances, j)->value = j;
                 }
+                for (j = 0u; j < 19u; ++j) {
+                  tcmplxA_fixlist_at(ps->sequence, j)->value = j;
+                }
               }
               /* lengths */{
                 int const lit_ae = tcmplxA_fixlist_gen_lengths
@@ -1196,6 +1199,7 @@ int tcmplxA_zcvt_strrtozs_bits
         ps->index = 0u;
         ps->bit_length = 0u;
         ps->bits = 0u;
+        ae = tcmplxA_fixlist_valuesort(ps->sequence);
       } break;
     case 14: /* code lengths code lengths */
       if (ps->bit_length == 0u) {
@@ -1228,7 +1232,7 @@ int tcmplxA_zcvt_strrtozs_bits
         ps->extra_length = line->len;
       }
       if (ps->bit_length < ps->extra_length) {
-        x = (ps->bits>>(ps->extra_length-1u-ps->bit_length));
+        x = (ps->bits>>(ps->extra_length-1u-ps->bit_length))&1u;
         ps->bit_length += 1u;
       }
       if (ps->bit_length >= ps->extra_length) {
