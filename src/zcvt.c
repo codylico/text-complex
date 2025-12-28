@@ -1092,7 +1092,7 @@ int tcmplxA_zcvt_strrtozs_bits
             buf[1u] = data[ps->index];
             len = buf[1u] + ((buf[0u]&63u)<<8) + 64u;
           } else len = buf[0u]&63u;
-          if (buf[0u]&128u) {
+          if ((buf[0u]&128u)==0u) {
             /* insert */
             if (ps->index+1u >= ps->backward || len == 0u) {
               ae = tcmplxA_ErrSanitize;
