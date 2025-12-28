@@ -1264,6 +1264,9 @@ int tcmplxA_zcvt_strrtozs_bits
           ps->state = 19u;
         } else ps->state = 15u;
       } break;
+    default:
+      ae = tcmplxA_ErrUnknown;
+      break;
     }
     if (ae > tcmplxA_Success) {
       if (ae == tcmplxA_ErrPartial)
