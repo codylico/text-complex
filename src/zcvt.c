@@ -913,13 +913,13 @@ int tcmplxA_zcvt_strrtozs_bits
                 }
                 /* distance */switch (buffer_str[buffer_pos+1u] & 192u) {
                 case 128u:
-                  if (buffer_pos+2u < buffer_m1) {
+                  if (buffer_pos+2u < buffer_size) {
                     distance = ((buffer_str[buffer_pos+1u]&63u)<<8) | buffer_str[buffer_pos+2u];
                     buffer_pos += 2u;
                   } else ae = tcmplxA_ErrBlockOverflow;
                   break;
                 case 192u:
-                  if (buffer_pos+4u < buffer_m1) {
+                  if (buffer_pos+4u < buffer_size) {
                     distance = ((((tcmplxA_uint32)(buffer_str[buffer_pos+1u]&63u))<<24)
                       | (((tcmplxA_uint32)buffer_str[buffer_pos+2u]) << 16)
                       | (buffer_str[buffer_pos+3u]<<8) | (buffer_str[buffer_pos+4u])) + 16384u;
@@ -941,7 +941,7 @@ int tcmplxA_zcvt_strrtozs_bits
                     bit_count += extra;
                     dist_histogram[dist_code] += 1u;
                   }
-                }
+                } else break;
               } else for (j = 0u; j < len && buffer_pos < buffer_m1; ++j, ++buffer_pos) {
                 lit_histogram[buffer_str[buffer_pos+1u]] += 1u;
               }
