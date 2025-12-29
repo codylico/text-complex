@@ -799,8 +799,8 @@ int tcmplxA_zcvt_post_sequence
       buf[0] = (unsigned char)len;
       ae = tcmplxA_blockstr_append(s, buf, 1u);
     }
-    for (i = 0u; i < count && ae == tcmplxA_Success; ) {
-      unsigned int const x = len-i;
+    for (i = 1u; i < count && ae == tcmplxA_Success; ) {
+      unsigned int const x = count-i;
       if (x > 6u) {
         unsigned char buf[2] = {16u, 3u};
         ae = tcmplxA_blockstr_append(s, buf, 2u);
