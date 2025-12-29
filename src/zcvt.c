@@ -940,7 +940,7 @@ int tcmplxA_zcvt_strrtozs_bits
                 /* encode distance */if (ae == tcmplxA_Success) {
                   tcmplxA_uint32 extra;
                   unsigned int const dist_code =
-                    tcmplxA_ringdist_encode(ps->try_ring, distance, &extra, 0u);
+                    tcmplxA_ringdist_encode(ps->try_ring, distance+1, &extra, 0u);
                   if (dist_code == UINT_MAX) {
                     ae = tcmplxA_ErrParam;
                     break;
@@ -1238,7 +1238,7 @@ int tcmplxA_zcvt_strrtozs_bits
         } else {
           tcmplxA_uint32 dist_extra = 0;
           unsigned const dist_index = tcmplxA_ringdist_encode
-              (ps->ring, (unsigned)distance, &dist_extra, 0u);
+              (ps->ring, (unsigned)distance+1u, &dist_extra, 0u);
           if (dist_index == ((unsigned)-1)) {
             ae = tcmplxA_ErrSanitize;
             break;
