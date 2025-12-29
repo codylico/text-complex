@@ -1635,7 +1635,7 @@ int tcmplxA_zcvt_strrtozs
         ps->count += 1u;
       } else if (ps->count < 4u) {
         dst[ret_out] = (unsigned char)(
-              ~(ps->extra_length>>(8u*(2u-ps->count)))
+              ~(ps->extra_length>>(8u*(ps->count-2u)))
             );
         ps->count += 1u;
       }
