@@ -1126,7 +1126,7 @@ int tcmplxA_zcvt_strrtozs_bits
             } else {
               struct tcmplxA_inscopy_row const* const irow =
                 tcmplxA_inscopy_at_c(ps->values, copy_index);
-              unsigned char const alpha = copy_index;
+              unsigned short const alpha = irow->code;
               struct tcmplxA_fixline const* const line =
                 tcmplxA_fixlist_at_c(ps->literals, alpha);
               ps->bit_cap = line->len;
@@ -1185,9 +1185,9 @@ int tcmplxA_zcvt_strrtozs_bits
       if (ps->bit_length >= ps->bit_cap) {
         ps->index += 1u;
         ps->count -= 1u;
-        if (ps->count == 0u) {
+        if (ps->count == 0u)
           ps->state = 8u;
-        } else ps->bit_length = 0u;
+        ps->bit_length = 0u;
       } break;
     case 9: /* copy bits */
       if (ps->bit_length < ps->extra_length) {
