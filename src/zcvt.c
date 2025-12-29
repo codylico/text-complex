@@ -1152,6 +1152,7 @@ int tcmplxA_zcvt_strrtozs_bits
           ps->count = 0u;
         } else if (ps->state == 20u) {
           ps->count -= 1u;
+          ps->index += 1u;
           if (ps->count == 0u) {
             ps->state = 8u;
           }
@@ -1178,7 +1179,7 @@ int tcmplxA_zcvt_strrtozs_bits
         }
       }
       if (ps->bit_length < ps->bit_cap) {
-        x = (ps->bits>>ps->bit_length)&1u;
+        x = (ps->bits>>(ps->bit_cap-1u-ps->bit_length))&1u;
         ps->bit_length += 1u;
       }
       if (ps->bit_length >= ps->bit_cap) {
