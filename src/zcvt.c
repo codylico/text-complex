@@ -1469,12 +1469,12 @@ int tcmplxA_zcvt_zsrtostr
       break;
     case 4: /* no compression: LEN and NLEN */
       if (ps->count < 4u) {
-        ps->backward = (ps->backward<<8) | (*p);
+        ps->backward |= (*p << (ps->count*8));
         ps->count += 1u;
       }
       if (ps->count >= 4u) {
-        unsigned int const len = (ps->backward>>16)&65535u;
-        unsigned int const nlen = (~ps->backward)&65535u;
+        unsigned int const len = (ps->backward)&65535u;
+        unsigned int const nlen = (~ps->backward>>16)&65535u;
         if (len != nlen) {
           ae = tcmplxA_ErrSanitize;
         } else {
