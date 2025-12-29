@@ -883,6 +883,9 @@ int tcmplxA_zcvt_strrtozs_bits
                 tcmplxA_ZCvt_DistHistoSize*sizeof(tcmplxA_uint32));
             memset(seq_histogram, 0u,
                 tcmplxA_ZCvt_SeqHistoSize*sizeof(tcmplxA_uint32));
+            ae = tcmplxA_inscopy_lengthsort(ps->values);
+            if (ae != tcmplxA_Success)
+              break;
           }
           /* calculate histogram */{
             tcmplxA_uint32 buffer_pos;
@@ -896,7 +899,7 @@ int tcmplxA_zcvt_strrtozs_bits
                   ae = tcmplxA_ErrSanitize;
                   break;
                 } else {
-                  len = ((byt&63u)<<8)|(buffer_str[buffer_pos+1u]&255u);
+                  len = (((byt&63u)<<8)|(buffer_str[buffer_pos+1u]&255u))+64u;
                   buffer_pos += 1u;
                 }
               } else len = byt&63u;
@@ -906,13 +909,13 @@ int tcmplxA_zcvt_strrtozs_bits
                 size_t const lit_index =
                   tcmplxA_inscopy_encode(ps->values, 0u, len, 0);
                 tcmplxA_uint32 distance = 0u;
-                if (lit_index >= tcmplxA_ZCvt_LitHistoSize) {
+                if (lit_index >= tcmplxA_inscopy_size(ps->values)) {
                   ae = tcmplxA_ErrInsCopyMissing;
                   break;
                 } else {
                   struct tcmplxA_inscopy_row const* const lit =
                     tcmplxA_inscopy_at_c(ps->values, lit_index);
-                  lit_histogram[lit_index] += 1u;
+                  lit_histogram[lit->code] += 1u;
                   bit_count += lit->copy_bits;
                 }
                 /* distance */switch (buffer_str[buffer_pos+1u] & 192u) {
@@ -971,6 +974,10 @@ int tcmplxA_zcvt_strrtozs_bits
                 int const dist_ae = tcmplxA_fixlist_gen_lengths
                   (ps->distances, dist_histogram, 15u);
                 ae = tcmplxA_zcvt_nonzero(lit_ae, dist_ae);
+                if (ae != tcmplxA_Success)
+                  break;
+                ae = tcmplxA_zcvt_nonzero(tcmplxA_fixlist_valuesort(ps->literals),
+                  tcmplxA_fixlist_valuesort(ps->distances));
                 if (ae != tcmplxA_Success)
                   break;
               }
