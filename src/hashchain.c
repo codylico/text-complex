@@ -187,7 +187,7 @@ tcmplxA_uint32 tcmplxA_hashchain_find
         tcmplxA_uint32 const y = here-chain[--chain_i]-1u;
         if (y < pos)
           continue;
-        else if (y > size)
+        else if (y >= size)
           return ((tcmplxA_uint32)-1);
         else {
           unsigned char tmp[3];
