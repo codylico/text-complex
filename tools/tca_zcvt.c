@@ -66,7 +66,7 @@ int do_strrtozs(FILE *in, FILE* out) {
         size_t retval;
         int const res = tcmplxA_zcvt_strrtozs
           (state, &retval, outbuf, 256, &src, inbuf+in_count);
-        if (res < tcmplxA_Success) {
+        if (res < tcmplxA_Success || retval == 0) {
           ec = EXIT_FAILURE;
           fprintf(stderr, "error code from conversion:\n\t%s\n",
               tcmplxA_api_error_toa(res));
