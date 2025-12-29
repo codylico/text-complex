@@ -1189,7 +1189,87 @@ int tcmplxA_zcvt_strrtozs_bits
         } else ps->bit_length = 0u;
       } break;
     case 9: /* copy bits */
-      /* TODO this */;
+      if (ps->bit_length < ps->extra_length) {
+        x = (ps->count>>ps->bit_length)&1u;
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= ps->extra_length) {
+        ps->state = 10u;
+        ps->bit_length = 0u;
+      }
+      break;
+    case 10: /* distance Huffman code */
+      if (ps->bit_length == 0u) {
+        unsigned char buf[4] = {0};
+        unsigned long distance = 0;
+        unsigned char const* const data =
+          tcmplxA_blockbuf_output_data(ps->buffer);
+        assert(ps->index < ps->backward);
+        buf[0u] = data[ps->index];
+        ps->index += 1;
+        if ((buf[0]&128u) == 0u) {
+          /* zlib stream does not support Brotli references */
+          ae = tcmplxA_ErrSanitize;
+          break;
+        } else if (ps->index >= ps->backward) {
+          /* also, index needs to be in range */
+          ae = tcmplxA_ErrOutOfRange;
+          break;
+        }
+        if (buf[0u] & 64u) {
+          if (ps->backward - ps->index < 3u) {
+            ae = tcmplxA_ErrOutOfRange;
+            break;
+          }
+          memcpy(buf+1, data+ps->index, 3);
+          ps->index += 2;
+          distance = ((buf[0]&63ul)<<24)
+            + ((buf[1]&255ul)<<16) + ((buf[2]&255u)<<8)
+            + (buf[3]&255u) + 16384ul;
+        } else {
+          buf[1] = data[ps->index];
+          distance = ((buf[0]&63)<<8) + (buf[1]&255);
+        }
+        if (distance > 32768) {
+          /* zlib lacks support for large distances */
+          ae = tcmplxA_ErrSanitize;
+          break;
+        } else {
+          tcmplxA_uint32 dist_extra = 0;
+          unsigned const dist_index = tcmplxA_ringdist_encode
+              (ps->ring, (unsigned)distance, &dist_extra, 0u);
+          if (dist_index == ((unsigned)-1)) {
+            ae = tcmplxA_ErrSanitize;
+            break;
+          } else {
+            struct tcmplxA_fixline const* const line =
+              tcmplxA_fixlist_at_c(ps->distances, dist_index);
+            ps->bit_cap = line->len;
+            ps->bits = line->code;
+            ps->count = dist_extra;
+            ps->extra_length =
+              tcmplxA_ringdist_bit_count(ps->ring, dist_index);
+          }
+        }
+      }
+      if (ps->bit_length < ps->bit_cap) {
+        x = (ps->bits>>(ps->bit_cap-1u-ps->bit_length))&1u;
+        ps->bit_length += 1u;
+      }
+      if (ps->bit_length >= ps->bit_cap) {
+        ps->bit_length = 0u;
+        ps->state = (ps->extra_length>0u ? 11u : 8u);
+        ps->index += 1u;
+      } break;
+    case 11: /* distance extra bits */
+      if (ps->bit_length < ps->extra_length) {
+        x = (ps->count>>ps->bit_length)&1u;
+        ps->bit_length += 1;
+      }
+      if (ps->bit_length >= ps->extra_length) {
+        ps->state = 8u;
+        ps->bit_length = 0u;
+      }
       break;
     case 13: /* hcounts */
       if (ps->bit_length == 0u) {
@@ -1585,6 +1665,9 @@ int tcmplxA_zcvt_strrtozs
       ae = tcmplxA_EOF;
       break;
     case 8: /* encode */
+    case 9:
+    case 10:
+    case 11:
     case 13: /* hcounts */
     case 14: /* code lengths code lengths */
     case 15: /* literals and distances */
@@ -1592,6 +1675,7 @@ int tcmplxA_zcvt_strrtozs
     case 17: /* copy zero length */
     case 18: /* copy zero length + 11 */
     case 19: /* generate code trees */
+    case 20:
       ae = tcmplxA_zcvt_strrtozs_bits(ps, dst+ret_out, &p, src_end);
       break;
     }
