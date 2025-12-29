@@ -953,6 +953,8 @@ int tcmplxA_zcvt_strrtozs_bits
                 lit_histogram[buffer_str[buffer_pos+1u]] += 1u;
               }
             }
+            /* Ensure the stop code. */
+            lit_histogram[256] = 1;
             if (ae != tcmplxA_Success)
               break;
             else/* plant two trees */{
