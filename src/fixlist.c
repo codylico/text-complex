@@ -586,7 +586,7 @@ int tcmplxA_fixlist_preset(struct tcmplxA_fixlist* dst, unsigned int i) {
       return res;
     }
     if (tcmplxA_fixlist_ps[i].v)
-      memcpy(dst->p, tcmplxA_fixlist_ps[i].v, sizeof(struct tcmplxA_fixlist)*sz);
+      memcpy(dst->p, tcmplxA_fixlist_ps[i].v, sizeof(struct tcmplxA_fixline)*sz);
     else switch (i) {
     case tcmplxA_FixList_BrotliBlockType:
       {
