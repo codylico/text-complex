@@ -14,6 +14,7 @@
 #include "text-complex/access/zutil.h"
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 
 
 

@@ -22,7 +22,9 @@ struct tcmplxA_hashchain {
 };
 
 enum tcmplxA_hashchain_const {
-  tcmplxA_HashChain_Max = (((size_t)-1)/sizeof(tcmplxA_uint32))/251u
+  tcmplxA_HashChain_PreMax = (INT_MAX / sizeof(tcmplxA_uint32)) / 251u,
+  tcmplxA_HashChain_Max = (tcmplxA_HashChain_PreMax > (size_t)-1)
+      ? ((size_t)-1) : tcmplxA_HashChain_PreMax
 };
 
 /**
