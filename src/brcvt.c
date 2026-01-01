@@ -3242,6 +3242,11 @@ size_t tcmplxA_brcvt_apply_histogram(struct tcmplxA_gaspvec* tree_list,
     } else bit_count += 1;
   }
   tcmplxA_brcvt_close19(&attempt);
+  /* Fix up single-leaf trees for later passes. */if (tcmplxA_fixlist_size(tree) == 1) {
+    struct tcmplxA_fixline* const zero_line = tcmplxA_fixlist_at(tree,0);
+    if (zero_line->len == 0 && histogram[zero_line->value] > 0)
+      zero_line->len = 1;
+  }
   return bit_count;
 }
 
