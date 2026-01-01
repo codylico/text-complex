@@ -4100,6 +4100,7 @@ int tcmplxA_brcvt_zsrtostr
       if (ps->metablock_pos >= ps->backward) {
         ps->metatext = NULL;
         tcmplxA_brcvt_skipforward(ps->backward);
+        ps->fwd.accum += ps->backward;
         ps->state = (ps->h_end
           ? tcmplxA_BrCvt_Done : tcmplxA_BrCvt_LastCheck);
         if (ps->h_end)
