@@ -3546,9 +3546,10 @@ static int tcmplxA_brcvt_strrtozs_bits
         tcmplxA_fixlist_close(&ps->treety.nineteen);
         tcmplxA_brcvt_reset19(&ps->treety);
         ps->alphabits = 2u+(tcmplxA_fixlist_size(&ps->literal_blocktype)>=3);
-        if (tcmplxA_fixlist_size(&ps->literal_blocktype) > 1)
+        if (tcmplxA_fixlist_size(&ps->literal_blocktype) > 1) {
           ps->state += 1;
-        else
+          ps->alphabits = tcmplxA_util_bitwidth((unsigned)tcmplxA_fixlist_size(&ps->literal_blocktype)+1u);
+	} else
           ps->state += 4;
       } break;
     case tcmplxA_BrCvt_BlockTypesLAlpha:
