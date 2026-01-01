@@ -239,12 +239,6 @@ struct tcmplxA_brcvt {
   struct tcmplxA_fixlist distance_blockcount;
   /** @brief Context transcode prefixes. */
   struct tcmplxA_fixlist context_tree;
-  /** @brief ... */
-  struct tcmplxA_fixlist* literals;
-  /** @brief ... */
-  struct tcmplxA_fixlist* distances;
-  /** @brief ... */
-  struct tcmplxA_fixlist* sequence;
   /** @brief Fixed window size Huffman code table. */
   struct tcmplxA_fixlist* wbits;
   /** @brief ... */
@@ -779,21 +773,6 @@ static int tcmplxA_brcvt_init
     if (x->metadata == NULL)
       res = tcmplxA_ErrMemory;
   }
-  /* literals */{
-    x->literals = tcmplxA_fixlist_new(288u);
-    if (x->literals == NULL)
-      res = tcmplxA_ErrMemory;
-  }
-  /* distances */{
-    x->distances = tcmplxA_fixlist_new(32u);
-    if (x->distances == NULL)
-      res = tcmplxA_ErrMemory;
-  }
-  /* sequence */{
-    x->sequence = tcmplxA_fixlist_new(19u);
-    if (x->sequence == NULL)
-      res = tcmplxA_ErrMemory;
-  }
   /* ring */{
     x->ring = tcmplxA_ringdist_new(1,4u,0u);
     if (x->ring == NULL)
@@ -860,9 +839,6 @@ static int tcmplxA_brcvt_init
     tcmplxA_util_free(x->histogram);
     tcmplxA_ringdist_destroy(x->try_ring);
     tcmplxA_ringdist_destroy(x->ring);
-    tcmplxA_fixlist_destroy(x->sequence);
-    tcmplxA_fixlist_destroy(x->distances);
-    tcmplxA_fixlist_destroy(x->literals);
     tcmplxA_brmeta_destroy(x->metadata);
     tcmplxA_fixlist_destroy(x->wbits);
     tcmplxA_blockbuf_destroy(x->buffer);
@@ -929,9 +905,6 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   tcmplxA_ringdist_destroy(x->ring);
   tcmplxA_inscopy_destroy(x->values);
   tcmplxA_inscopy_destroy(x->blockcounts);
-  tcmplxA_fixlist_destroy(x->sequence);
-  tcmplxA_fixlist_destroy(x->distances);
-  tcmplxA_fixlist_destroy(x->literals);
   tcmplxA_brmeta_destroy(x->metadata);
   tcmplxA_fixlist_destroy(x->wbits);
   tcmplxA_blockbuf_destroy(x->buffer);
@@ -953,9 +926,6 @@ void tcmplxA_brcvt_close(struct tcmplxA_brcvt* x) {
   x->bit_length = 0u;
   x->bits = 0u;
   x->h_end = 0;
-  x->sequence = NULL;
-  x->distances = NULL;
-  x->literals = NULL;
   x->buffer = NULL;
   x->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
   x->blockcountL_skip = tcmplxA_brcvt_NoSkip;
