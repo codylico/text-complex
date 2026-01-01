@@ -245,6 +245,7 @@ int tcmplxA_zcvt_init
     return res;
   } else {
     x->bits = 0u;
+    x->h_end = 0u;
     x->bit_length = 0u;
     x->state = 0u;
     x->bit_index = 0u;
