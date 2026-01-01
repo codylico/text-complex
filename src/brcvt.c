@@ -1143,6 +1143,13 @@ int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
   return tcmplxA_Success;
 }
 
+static int tcmplxA_brcvt_dec_literal_rem(struct tcmplxA_brcvt* ps) {
+  if (ps->blocktypeL_remaining > 0)
+    ps->blocktypeL_remaining -= 1;
+  if (ps->blocktypeL_remaining == 0 && ps->fwd.literal_i < ps->fwd.literal_total)
+    ps->state = tcmplxA_BrCvt_LiteralRestart;
+}
+
 static int tcmplxA_brcvt_metaterm(struct tcmplxA_brcvt* ps, int term_ok) {
   if (ps->metablock_pos < ps->backward)
     return 0;
@@ -1200,6 +1207,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
           return tcmplxA_ErrPartial;
         tcmplxA_brcvt_inflow_literal(ps, ps->literal_skip, ret, dst, dstsz);
         tcmplxA_brcvt_countbits(0, 0, "[[LITERAL %u]]", ps->literal_skip);
+        ps->fwd.literal_i += 1;
+        tcmplxA_brcvt_dec_literal_rem(ps);
         continue;
       } else return tcmplxA_Success;
     case tcmplxA_BrCvt_Distance:
@@ -2011,6 +2020,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "literal %u (tree %i)", line, index);
         tcmplxA_brcvt_inflow_literal(ps, line, &ret_out, dst, dstsz);
         ps->fwd.literal_i ++;
+        tcmplxA_brcvt_dec_literal_rem(ps);
         ps->bit_length = 0;
         ps->bits = 0;
         ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
