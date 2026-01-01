@@ -1048,7 +1048,7 @@ unsigned tcmplxA_brcvt_inflow_lookup(struct tcmplxA_brcvt* ps,
 struct tcmplxA_brcvt_block tcmplxA_brcvt_switch_blocktype(struct tcmplxA_brcvt_block box,
     unsigned char max_value, unsigned cmd)
 {
-  struct tcmplxA_brcvt_block out = {};
+  struct tcmplxA_brcvt_block out = {0};
   out.previous = box.current;
   switch (cmd) {
     case 0:
