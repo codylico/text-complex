@@ -852,6 +852,7 @@ static int tcmplxA_brcvt_init
     x->insert_forest = NULL;
     x->max_len_meta = 1024;
     x->bits = 0u;
+    x->guess_offset = 0u;
     x->h_end = 0;
     x->bit_length = 0u;
     x->state = tcmplxA_BrCvt_WBits;
@@ -2803,6 +2804,7 @@ struct tcmplxA_brcvt_token tcmplxA_brcvt_next_token
     out.first = data[fwd->i];
     fwd->i += 1;
     fwd->literal_i += 1;
+    fwd->pos += 1;
     if (fwd->i >= size)
       fwd->ostate = tcmplxA_BrCvt_Done;
     else if (fwd->literal_i >= fwd->literal_total) {
@@ -2970,7 +2972,7 @@ int tcmplxA_brcvt_apply_token(struct tcmplxA_brcvt* ps,
       ps->extra_bits[0] = ps->bits;
       ps->extra_length = ps->bit_cap;
       ps->bit_cap = 0;
-      if (!tcmplxA_brcvt_outflow_lookup(ps, &ps->literal_blocktype, context, &ae))
+      if (!tcmplxA_brcvt_outflow_lookup(ps, &ps->literal_blocktype, context+2, &ae))
         return ae;
     }
     break;
@@ -3122,7 +3124,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     for (i = 0; i < size; ++i) {
       struct tcmplxA_brcvt_token next =
         tcmplxA_brcvt_next_token(&try_fwd, &ps->guesses, data, size, ps->wbits_select, ps->blocktypeL_skip);
-      if (try_fwd.i <= i)
+      if (try_fwd.i <= i && next.state != tcmplxA_BrCvt_LiteralRestart)
         return tcmplxA_ErrSanitize;
       i = try_fwd.i-1;
       switch (next.state) {
@@ -3169,7 +3171,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
         return tcmplxA_ErrSanitize;
       }
     }
-    assert(ctxt_i <= tcmplxA_CtxtSpan_Size);
+    assert(ctxt_i < tcmplxA_CtxtSpan_Size);
     literal_lengths[ctxt_i] = literal_counter;
     /* apply histograms to the trees */
     try_bit_count += tcmplxA_brcvt_apply_histogram(
@@ -3289,7 +3291,7 @@ static int tcmplxA_brcvt_apply_token_checked(struct tcmplxA_brcvt* ps) {
       tcmplxA_brcvt_next_token(&ps->fwd, &ps->guesses, data, size, ps->wbits_select,
         ps->blocktypeL_skip);
     int ae = tcmplxA_Success;
-    if (ps->fwd.i <= old_fwd_index)
+    if (ps->fwd.i <= old_fwd_index && next.state != tcmplxA_BrCvt_LiteralRestart)
       return tcmplxA_ErrSanitize;
     ps->state = next.state;
     ae = tcmplxA_brcvt_apply_token(ps, next);
@@ -3572,6 +3574,8 @@ static int tcmplxA_brcvt_strrtozs_bits
         tcmplxA_inscopy_lengthsort(ps->blockcounts);
         for (j = 0; j < ps->guesses.count; ++j) {
           size_t const v = tcmplxA_inscopy_encode(ps->blockcounts, ps->guess_lengths[j], 0, 0);
+	  if (ps->guess_lengths[j] == 0)
+            continue;
           if (v >= 26) {
             ae = tcmplxA_ErrSanitize;
             break;
@@ -3756,7 +3760,7 @@ static int tcmplxA_brcvt_strrtozs_bits
         ps->count += 1;
       }
       if (ps->count >= ps->bit_length) {
-        size_t const btypes = tcmplxA_ctxtmap_contexts(ps->literals_map);
+        size_t const btypes = tcmplxA_ctxtmap_block_types(ps->literals_map);
         tcmplxA_uint32 histogram[tcmplxA_brcvt_ContextHistogram] = {0};
         size_t j;
         unsigned int const rlemax = ps->rlemax;
@@ -3765,6 +3769,8 @@ static int tcmplxA_brcvt_strrtozs_bits
         ae = tcmplxA_fixlist_resize(&ps->context_tree, alphabits);
         if (ae != tcmplxA_Success)
           break;
+	for (j = 0; j < alphabits; ++j)
+          tcmplxA_fixlist_at(&ps->context_tree, j)->value = (unsigned)j;
         for (j = 0; j < ps->context_encode.sz; ++j) {
           unsigned char const ch = ps->context_encode.p[j];
           if (ch < tcmplxA_brcvt_ZeroBit) {
