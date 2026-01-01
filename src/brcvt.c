@@ -2431,7 +2431,7 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
           return tcmplxA_ErrMemory;
         for (i = 0; i < treety->sequence_list.sz; ++i) {
           unsigned char const code = treety->sequence_list.p[i];
-          assert(code < sizeof(histogram));
+          assert(code < sizeof(tcmplxA_brcvt_clen));
           histogram[code] += 1;
           if (code >= 16)
             i += 1;
