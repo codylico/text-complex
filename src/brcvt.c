@@ -1172,7 +1172,7 @@ int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
   return tcmplxA_Success;
 }
 
-static int tcmplxA_brcvt_dec_literal_rem(struct tcmplxA_brcvt* ps) {
+static void tcmplxA_brcvt_dec_literal_rem(struct tcmplxA_brcvt* ps) {
   if (ps->blocktypeL_remaining > 0)
     ps->blocktypeL_remaining -= 1;
   if (ps->blocktypeL_remaining == 0 && ps->fwd.literal_i < ps->fwd.literal_total)
