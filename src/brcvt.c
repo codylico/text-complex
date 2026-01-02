@@ -1064,13 +1064,39 @@ struct tcmplxA_brcvt_block tcmplxA_brcvt_switch_blocktype(struct tcmplxA_brcvt_b
   return out;
 }
 
+static int tcmplxA_brcvt_land_insert_copy(struct tcmplxA_brcvt* ps, int* end) {
+  if (ps->state == tcmplxA_BrCvt_DataInsertExtra
+    || ps->state == tcmplxA_BrCvt_DataCopyExtra)
+  {
+    return tcmplxA_Success;
+  } else if (ps->fwd.literal_total == 0) {
+    /* Go to distance code. */
+    if (tcmplxA_brcvt_metaterm(ps, 1)) {
+      *end = 1;
+      return tcmplxA_brcvt_meta_endcode(ps);
+    }
+    ps->state = (ps->blocktypeD_remaining
+      ? tcmplxA_BrCvt_Distance : tcmplxA_BrCvt_DistanceRestart);
+    ps->fwd.literal_i = 0;
+    ps->fwd.literal_total = ps->fwd.stop;
+    ps->fwd.stop = 0;
+  } else if (ps->blocktypeL_remaining)
+    ps->state = tcmplxA_BrCvt_Literal;
+  else
+    ps->state = tcmplxA_BrCvt_LiteralRestart;
+  *end = 0;
+  return tcmplxA_Success;
+}
+
 int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert) {
   struct tcmplxA_inscopy_row const* const row = tcmplxA_inscopy_at_c(ps->values, insert);
+  int end = 0;
+  int ae = tcmplxA_Success;
   ps->blocktypeI_remaining -= 1;
   if (!row)
     return tcmplxA_ErrSanitize;
-  ps->state = ((ps->blocktypeL_remaining || (row->insert_first==0))
-    ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
+  /* Adjust destination state by extra bits. */
+  ps->state = tcmplxA_BrCvt_Literal;
   ps->extra_length = row->copy_bits;
   if (row->copy_bits)
     ps->state = tcmplxA_BrCvt_DataCopyExtra;
@@ -1085,6 +1111,9 @@ int tcmplxA_brcvt_inflow_insert(struct tcmplxA_brcvt* ps, unsigned insert) {
   ps->fwd.literal_total = row->insert_first;
   ps->fwd.stop = row->copy_first;
   ps->fwd.ctxt_i = row->zero_distance_tf;
+  ae = tcmplxA_brcvt_land_insert_copy(ps, &end);
+  if (end)
+    return ae;
   return tcmplxA_Success;
 }
 int tcmplxA_brcvt_inflow_distextra(struct tcmplxA_brcvt* ps) {
@@ -1987,8 +2016,11 @@ static int tcmplxA_brcvt_zsrtostr_bits
         if (ps->extra_length > 0)
           ps->state = tcmplxA_BrCvt_DataCopyExtra;
         else {
-          ps->state = (ps->blocktypeL_remaining
-            ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
+          int end = 0;
+          ps->state = tcmplxA_BrCvt_Literal;
+          ae = tcmplxA_brcvt_land_insert_copy(ps, &end);
+          if (end)
+            break;
           ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
         }
       } break;
@@ -1998,11 +2030,14 @@ static int tcmplxA_brcvt_zsrtostr_bits
         ps->count++;
       }
       if (ps->count >= ps->extra_length) {
+        int end = 0;
         tcmplxA_brcvt_countbits(ps->bits, ps->extra_length, "copy-extra %u", ps->bits);
         ps->fwd.stop += ps->bits;
         ps->bits = 0;
-        ps->state = (ps->blocktypeL_remaining
-          ? tcmplxA_BrCvt_Literal : tcmplxA_BrCvt_LiteralRestart);
+        ps->state = tcmplxA_BrCvt_Literal;
+        ae = tcmplxA_brcvt_land_insert_copy(ps, &end);
+        if (end)
+          break;
         ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_Literal:
