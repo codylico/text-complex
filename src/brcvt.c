@@ -1072,6 +1072,7 @@ static int tcmplxA_brcvt_land_insert_copy(struct tcmplxA_brcvt* ps, int* end) {
       *end = 1;
       return tcmplxA_brcvt_meta_endcode(ps);
     }
+    ps->bit_length = 0;
     ps->state = (ps->blocktypeD_remaining
       ? tcmplxA_BrCvt_Distance : tcmplxA_BrCvt_DistanceRestart);
     ps->fwd.literal_i = 0;
@@ -1079,8 +1080,10 @@ static int tcmplxA_brcvt_land_insert_copy(struct tcmplxA_brcvt* ps, int* end) {
     ps->fwd.stop = 0;
   } else if (ps->blocktypeL_remaining)
     ps->state = tcmplxA_BrCvt_Literal;
-  else
+  else {
+    ps->bit_length = 0;
     ps->state = tcmplxA_BrCvt_LiteralRestart;
+  }
   *end = 0;
   return tcmplxA_Success;
 }
@@ -1172,8 +1175,10 @@ int tcmplxA_brcvt_inflow_literal(struct tcmplxA_brcvt* ps, unsigned ch,
 static void tcmplxA_brcvt_dec_literal_rem(struct tcmplxA_brcvt* ps) {
   if (ps->blocktypeL_remaining > 0)
     ps->blocktypeL_remaining -= 1;
-  if (ps->blocktypeL_remaining == 0 && ps->fwd.literal_i < ps->fwd.literal_total)
+  if (ps->blocktypeL_remaining == 0 && ps->fwd.literal_i < ps->fwd.literal_total) {
+    ps->bit_length = 0;
     ps->state = tcmplxA_BrCvt_LiteralRestart;
+  }
 }
 
 static int tcmplxA_brcvt_metaterm(struct tcmplxA_brcvt* ps, int term_ok) {
@@ -1265,6 +1270,7 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       }
       if (tcmplxA_brcvt_metaterm(ps, 1))
         return tcmplxA_brcvt_meta_endcode(ps);
+      ps->bit_length = 0;
       ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
         : tcmplxA_BrCvt_InsertRestart);
       break;
@@ -1276,6 +1282,7 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
           return tcmplxA_ErrPartial;
         tcmplxA_brcvt_inflow_literal(ps, fwd->bstore[fwd->literal_i], ret, dst, dstsz);
       }
+      ps->bit_length = 0;
       ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
         : tcmplxA_BrCvt_InsertRestart);
       break;
@@ -1308,7 +1315,6 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
     case tcmplxA_BrCvt_DataDistanceExtra:
       return tcmplxA_Success;
     case tcmplxA_BrCvt_InsertRestart:
-      ps->bit_length = 0;
       if (ps->blocktypeI_skip == tcmplxA_brcvt_NoSkip)
         return tcmplxA_Success;
       tcmplxA_brcvt_countbits(0, 0, "[insert-restart %u]", ps->blocktypeI_skip);
@@ -1317,7 +1323,6 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       ps->extra_length = 0;
       break;
     case tcmplxA_BrCvt_DistanceRestart:
-      ps->bit_length = 0;
       if (ps->blocktypeD_skip == tcmplxA_brcvt_NoSkip)
         return tcmplxA_Success;
       tcmplxA_brcvt_countbits(0, 0, "[distance-restart %u]", ps->blocktypeD_skip);
@@ -1326,7 +1331,6 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       ps->extra_length = 0;
       break;
     case tcmplxA_BrCvt_LiteralRestart:
-      ps->bit_length = 0;
       if (ps->blocktypeL_skip == tcmplxA_brcvt_NoSkip)
         return tcmplxA_Success;
       tcmplxA_brcvt_countbits(0, 0, "[literal-restart %u]", ps->blocktypeL_skip);
