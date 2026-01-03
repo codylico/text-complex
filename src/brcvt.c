@@ -310,8 +310,6 @@ struct tcmplxA_brcvt {
   struct tcmplxA_brcvt_treety treety;
   /** @brief Context span guess for outflow. */
   struct tcmplxA_ctxtspan guesses;
-  /** @brief Context mode offset for outflow. */
-  unsigned char guess_offset;
   /** @brief Current and previous literal block type. */
   struct tcmplxA_brcvt_block blocktypeL_index;
   /** @brief Maximum literal block type. */
@@ -852,7 +850,6 @@ static int tcmplxA_brcvt_init
     x->insert_forest = NULL;
     x->max_len_meta = 1024;
     x->bits = 0u;
-    x->guess_offset = 0u;
     x->h_end = 0;
     x->bit_length = 0u;
     x->state = tcmplxA_BrCvt_WBits;
@@ -3073,8 +3070,6 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     tcmplxA_blockbuf_input_data(ps->buffer), tcmplxA_blockbuf_input_size(ps->buffer),
     tcmplxA_BrCvt_Margin);
   tcmplxA_fixlist_resize(&ps->literal_blocktype, 4);
-  ps->guess_offset = (ps->guesses.count)
-    ? ps->guesses.modes[0] : 0;
   for (ctxt_i = 0; ctxt_i < ps->guesses.count; ++ctxt_i) {
     unsigned const mode = ps->guesses.modes[ctxt_i];
     assert(mode < 4);
