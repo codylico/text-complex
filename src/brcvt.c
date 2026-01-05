@@ -1280,11 +1280,7 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         continue;
       } else return tcmplxA_Success;
     case tcmplxA_BrCvt_DoCopy:
-      {
-        int const ae = tcmplxA_brcvt_inflow_do_copy(ps, ret, dst, dstsz);
-        if (ae != tcmplxA_Success)
-          return ae;
-      } break;
+      return tcmplxA_Success;
     case tcmplxA_BrCvt_BDict:
       if (fwd->literal_total > sizeof(fwd->bstore))
         return tcmplxA_ErrSanitize;
@@ -2085,7 +2081,7 @@ static int tcmplxA_brcvt_zsrtostr_bits
         res = tcmplxA_brcvt_inflow_distance(ps, line);
         ps->blocktypeD_remaining -= 1;
         if (res == tcmplxA_ErrPartial)
-          ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+          ae = tcmplxA_brcvt_inflow_do_copy(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_DataDistanceExtra:
       if (ps->count < ps->extra_length) {
@@ -2093,17 +2089,20 @@ static int tcmplxA_brcvt_zsrtostr_bits
         ps->count++;
       }
       if (ps->count >= ps->extra_length) {
+        int const res = tcmplxA_brcvt_inflow_distextra(ps);
         tcmplxA_brcvt_countbits(ps->bits, ps->extra_length, "distance-extra %u", ps->bits);
-        tcmplxA_brcvt_inflow_distextra(ps);
         ps->extra_length = 0;
         ps->bit_length = 0;
         ps->bits = 0;
         ps->count = 0;
-        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+        if (res == tcmplxA_ErrPartial)
+          ae = tcmplxA_brcvt_inflow_do_copy(ps, &ret_out, dst, dstsz);
+        else
+          ae = res;
       } break;
     case tcmplxA_BrCvt_DoCopy:
     case tcmplxA_BrCvt_BDict:
-      ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      ae = tcmplxA_brcvt_inflow_do_copy(ps, &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_DistanceRestart:
       if (!tcmplxA_brcvt_inflow_restart(ps, &ps->distance_blocktype,
