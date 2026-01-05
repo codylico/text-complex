@@ -1203,6 +1203,27 @@ static int tcmplxA_brcvt_meta_endcode(struct tcmplxA_brcvt const* ps) {
 
 
 
+int tcmplxA_brcvt_inflow_do_copy(struct tcmplxA_brcvt* ps,
+  size_t* ret, unsigned char* dst, size_t dstsz)
+{
+  struct tcmplxA_brcvt_forward* const fwd = &ps->fwd;
+  for (; fwd->literal_i < fwd->literal_total; ++fwd->literal_i) {
+    unsigned char ch_byte = 0;
+    if (*ret >= dstsz)
+      return tcmplxA_ErrPartial;
+    else if (ps->fwd.pos > tcmplxA_blockbuf_ring_size(ps->buffer))
+      return tcmplxA_ErrOutOfRange;
+    ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos - 1u);
+    tcmplxA_brcvt_inflow_literal(ps, ch_byte, ret, dst, dstsz);
+  }
+  if (tcmplxA_brcvt_metaterm(ps, 1))
+    return tcmplxA_brcvt_meta_endcode(ps);
+  ps->bit_length = 0;
+  ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
+    : tcmplxA_BrCvt_InsertRestart);
+  return tcmplxA_Success;
+}
+
 int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
   size_t* ret, unsigned char* dst, size_t dstsz)
 {
@@ -1259,21 +1280,11 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         continue;
       } else return tcmplxA_Success;
     case tcmplxA_BrCvt_DoCopy:
-      for (; fwd->literal_i < fwd->literal_total; ++fwd->literal_i) {
-        unsigned char ch_byte = 0;
-        if (*ret >= dstsz)
-          return tcmplxA_ErrPartial;
-        else if (ps->fwd.pos > tcmplxA_blockbuf_ring_size(ps->buffer))
-          return tcmplxA_ErrOutOfRange;
-        ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos-1u);
-        tcmplxA_brcvt_inflow_literal(ps, ch_byte, ret, dst, dstsz);
-      }
-      if (tcmplxA_brcvt_metaterm(ps, 1))
-        return tcmplxA_brcvt_meta_endcode(ps);
-      ps->bit_length = 0;
-      ps->state = (ps->blocktypeI_remaining ? tcmplxA_BrCvt_DataInsertCopy
-        : tcmplxA_BrCvt_InsertRestart);
-      break;
+      {
+        int const ae = tcmplxA_brcvt_inflow_do_copy(ps, ret, dst, dstsz);
+        if (ae != tcmplxA_Success)
+          return ae;
+      } break;
     case tcmplxA_BrCvt_BDict:
       if (fwd->literal_total > sizeof(fwd->bstore))
         return tcmplxA_ErrSanitize;
