@@ -1280,7 +1280,7 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
         continue;
       } else return tcmplxA_Success;
     case tcmplxA_BrCvt_DoCopy:
-      return tcmplxA_Success;
+      return tcmplxA_brcvt_inflow_do_copy(ps, ret, dst, dstsz);
     case tcmplxA_BrCvt_BDict:
       if (fwd->literal_total > sizeof(fwd->bstore))
         return tcmplxA_ErrSanitize;
@@ -1346,8 +1346,8 @@ int tcmplxA_brcvt_handle_inskip(struct tcmplxA_brcvt* ps,
       ps->extra_length = 0;
       break;
     default:
-      tcmplxA_brcvt_countbits(0, 0, "[[sanitize-fail %i]]", ps->state);
-      return tcmplxA_ErrSanitize;
+      /*tcmplxA_brcvt_countbits(0, 0, "[[sanitize-fail %i]]", ps->state);*/
+      return tcmplxA_Success;
     }
   }
   return tcmplxA_Success;
@@ -2008,7 +2008,6 @@ static int tcmplxA_brcvt_zsrtostr_bits
           break;
         tcmplxA_brcvt_countbits(ps->bits, ps->bit_length, "insert-and-copy %u", line);
         tcmplxA_brcvt_inflow_insert(ps, line);
-        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_DataInsertExtra:
       if (ps->count < (ps->extra_length&31)) {
@@ -2029,7 +2028,6 @@ static int tcmplxA_brcvt_zsrtostr_bits
           ae = tcmplxA_brcvt_land_insert_copy(ps, &end);
           if (end)
             break;
-          ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
         }
       } break;
     case tcmplxA_BrCvt_DataCopyExtra:
@@ -2046,7 +2044,6 @@ static int tcmplxA_brcvt_zsrtostr_bits
         ae = tcmplxA_brcvt_land_insert_copy(ps, &end);
         if (end)
           break;
-        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_Literal:
       if (ret_out >= dstsz)
@@ -2066,7 +2063,6 @@ static int tcmplxA_brcvt_zsrtostr_bits
         tcmplxA_brcvt_dec_literal_rem(ps);
         ps->bit_length = 0;
         ps->bits = 0;
-        ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
       } break;
     case tcmplxA_BrCvt_Distance:
       {
@@ -2102,7 +2098,6 @@ static int tcmplxA_brcvt_zsrtostr_bits
       } break;
     case tcmplxA_BrCvt_DoCopy:
     case tcmplxA_BrCvt_BDict:
-      ae = tcmplxA_brcvt_inflow_do_copy(ps, &ret_out, dst, dstsz);
       break;
     case tcmplxA_BrCvt_DistanceRestart:
       if (!tcmplxA_brcvt_inflow_restart(ps, &ps->distance_blocktype,
@@ -2140,6 +2135,12 @@ static int tcmplxA_brcvt_zsrtostr_bits
     }
     if (ae > tcmplxA_Success)
       /* halt the read position here: */break;
+    else if (ae == tcmplxA_Success)
+    {
+      ae = tcmplxA_brcvt_handle_inskip(ps, &ret_out, dst, dstsz);
+      if (ae != tcmplxA_Success)
+        break;
+    }
   }
   ps->bit_index = i&7u;
   *ret = ret_out;
