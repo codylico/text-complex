@@ -866,7 +866,9 @@ size_t tcmplxA_fixlist_valuebsearch
   }
 }
 
-int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst) {
+int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst,
+  int zero_force_tf)
+{
   size_t nonzero_start = dst->n;
   size_t i;
   size_t nonzero_total;
@@ -882,6 +884,14 @@ int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst) {
     break;
   }
   nonzero_total = dst->n - nonzero_start;
+  if (nonzero_total == 0 && !zero_force_tf) {
+    // Enable the first code to comply with RFC 7932, section 3.5, paragraph 3.
+    // "A complex prefix code must have at least two non-zero code lengths."
+    dst->p[0].len = 1;
+    dst->p[0].code = 0;
+    nonzero_total = 1;
+    nonzero_start = 0;
+  }
   if (nonzero_total < 1 || nonzero_total > 4)
     return tcmplxA_FixList_BrotliComplex;
   if (nonzero_start > 0) {

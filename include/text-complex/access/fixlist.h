@@ -218,14 +218,16 @@ size_t tcmplxA_fixlist_valuebsearch
 /**
  * @brief Match a small prefix tree to a simple preset.
  * @param[in,out] dst tree to match
+ * @param zero_force_tf whether to prevent trees with no
+ *   active leaves from matching `tcmplxA_FixList_BrotliSimple1`
  * @return a value between tcmplxA_FixList_BrotliSimple1
  *   and tcmplxA_FixList_BrotliSimple4B (inclusive) on success,
  *   otherwise tcmplxA_FixList_BrotliComplex
  * @note Useful for encoding to a compressed stream.
  * @note Modifies `dst`.
  */
-TCMPLX_A_API
-int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst);
+TCMPLX_A_API int tcmplxA_fixlist_match_preset(struct tcmplxA_fixlist* dst,
+  int zero_force_tf);
 /* END   prefix list */
 
 #ifdef __cplusplus

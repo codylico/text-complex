@@ -2472,7 +2472,7 @@ int tcmplxA_brcvt_outflow19(struct tcmplxA_brcvt_treety* treety,
   switch (treety->state) {
   case tcmplxA_BrCvt_TComplex:
     if (treety->bit_length == 0) {
-      int const preset = tcmplxA_fixlist_match_preset(prefixes);
+      int const preset = tcmplxA_fixlist_match_preset(prefixes,0);
       if (preset != tcmplxA_FixList_BrotliComplex) {
         treety->bits = 1;
         treety->count = preset;
@@ -3109,7 +3109,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     if (res != tcmplxA_Success)
       return res;
   }
-  blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype);
+  blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype,0);
   if (blocktype_tree == tcmplxA_FixList_BrotliComplex)
     return tcmplxA_ErrSanitize;
   accum += 4;
