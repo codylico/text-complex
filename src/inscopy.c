@@ -305,7 +305,9 @@ int tcmplxA_inscopy_length_cmp(void const* a, void const* b) {
     return -1;
   else if (a_row->insert_first > b_row->insert_first)
     return +1;
-  else return 0;
+  else if (a_row->copy_first < b_row->copy_first)
+    return -1;
+  else return a_row->copy_first > b_row->copy_first;
 }
 
 int tcmplxA_inscopy_encode_cmp(void const* k, void const* icr) {

@@ -17,6 +17,7 @@ static MunitResult test_inscopy_item_c
   (const MunitParameter params[], void* data);
 static MunitResult test_inscopy_lengthsort
   (const MunitParameter params[], void* data);
+/* TODO: A test for lengthsort to ensure it accounts for copy_first. */
 static MunitResult test_inscopy_codesort
   (const MunitParameter params[], void* data);
 static MunitResult test_inscopy_encode
