@@ -3085,49 +3085,6 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     tcmplxA_blockbuf_input_data(ps->buffer), tcmplxA_blockbuf_input_size(ps->buffer),
     tcmplxA_BrCvt_Margin);
   tcmplxA_fixlist_resize(&ps->literal_blocktype, 4);
-  for (ctxt_i = 0; ctxt_i < ps->guesses.count; ++ctxt_i) {
-    unsigned const mode = ps->guesses.modes[ctxt_i];
-    assert(mode < 4);
-    if (ps->ctxt_mode_map[mode] >= 4) {
-      /* allocate a spot */
-      assert(ctxt_mode_alloc < 4);
-      ps->ctxt_mode_map[mode] = ctxt_mode_alloc;
-      ctxt_mode_revmap[ctxt_mode_alloc] = mode;
-      ctxt_mode_alloc += 1;
-    }
-    ctxt_histogram[ps->ctxt_mode_map[mode]] += 1;
-  }
-  for (ctxt_i = 0; ctxt_i < 4u; ++ctxt_i) {
-    struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(&ps->literal_blocktype, ctxt_i);
-    line->value = ctxt_i+2;
-    if (ctxt_histogram[ctxt_i] > 0)
-      guess_nonzero += 1;
-  }
-  tcmplxA_fixlist_gen_lengths(&ps->literal_blocktype, ctxt_histogram, 3);
-  {
-    int const res = tcmplxA_fixlist_gen_codes(&ps->literal_blocktype);
-    if (res != tcmplxA_Success)
-      return res;
-  }
-  blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype,0);
-  if (blocktype_tree == tcmplxA_FixList_BrotliComplex)
-    return tcmplxA_ErrSanitize;
-  accum += 4;
-  btypes = tcmplxA_fixlist_size(&ps->literal_blocktype);
-  accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2) * btypes;
-  accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple4A);
-  if ((!ps->literals_map) || tcmplxA_ctxtmap_block_types(ps->literals_map)!=btypes) {
-    tcmplxA_ctxtmap_destroy(ps->literals_map);
-    ps->literals_map = tcmplxA_ctxtmap_new(btypes, 64);
-    if (!ps->literals_map)
-      return tcmplxA_ErrMemory;
-  }
-  for (btype_j = 0; btype_j < btypes; ++btype_j) {
-    struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, btype_j);
-    tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j, ctxt_mode_revmap[line->value-2]);
-    for (ctxt_i = 0; ctxt_i < 64; ++ctxt_i)
-      tcmplxA_ctxtmap_set(ps->literals_map, btype_j, ctxt_i, (int)btype_j);
-  }
   ps->context_encode.sz = 0;
   /* prepare the fixed-size forests */{
     if (!ps->insert_forest) {
@@ -3140,18 +3097,6 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
       if (!ps->distance_forest)
         return tcmplxA_ErrMemory;
     }
-  }
-  /* prepare the variable-size forest */{
-    if ((!ps->literals_forest) || tcmplxA_gaspvec_size(ps->literals_forest) != btypes) {
-      tcmplxA_gaspvec_destroy(ps->literals_forest);
-      ps->literals_forest = tcmplxA_gaspvec_new(btypes);
-      if (!ps->literals_forest)
-        return tcmplxA_ErrMemory;
-    }
-    if (btypes <= 1)
-      ps->blocktypeL_skip = 0;
-    else
-      ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
   }
   /* synchronize the distance scratch space with actual output.
   * (Uncompress blocks can introduce drift.) */
@@ -3166,6 +3111,7 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     size_t i = 0;
     tcmplxA_uint32 literal_counter = 0;
     tcmplxA_uint32 next_copy = 0;
+    unsigned ctxt_j = 0;
     unsigned char const* const data = tcmplxA_blockbuf_output_data(ps->buffer);
     int ae = tcmplxA_Success;
     try_fwd.accum = ps->fwd.accum;
@@ -3228,6 +3174,65 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     }
     assert(ctxt_i < tcmplxA_CtxtSpan_Size);
     literal_lengths[ctxt_i] = literal_counter;
+    /* NOTE: Context creation moved here to avoid the zero-item prefix list. */
+    for (ctxt_j = 0; ctxt_j <= ctxt_i; ++ctxt_j) {
+      unsigned const mode = ps->guesses.modes[ctxt_j];
+      if (literal_lengths[ctxt_j] == 0)
+        continue;
+      assert(mode < 4);
+      if (ps->ctxt_mode_map[mode] >= 4) {
+        /* allocate a spot */
+        assert(ctxt_mode_alloc < 4);
+        ps->ctxt_mode_map[mode] = ctxt_mode_alloc;
+        ctxt_mode_revmap[ctxt_mode_alloc] = mode;
+        ctxt_mode_alloc += 1;
+      }
+      ctxt_histogram[ps->ctxt_mode_map[mode]] += 1;
+    }
+    for (ctxt_i = 0; ctxt_i < 4u; ++ctxt_i) {
+      struct tcmplxA_fixline* const line = tcmplxA_fixlist_at(&ps->literal_blocktype, ctxt_i);
+      line->value = ctxt_i + 2;
+      if (ctxt_histogram[ctxt_i] > 0)
+        guess_nonzero += 1;
+    }
+    tcmplxA_fixlist_gen_lengths(&ps->literal_blocktype, ctxt_histogram, 3);
+    {
+      int const res = tcmplxA_fixlist_gen_codes(&ps->literal_blocktype);
+      if (res != tcmplxA_Success)
+        return res;
+    }
+    blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype, 0);
+    if (blocktype_tree == tcmplxA_FixList_BrotliComplex)
+      return tcmplxA_ErrSanitize;
+    accum += 4;
+    /* NOTE: This context map generation is delayed until after the tokens are generated. */
+    btypes = tcmplxA_fixlist_size(&ps->literal_blocktype);
+    accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2) * btypes;
+    accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple4A);
+    if ((!ps->literals_map) || tcmplxA_ctxtmap_block_types(ps->literals_map) != btypes) {
+      tcmplxA_ctxtmap_destroy(ps->literals_map);
+      ps->literals_map = tcmplxA_ctxtmap_new(btypes, 64);
+      if (!ps->literals_map)
+        return tcmplxA_ErrMemory;
+    }
+    for (btype_j = 0; btype_j < btypes; ++btype_j) {
+      struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(&ps->literal_blocktype, btype_j);
+      tcmplxA_ctxtmap_set_mode(ps->literals_map, btype_j, ctxt_mode_revmap[line->value - 2]);
+      for (ctxt_i = 0; ctxt_i < 64; ++ctxt_i)
+        tcmplxA_ctxtmap_set(ps->literals_map, btype_j, ctxt_i, (int)btype_j);
+    }
+    /* prepare the variable-size forest */ {
+      if ((!ps->literals_forest) || tcmplxA_gaspvec_size(ps->literals_forest) != btypes) {
+        tcmplxA_gaspvec_destroy(ps->literals_forest);
+        ps->literals_forest = tcmplxA_gaspvec_new(btypes);
+        if (!ps->literals_forest)
+          return tcmplxA_ErrMemory;
+      }
+      if (btypes <= 1)
+        ps->blocktypeL_skip = 0;
+      else
+        ps->blocktypeL_skip = tcmplxA_brcvt_NoSkip;
+    }
     /* apply histograms to the trees */
     try_bit_count += tcmplxA_brcvt_apply_histogram(
       ps->distance_forest,0, distance_histogram,
