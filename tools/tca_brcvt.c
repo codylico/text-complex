@@ -7,7 +7,7 @@
 static
 int do_zsrtostr(FILE *in, FILE* out) {
   unsigned char inbuf[256];
-  unsigned char outbuf[256] = {};
+  unsigned char outbuf[256] = {0};
   int ec = EXIT_SUCCESS;
   int done = 0;
   struct tcmplxA_brcvt* state = tcmplxA_brcvt_new(1, 16777200u, 1);
