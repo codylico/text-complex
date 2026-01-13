@@ -3062,7 +3062,6 @@ static unsigned tcmplxA_brcvt_unshift4(unsigned mode, unsigned offset) {
 static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
   unsigned int ctxt_i;
   int guess_nonzero = 0;
-  size_t accum = 0;
   size_t btypes = 0;
   size_t btype_j;
   size_t try_bit_count = 0;
@@ -3204,11 +3203,11 @@ static int tcmplxA_brcvt_check_compress(struct tcmplxA_brcvt* ps) {
     blocktype_tree = tcmplxA_fixlist_match_preset(&ps->literal_blocktype, 0);
     if (blocktype_tree == tcmplxA_FixList_BrotliComplex)
       return tcmplxA_ErrSanitize;
-    accum += 4;
+    try_bit_count += 4;
     /* NOTE: This context map generation is delayed until after the tokens are generated. */
     btypes = tcmplxA_fixlist_size(&ps->literal_blocktype);
-    accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2) * btypes;
-    accum += (blocktype_tree >= tcmplxA_FixList_BrotliSimple4A);
+    try_bit_count += (blocktype_tree >= tcmplxA_FixList_BrotliSimple3 ? 3 : 2) * btypes;
+    try_bit_count += (blocktype_tree >= tcmplxA_FixList_BrotliSimple4A);
     if ((!ps->literals_map) || tcmplxA_ctxtmap_block_types(ps->literals_map) != btypes) {
       tcmplxA_ctxtmap_destroy(ps->literals_map);
       ps->literals_map = tcmplxA_ctxtmap_new(btypes, 64);
