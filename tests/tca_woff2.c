@@ -1,14 +1,14 @@
 /**
  * @brief Test program for woff2
  */
-#include "../tcmplx-access/woff2.h"
+#include "testfont.h"
+#include "text-complex/access/woff2.h"
+#include "text-complex/access/offtable.h"
+#include "mmaptwo/mmaptwo.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
-#include "../mmaptwo/mmaptwo.h"
-#include "testfont.h"
-#include "../tcmplx-access/offtable.h"
 
 
 static MunitResult test_woff2_cycle

@@ -1,20 +1,11 @@
 
-#include "../tcmplx-access/offtable.h"
+#include "text-complex/access/offtable.h"
+#include "munit/munit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "munit/munit.h"
 
-#ifndef NDEBUG
-#  define test_sharp2(s) #s
-#  define test_sharp(s) test_sharp2(s)
-#  define test_break(s) \
-     { munit_error(s); return MUNIT_FAIL; }
-#else
-#  define test_break(s)
-#endif /*NDEBUG*/
 
-typedef int (*test_fn)(void);
 static MunitResult test_offtable_cycle
     (const MunitParameter params[], void* data);
 static MunitResult test_offtable_item
@@ -27,7 +18,7 @@ static MunitParameterEnum test_offtable_params[] = {
   { NULL, NULL },
 };
 
-static MunitTest tests_inst[] = {
+static MunitTest tests_offtable[] = {
   {"cycle", test_offtable_cycle,
     NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,test_offtable_params},
   {"item", test_offtable_item,
@@ -35,8 +26,8 @@ static MunitTest tests_inst[] = {
   {NULL, NULL, NULL,NULL,0,NULL}
 };
 
-static MunitSuite const suite_inst = {
-  "access/offtable/", tests_inst, NULL, 1, 0
+static MunitSuite const suite_offtable = {
+  "access/offtable/", tests_offtable, NULL, 1, 0
 };
 
 
@@ -89,5 +80,5 @@ MunitResult test_offtable_item
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_inst, NULL, argc, argv);
+  return munit_suite_main(&suite_offtable, NULL, argc, argv);
 }

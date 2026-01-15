@@ -3,9 +3,9 @@
  * @brief Test fonts.
  */
 #include "testfont.h"
+#include "mmaptwo/mmaptwo.h"
 #include <limits.h>
 #include <stdlib.h>
-#include "../mmaptwo/mmaptwo.h"
 #include "munit/munit.h"
 #include <stdio.h>
 
@@ -15,6 +15,10 @@ bool tcmplxAtest_arg_fp_parse
     char* const argv[]);
 static
 void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data);
+static
+int testfont_clamp_size(size_t z);
+static
+int testfont_clamp_uint(unsigned int z);
 
 MunitArgument const tcmplxAtest_arglist[] = {
   { "font-path", tcmplxAtest_arg_fp_parse, tcmplxAtest_arg_fp_help },
@@ -248,4 +252,108 @@ void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data) {
   fprintf(stdout, " --font-path\n"
     "           Path of font file against which to test.\n");
   return;
+}
+
+int tcmplxAtest_fixlist_lex_start
+  (struct tcmplxAtest_fixlist_lex *x, char const* s)
+{
+  x->p = NULL;
+  x->total = 0u;
+  x->left = 0u;
+  x->prefix_len = -2;
+  if (s == NULL) return -1;
+  else {
+    char const* q;
+    for (q = s; *q != '\0'; ++q) {
+      char* ep;
+      size_t r_count = 1u;
+      unsigned long int n = strtoul(q, &ep, 0);
+      if ((*ep) != '\0' && (*ep) != ',' && (*ep) != '*') {
+        return -1;
+      } else if (n > (unsigned long)(INT_MAX)) {
+        /* overflow, so */return -2;
+      } else {
+        /* this is the prefix_len */
+      }
+      q = ep;
+      if ((*q) == '*') {
+        unsigned long int new_r;
+        ++q;
+        new_r = strtoul(q, &ep, 0);
+        if (((*ep) != '\0' && (*ep) != ',')) {
+          return -1;
+        } else if (new_r > ((~(size_t)0u) - x->total)) {
+          /* overflow, so */return -2;
+        } else if (new_r > 0u) {
+          /* this is the repeat_count */
+          r_count = (size_t)new_r;
+        }
+        q = ep;
+      }
+      x->total += r_count;
+      if (*q == '\0') break;
+    }
+  }
+  x->p = s;
+  return 0;
+}
+int tcmplxAtest_fixlist_lex_next(struct tcmplxAtest_fixlist_lex *x) {
+  if (x->prefix_len == -2 || x->left == 0u) {
+    /* start */
+    char const* q = x->p;
+    char* ep;
+    size_t r_count = 1u;
+    if (q == NULL || (*q) == '\0')
+      return -1;
+    x->prefix_len = (int)strtoul(q, &ep, 0);
+    q = ep;
+    if ((*q) == '*') {
+      unsigned long int new_r;
+      ++q;
+      new_r = strtoul(q, &ep, 0);
+      if (new_r > 0u) {
+        r_count = (size_t)new_r;
+      }
+      q = ep;
+    }
+    x->left = r_count;
+    if (*q == ',') ++q;
+    x->p = q;
+  }
+  x->left -= 1u;
+  return x->prefix_len;
+}
+
+int testfont_rand_int_range(int a, int b) {
+  if (a == b)
+    return a;
+  else return munit_rand_int_range(a,b);
+}
+
+int testfont_clamp_size(size_t z) {
+  if (z > (unsigned int)(INT_MAX)) {
+    return INT_MAX;
+  } else return (int)(z);
+}
+
+int testfont_clamp_uint(unsigned int z) {
+  if (z > (unsigned int)(INT_MAX)) {
+    return INT_MAX;
+  } else return (int)(z);
+}
+
+size_t testfont_rand_size_range(size_t a, size_t b) {
+  if (a == b)
+    return a;
+  else return munit_rand_int_range(
+      testfont_clamp_size(a), testfont_clamp_size(b)
+    );
+}
+
+unsigned int testfont_rand_uint_range(unsigned int a, unsigned int b) {
+  if (a == b)
+    return a;
+  else return munit_rand_int_range(
+      testfont_clamp_uint(a), testfont_clamp_uint(b)
+    );
 }
