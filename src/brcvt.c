@@ -1211,9 +1211,12 @@ int tcmplxA_brcvt_inflow_do_copy(struct tcmplxA_brcvt* ps,
     unsigned char ch_byte = 0;
     if (*ret >= dstsz)
       return tcmplxA_ErrPartial;
+    else if (ps->state == tcmplxA_BrCvt_BDict)
+      ch_byte = fwd->bstore[fwd->literal_i];
     else if (ps->fwd.pos > tcmplxA_blockbuf_ring_size(ps->buffer))
       return tcmplxA_ErrOutOfRange;
-    ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos - 1u);
+    else
+      ch_byte = tcmplxA_blockbuf_peek(ps->buffer, ps->fwd.pos - 1u);
     tcmplxA_brcvt_inflow_literal(ps, ch_byte, ret, dst, dstsz);
   }
   if (tcmplxA_brcvt_metaterm(ps, 1))
