@@ -3,25 +3,37 @@
  * @brief Test fonts.
  */
 #include "testfont.h"
+#include "reedkiln/reedkiln.h"
 #include "mmaptwo/mmaptwo.h"
 #include <limits.h>
 #include <stdlib.h>
-#include "munit/munit.h"
 #include <stdio.h>
 
+
 static
-bool tcmplxAtest_arg_fp_parse
-  ( const MunitSuite* suite, void* user_data, int* arg, int argc,
+int tcmplxAtest_arg_fp_parse
+  ( void* user_data, int* arg, int argc,
     char* const argv[]);
+static int tcmplxAtest_arg_prefixes_parse(void*,int*,int,char**);
+static int tcmplxAtest_arg_frequencies_parse(void*,int*,int,char**);
 static
-void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data);
+void tcmplxAtest_arg_fp_help(void* user_data);
 static
 int testfont_clamp_size(size_t z);
 static
 int testfont_clamp_uint(unsigned int z);
 
-MunitArgument const tcmplxAtest_arglist[] = {
+struct tcmplxAtest_argLine
+{
+  char const* name;
+  int (*parse)(void*, int*, int, char**);
+  int (*help)(void*);
+};
+
+struct tcmplxAtest_argLine const tcmplxAtest_arglist[] = {
   { "font-path", tcmplxAtest_arg_fp_parse, tcmplxAtest_arg_fp_help },
+  { "prefixes", tcmplxAtest_arg_prefixes_parse },
+  { "frequencies", tcmplxAtest_arg_frequencies_parse },
   { NULL, NULL, NULL }
 };
 
@@ -221,12 +233,8 @@ void tcmplxAtest_arg_close(struct tcmplxAtest_arg* tfa) {
   return;
 }
 
-struct MunitArgument_ const* tcmplxAtest_get_args(void) {
-  return tcmplxAtest_arglist;
-}
-
-bool tcmplxAtest_arg_fp_parse
-  ( const MunitSuite* suite, void* user_data, int* arg, int argc,
+static int tcmplxAtest_arg_fp_parse
+  ( void* user_data, int* arg, int argc,
     char* const argv[])
 {
   struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
@@ -236,19 +244,62 @@ bool tcmplxAtest_arg_fp_parse
     int const res = tcmplxAtest_strdup(&dup, argv[*arg]);
     if (res != 0) {
       fprintf(stdout, "File name broke --font-path.\n");
-      return false;
+      return 0;
     } else {
       free(tfa->font_path);
       tfa->font_path = dup;
-      return true;
+      return 1;
     }
   } else {
     fprintf(stdout, "Missing file name for --font-path.\n");
-    return false;
+    return 0;
   }
 }
 
-void tcmplxAtest_arg_fp_help(const MunitArgument* argument, void* user_data) {
+static int tcmplxAtest_arg_prefixes_parse
+  (void* user_data,int* arg,int argc, char** argv)
+{
+  struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
+  char* dup = NULL;
+  int res = 0;
+  ++(*arg);
+  if ((*arg) >= argc) {
+    fprintf(stderr, "Missing string for --prefix.\n");
+    return 0;
+  }
+  res = tcmplxAtest_strdup(&dup, argv[*arg]);
+  if (res != 0) {
+    fprintf(stderr, "String broke --prefix.\n");
+    return 0;
+  } else {
+    free(tfa->prefixes);
+    tfa->prefixes = dup;
+    return 1;
+  }
+}
+static int tcmplxAtest_arg_frequencies_parse
+  (void* user_data,int* arg,int argc, char** argv)
+{
+  struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
+  char* dup = NULL;
+  int res = 0;
+  ++(*arg);
+  if ((*arg) >= argc) {
+    fprintf(stderr, "Missing string for --frequencies.\n");
+    return 0;
+  }
+  res = tcmplxAtest_strdup(&dup, argv[*arg]);
+  if (res != 0) {
+    fprintf(stderr, "String broke --frequencies.\n");
+    return 0;
+  } else {
+    free(tfa->lengths);
+    tfa->lengths = dup;
+    return 1;
+  }
+}
+
+void tcmplxAtest_arg_fp_help(void* user_data) {
   fprintf(stdout, " --font-path\n"
     "           Path of font file against which to test.\n");
   return;
@@ -327,7 +378,7 @@ int tcmplxAtest_fixlist_lex_next(struct tcmplxAtest_fixlist_lex *x) {
 int testfont_rand_int_range(int a, int b) {
   if (a == b)
     return a;
-  else return munit_rand_int_range(a,b);
+  else return (int)(reedkiln_rand() % (unsigned)(b-a)) + a;
 }
 
 int testfont_clamp_size(size_t z) {
@@ -345,7 +396,7 @@ int testfont_clamp_uint(unsigned int z) {
 size_t testfont_rand_size_range(size_t a, size_t b) {
   if (a == b)
     return a;
-  else return munit_rand_int_range(
+  else return testfont_rand_int_range(
       testfont_clamp_size(a), testfont_clamp_size(b)
     );
 }
@@ -353,7 +404,55 @@ size_t testfont_rand_size_range(size_t a, size_t b) {
 unsigned int testfont_rand_uint_range(unsigned int a, unsigned int b) {
   if (a == b)
     return a;
-  else return munit_rand_int_range(
+  else return testfont_rand_int_range(
       testfont_clamp_uint(a), testfont_clamp_uint(b)
     );
+}
+
+int testfont_process_ex_arg(void* data, int* argi, int argc, char** argv)
+{
+  int j;
+  int const top = sizeof(tcmplxAtest_arglist)/sizeof(struct tcmplxAtest_argLine);
+  char* const opt = argv[*argi];
+  if (opt[0] != '-' || opt[1] != '-')
+    return 0;
+  for (j = 0; j < top; ++j)
+  {
+    struct tcmplxAtest_argLine const* const arg = tcmplxAtest_arglist+j;
+    if (!arg->name)
+      return 0;
+    if (strcmp(arg->name, opt+2) != 0 || !arg->parse)
+      continue;
+    return (*arg->parse)(data, argi, argc, argv);
+  }
+  return 0;
+}
+
+int testfont_do_main(struct reedkiln_entry const* lines, void* data,
+  int argc, char** argv)
+{
+  int reargc = 1;
+  int argi;
+  for (argi = 1; argi < argc; ++argi)
+  {
+    char* const opt = argv[argi];
+    argv[reargc] = opt;
+    ++reargc;
+    if (strcmp(opt, "-l") == 0 || strcmp(opt, "-h") == 0)
+      continue;
+    else if (strcmp(opt, "-s") == 0)
+    {
+      ++argi;
+      if (argi < argc)
+      {
+        argv[reargc] = argv[argi];
+        ++reargc;
+      }
+    }
+    else if (testfont_process_ex_arg(data, &argi, argc, argv))
+    {
+      --reargc;
+    }
+  }
+  return reedkiln_main(lines, reargc, argv, data);
 }

@@ -1,19 +1,16 @@
 
 #include "text-complex/access/bdict.h"
-#include "munit/munit.h"
+#include "testfont.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static MunitResult test_bdict_crc
-    (const MunitParameter params[], void* data);
-static MunitResult test_bdict_transform_isolate
-    (const MunitParameter params[], void* data);
-static MunitResult test_bdict_transform_ferment
-    (const MunitParameter params[], void* data);
-static MunitResult test_bdict_transform_affix
-    (const MunitParameter params[], void* data);
+static int test_bdict_crc(void* data);
+static int test_bdict_transform_isolate(void* data);
+static int test_bdict_transform_ferment(void* data);
+static int test_bdict_transform_affix(void* data);
 
 /**
  * @brief Resumable CRC32 calculator.
@@ -55,20 +52,12 @@ unsigned int test_bdict_format
   ( unsigned char* out, char const* format,
     unsigned char* word, unsigned int word_len);
 
-static MunitTest tests_bdict[] = {
-  {"crc", test_bdict_crc,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"transform/isolate", test_bdict_transform_isolate,
-    NULL,NULL,0,NULL},
-  {"transform/ferment", test_bdict_transform_ferment,
-    NULL,NULL,0,NULL},
-  {"transform/affix", test_bdict_transform_affix,
-    NULL,NULL,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_bdict = {
-  "access/bdict/", tests_bdict, NULL, 1, 0
+static reedkiln_entry const tests_bdict[] = {
+  {"access/bdict/crc", test_bdict_crc },
+  {"access/bdict/transform/isolate", test_bdict_transform_isolate },
+  {"access/bdict/transform/ferment", test_bdict_transform_ferment },
+  {"access/bdict/transform/affix", test_bdict_transform_affix },
+  {NULL}
 };
 
 
@@ -219,8 +208,7 @@ unsigned int test_bdict_format
 
 
 
-MunitResult test_bdict_crc
-  (const MunitParameter params[], void* data)
+int test_bdict_crc(void* data)
 {
   unsigned int const max_wordlen = 25;
   unsigned int j;
@@ -231,16 +219,15 @@ MunitResult test_bdict_crc
     unsigned int i;
     for (i = 0; i < wordcount; ++i) {
       unsigned char const* ptr = tcmplxA_bdict_get_word(j,i);
-      munit_assert_ptr_not_null(ptr);
+      reedkiln_assert(ptr);
       crc = test_bdict_CRC32_resume(ptr, j, crc);
     }
   }
-  munit_assert_ulong(crc, ==, 0x5136cb04);
-  return MUNIT_OK;
+  reedkiln_assert(crc == 0x5136cb04);
+  return Reedkiln_OK;
 }
 
-MunitResult test_bdict_transform_isolate
-  (const MunitParameter params[], void* data)
+int test_bdict_transform_isolate(void* data)
 {
   static
   unsigned int const isolate_indices[21] =
@@ -254,7 +241,7 @@ MunitResult test_bdict_transform_isolate
     unsigned char buf[24];
     unsigned int const wordlen = munit_rand_int_range(4,24);
     unsigned int i;
-    munit_rand_memory(sizeof(buf), (munit_uint8_t*)buf);
+    reedkiln_memrand(buf, sizeof(buf));
     for (i = 0u; i < wordlen; ++i) {
       unsigned char const x = buf[i];
       if ((x&96u) == 0u)
@@ -270,23 +257,23 @@ MunitResult test_bdict_transform_isolate
     int const ae = tcmplxA_bdict_transform
       (b_word, &b_word_len, isolate_indices[transform_subindex]);
     if (isolate_indices[transform_subindex] >= 121) {
-      munit_assert_int(ae, ==, tcmplxA_ErrParam);
+      reedkiln_assert(ae == tcmplxA_ErrParam);
     } else switch (transform_subindex) {
     case 0: /* identity */
-      munit_assert_uint(b_word_len,==,a_word_len);
-      munit_assert_memory_equal(a_word_len,a_word,b_word);
+      reedkiln_assert(b_word_len == a_word_len);
+      reedkiln_assert(memcmp(a_word, b_word, a_word_len) == 0);
       break;
     case 1: /* ferment first */
-      munit_assert_uint(b_word_len,==,a_word_len);
-      munit_assert_memory_equal(a_word_len-1,a_word+1,b_word+1);
-      munit_assert_true(test_bdict_fermentcmp(a_word[0], b_word[0]));
+      reedkiln_assert(b_word_len == a_word_len);
+      reedkiln_assert(memcmp(a_word+1,b_word+1, a_word_len-1));
+      reedkiln_assert(test_bdict_fermentcmp(a_word[0], b_word[0]));
       break;
     case 2: /* ferment all */
       {
         unsigned int i;
-        munit_assert_uint(b_word_len,==,a_word_len);
+        reedkiln_assert(b_word_len == a_word_len);
         for (i = 0u; i < a_word_len; ++i) {
-          munit_assert_true(test_bdict_fermentcmp(a_word[i], b_word[i]));
+          reedkiln_assert(test_bdict_fermentcmp(a_word[i], b_word[i]));
         }
       }break;
     default:
@@ -294,22 +281,21 @@ MunitResult test_bdict_transform_isolate
         /* omit first (N) */
         unsigned int n = transform_subindex-2;
         unsigned int const expect_len = a_word_len>n?a_word_len-n:0;
-        munit_assert_uint(b_word_len,==,expect_len);
-        munit_assert_memory_equal(expect_len,a_word+n,b_word);
+        reedkiln_assert(b_word_len == expect_len);
+        reedkiln_assert(memcmp(a_word+n,b_word,expect_len) == 0);
       } else {
         /* omit last (N) */
         unsigned int n = transform_subindex-11;
         unsigned int const expect_len = a_word_len>n?a_word_len-n:0;
-        munit_assert_uint(b_word_len,==,expect_len);
-        munit_assert_memory_equal(expect_len,a_word,b_word);
+        reedkiln_assert(b_word_len == expect_len);
+        reedkiln_assert(memcmp(a_word,b_word,expect_len) == 0);
       }break;
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_bdict_transform_ferment
-  (const MunitParameter params[], void* data)
+int test_bdict_transform_ferment(void* data)
 {
   unsigned char a_word[38], b_word[38];
   unsigned int a_word_len, b_word_len;
@@ -317,7 +303,7 @@ MunitResult test_bdict_transform_ferment
     unsigned char buf[24];
     unsigned int const wordlen = munit_rand_int_range(4,24);
     unsigned int i;
-    munit_rand_memory(sizeof(buf), (munit_uint8_t*)buf);
+    reedkiln_memrand(buf, sizeof(buf));
     memcpy(a_word, buf, sizeof(unsigned char)*wordlen);
     a_word_len = wordlen;
   }
@@ -325,16 +311,15 @@ MunitResult test_bdict_transform_ferment
   b_word_len = a_word_len;
   /* transform it */{
     int const ae = tcmplxA_bdict_transform(b_word, &b_word_len, 44);
-    munit_assert_int(ae,==,tcmplxA_Success);
+    reedkiln_assert(ae == tcmplxA_Success);
     test_bdict_FermentAll(a_word, a_word_len);
-    munit_assert_uint(b_word_len,==,a_word_len);
-    munit_assert_memory_equal(a_word_len,a_word,b_word);
+    reedkiln_assert(b_word_len == a_word_len);
+    reedkiln_assert(memcmp(a_word,b_word,a_word_len) == 0);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_bdict_transform_affix
-  (const MunitParameter params[], void* data)
+int test_bdict_transform_affix(void* data)
 {
   static char const* fmts[] = {
     /*   0 */ "%+0;", "%+0; ", " %+0; ", "%+1;",
@@ -373,14 +358,14 @@ MunitResult test_bdict_transform_affix
     /* 120 */ " %+0,='"
   };
   unsigned int const transform_index =
-    munit_rand_int_range(0,sizeof(fmts)/sizeof(char const*)-1);
+    testfont_rand_int_range(0,sizeof(fmts)/sizeof(char const*)-1);
   unsigned char a_word[38], b_word[38], c_word[38];
   unsigned int a_word_len, b_word_len, c_word_len;
   /* compose a word */{
     unsigned char buf[24];
-    unsigned int const wordlen = munit_rand_int_range(4,24);
+    unsigned int const wordlen = testfont_rand_int_range(4,24);
     unsigned int i;
-    munit_rand_memory(sizeof(buf), (munit_uint8_t*)buf);
+    reedkiln_memrand(buf, sizeof(buf));
     for (i = 0u; i < wordlen; ++i) {
       buf[i] = buf[i]&63u;
     }
@@ -393,16 +378,17 @@ MunitResult test_bdict_transform_affix
   /* transform it */{
     int const ae = tcmplxA_bdict_transform
       (b_word, &b_word_len, transform_index);
-    munit_assert_int(ae,==,tcmplxA_Success);
+    reedkiln_assert(ae == tcmplxA_Success);
     c_word_len = test_bdict_format
       (c_word, fmts[transform_index], a_word, a_word_len);
-    munit_assert_uint(b_word_len,==,c_word_len);
-    munit_assert_memory_equal(c_word_len,c_word,b_word);
+    reedkiln_assert(b_word_len == c_word_len);
+    reedkiln_assert(memcmp(c_word,b_word,c_word_len) == 0);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 };
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_bdict, NULL, argc, argv);
+  struct tcmplxAtest_arg arg = {NULL};
+  return testfont_do_main(&tests_bdict, &arg, argc, argv);
 }

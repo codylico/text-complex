@@ -3,88 +3,69 @@
  */
 #include "testfont.h"
 #include "text-complex/access/fixlist.h"
-#include "munit/munit.h"
+#include "reedkiln/reedkiln.h"
+#include "reedkiln/log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 
 
-static MunitResult test_fixlist_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_fixlist_item
-  (const MunitParameter params[], void* data);
-static MunitResult test_fixlist_gen_codes
-  (const MunitParameter params[], void* data);
-static MunitResult test_fixlist_codesort
-  (const MunitParameter params[], void* data);
-static MunitResult test_fixlist_gen_lengths
-  (const MunitParameter params[], void* data);
-static MunitResult test_fixlist_preset
-  (const MunitParameter params[], void* data);
-static void* test_fixlist_setup
-    (const MunitParameter params[], void* user_data);
-static void* test_fixlist_gen_setup
-    (const MunitParameter params[], void* user_data);
-static void* test_fixlist_len_setup
-    (const MunitParameter params[], void* user_data);
+static int test_fixlist_cycle(void* data);
+static int test_fixlist_item(void* data);
+static int test_fixlist_gen_codes(void* data);
+static int test_fixlist_codesort(void* data);
+static int test_fixlist_gen_lengths(void* data);
+static int test_fixlist_preset(void* data);
+static void* test_fixlist_setup(void* user_data);
+static void* test_fixlist_gen_setup(void* user_data);
+static void* test_fixlist_len_setup(void* user_data);
 static void test_fixlist_teardown(void* fixture);
 
 
-static MunitParameterEnum test_fixlist_gen_params[] = {
-  { "prefixes", NULL },
-  { NULL, NULL },
+static struct reedkiln_box const box_fixlist = {
+  test_fixlist_setup,test_fixlist_teardown
+};
+static struct reedkiln_box const box_fixlist_gen = {
+  test_fixlist_gen_setup,test_fixlist_teardown
+};
+static struct reedkiln_box const box_fixlist_len = {
+  test_fixlist_len_setup,test_fixlist_teardown
 };
 
-static MunitParameterEnum test_fixlist_len_params[] = {
-  { "frequencies", NULL },
-  { NULL, NULL },
-};
-
-static MunitTest tests_fixlist[] = {
-  {"cycle", test_fixlist_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"item", test_fixlist_item,
-    test_fixlist_setup,test_fixlist_teardown,0,NULL},
-  {"gen_codes", test_fixlist_gen_codes,
-    test_fixlist_gen_setup,test_fixlist_teardown,0,test_fixlist_gen_params},
-  {"preset", test_fixlist_preset,
-    test_fixlist_setup,test_fixlist_teardown,0,NULL},
-  {"gen_lengths", test_fixlist_gen_lengths,
-    test_fixlist_len_setup,test_fixlist_teardown,0,test_fixlist_len_params},
-  {"codesort", test_fixlist_codesort,
-    test_fixlist_gen_setup,test_fixlist_teardown,0,test_fixlist_gen_params},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_fixlist = {
-  "access/fixlist/", tests_fixlist, NULL, 1, 0
+static struct reedkiln_entry const tests_fixlist[] = {
+  {"access/fixlist/cycle", test_fixlist_cycle },
+  {"access/fixlist/item", test_fixlist_item, NULL, &box_fixlist },
+  {"access/fixlist/gen_codes", test_fixlist_gen_codes, NULL, &box_fixlist_gen },
+  {"access/fixlist/preset", test_fixlist_preset, NULL, &box_fixlist },
+  {"access/fixlist/gen_lengths", test_fixlist_gen_lengths, NULL, &box_fixlist_len },
+  {"access/fixlist/codesort", test_fixlist_codesort, NULL, &box_fixlist_gen },
+  {NULL}
 };
 
 
 
 
-MunitResult test_fixlist_cycle
-  (const MunitParameter params[], void* data)
+
+int test_fixlist_cycle(void* data)
 {
   struct tcmplxA_fixlist* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_fixlist_new(288);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_fixlist_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_fixlist_setup(const MunitParameter params[], void* user_data) {
+void* test_fixlist_setup(void* user_data) {
   return tcmplxA_fixlist_new((size_t)munit_rand_int_range(4,256));
 }
 
-void* test_fixlist_gen_setup(const MunitParameter params[], void* user_data) {
+void* test_fixlist_gen_setup(void* user_data) {
   struct tcmplxAtest_fixlist_lex lex;
   struct tcmplxA_fixlist* out;
-  if (tcmplxAtest_fixlist_lex_start
-    (&lex, munit_parameters_get(params, "prefixes")))
+  struct tcmplxAtest_arg const* const user_arg = (struct tcmplxAtest_arg*)user_data;
+  if (tcmplxAtest_fixlist_lex_start(&lex, user_arg->prefixes))
   {
     tcmplxAtest_fixlist_lex_start(&lex, "3*5,2,4*2");
   }
@@ -99,11 +80,11 @@ void* test_fixlist_gen_setup(const MunitParameter params[], void* user_data) {
   return out;
 }
 
-void* test_fixlist_len_setup(const MunitParameter params[], void* user_data) {
+void* test_fixlist_len_setup(void* user_data) {
   struct tcmplxAtest_fixlist_lex lex;
   struct tcmplxA_fixlist* out;
-  int const start_res = tcmplxAtest_fixlist_lex_start
-    (&lex, munit_parameters_get(params, "frequencies"));
+  struct tcmplxAtest_arg const* const user_arg = (struct tcmplxAtest_arg*)user_data;
+  int const start_res = tcmplxAtest_fixlist_lex_start(&lex, user_arg->frequencies);
   out = tcmplxA_fixlist_new
     (start_res==0 ? lex.total : munit_rand_int_range(2,384));
   if (out == NULL)
@@ -131,70 +112,62 @@ void test_fixlist_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_fixlist_item
-  (const MunitParameter params[], void* data)
+int test_fixlist_item(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   struct tcmplxA_fixline const* dsp[2];
   size_t sz;
   size_t i;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   sz = tcmplxA_fixlist_size(p);
   i = (size_t)munit_rand_int_range(0,(int)(sz)-1);
-  munit_assert_size(sz,>=,4);
-  munit_assert_size(sz,<=,256);
+  reedkiln_assert(sz >= 4);
+  reedkiln_assert(sz <= 256);
   dsp[0] = tcmplxA_fixlist_at(p, i);
   dsp[1] = tcmplxA_fixlist_at_c(p, i);
-  munit_assert_not_null(dsp[0]);
-  munit_assert_not_null(dsp[1]);
-  munit_assert_ptr(dsp[0],==,dsp[1]);
-  return MUNIT_OK;
+  reedkiln_assert(dsp[0]);
+  reedkiln_assert(dsp[1]);
+  reedkiln_assert(dsp[0] == dsp[1]);
+  return Reedkiln_OK;
 }
 
-MunitResult test_fixlist_gen_codes
-  (const MunitParameter params[], void* data)
+int test_fixlist_gen_codes(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_assert_int(tcmplxA_fixlist_gen_codes(p),==, tcmplxA_Success);
+    return Reedkiln_SKIP;
+  reedkiln_assert(tcmplxA_fixlist_gen_codes(p) == tcmplxA_Success);
   /* inspect the new codes */{
     size_t i;
     size_t const len = tcmplxA_fixlist_size(p);
-    munit_logf(MUNIT_LOG_DEBUG,
-      "total %" MUNIT_SIZE_MODIFIER "u", len);
+    reedkiln_log_printf("total %u", (unsigned)len);
     for (i = 0; i < len; ++i) {
       struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(p,i);
-      munit_logf(MUNIT_LOG_DEBUG,
-        "  [%" MUNIT_SIZE_MODIFIER "u] = {%#x, l %u, v %lu}",
-        i, line->code, line->len, line->value);
-      munit_assert_uint((line->code>>(line->len)), ==, 0u);
+      reedkiln_log_printf("; [%u]={%#x l %u v %lu}",
+        (unsigned)i, line->code, line->len, line->value);
+      reedkiln_assert((line->code>>(line->len)) == 0u);
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_fixlist_codesort
-  (const MunitParameter params[], void* data)
+int test_fixlist_codesort(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_assert_int(tcmplxA_fixlist_gen_codes(p),==, tcmplxA_Success);
-  munit_assert_int(tcmplxA_fixlist_codesort(p),==, tcmplxA_Success);
+    return Reedkiln_SKIP;
+  reedkiln_assert(tcmplxA_fixlist_gen_codes(p) == tcmplxA_Success);
+  reedkiln_assert(tcmplxA_fixlist_codesort(p) == tcmplxA_Success);
   /* inspect the new codes */if (tcmplxA_fixlist_size(p) > 1) {
     size_t i;
     size_t const len = tcmplxA_fixlist_size(p)-1;
     for (i = 0; i < len; ++i) {
       struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(p,i);
       struct tcmplxA_fixline const* const b_line = tcmplxA_fixlist_at_c(p,i+1);
-      munit_assert_uint(line->len, <=, b_line->len);
-      munit_assert_uint(
-          (line->code<<(15-line->len)), <=, (b_line->code<<(15-b_line->len))
+      reedkiln_assert(line->len <= b_line->len);
+      reedkiln_assert(
+          (line->code<<(15-line->len)) <= (b_line->code<<(15-b_line->len))
         );
     }
   }
@@ -213,20 +186,18 @@ MunitResult test_fixlist_codesort
       if (n == 0)
         continue;
       j = tcmplxA_fixlist_codebsearch(p, n, bits);
-      munit_assert_size(j, ==, i);
+      reedkiln_assert(j == i);
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_fixlist_gen_lengths
-  (const MunitParameter params[], void* data)
+int test_fixlist_gen_lengths(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   tcmplxA_uint32* ph;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* extract the histogram */{
     size_t const sz = tcmplxA_fixlist_size(p);
     size_t i;
@@ -235,40 +206,37 @@ MunitResult test_fixlist_gen_lengths
       ph[i] = tcmplxA_fixlist_at_c(p,i)->len;
     }
   }
-  munit_assert_int(tcmplxA_fixlist_gen_lengths(p,ph,15),==, tcmplxA_Success);
+  reedkiln_assert(tcmplxA_fixlist_gen_lengths(p,ph,15) == tcmplxA_Success);
   /* inspect the new code lengths */{
     size_t i;
     size_t const len = tcmplxA_fixlist_size(p);
     size_t nonzero_count = 0u;
     unsigned long int sum = 0u;
-    munit_logf(MUNIT_LOG_DEBUG,
-      "total %" MUNIT_SIZE_MODIFIER "u", len);
+    reedkiln_log_printf("total %u", (unsigned)len);
     for (i = 0; i < len; ++i) {
       struct tcmplxA_fixline const* const line = tcmplxA_fixlist_at_c(p,i);
-      munit_logf(MUNIT_LOG_DEBUG,
-        "  [%" MUNIT_SIZE_MODIFIER "u] = {-, l %u, v %lu}",
-        i, line->len, line->value);
+      reedkiln_log_printf("; [%u]={l %u v %lu}",
+        (unsigned)i, line->len, line->value);
       if (ph[i] > 0) {
-        munit_assert_uint(line->len, >, 0u);
-        munit_assert_uint(line->len, <=, 15u);
+        reedkiln_assert(line->len > 0u);
+        reedkiln_assert(line->len <= 15u);
         sum += (32768u>>(line->len));
         nonzero_count += 1u;
       } else {
-        munit_assert_uint(line->len, ==, 0u);
+        reedkiln_assert(line->len == 0u);
       }
     }
     if (nonzero_count == 0u) {
-      munit_assert_ulong(sum, ==, 0u);
+      reedkiln_assert(sum == 0u);
     } else if (nonzero_count == 1u) {
-      munit_assert_ulong(sum, ==, 16384u);
-    } else munit_assert_ulong(sum, ==, 32768u);
+      reedkiln_assert(sum == 16384u);
+    } else reedkiln_assert(sum == 32768u);
   }
   free(ph);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_fixlist_preset
-  (const MunitParameter params[], void* data)
+int test_fixlist_preset(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   struct tcmplxA_fixline ds[2];
@@ -276,33 +244,33 @@ MunitResult test_fixlist_preset
   size_t i;
   size_t sz;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   x = (unsigned int)testfont_rand_int_range(0,7);
   /* generate once */{
-    munit_assert_int(tcmplxA_fixlist_preset(p, x),==,tcmplxA_Success);
+    reedkiln_assert(tcmplxA_fixlist_preset(p, x) == tcmplxA_Success);
   }
   /* */{
     sz = tcmplxA_fixlist_size(p);
-    munit_assert_size(sz,>,0u);
+    reedkiln_assert(sz > 0u);
     i = testfont_rand_size_range(0,sz-1);
     ds[0] = *tcmplxA_fixlist_at_c(p, i);
   }
   /* generate again */{
-    munit_assert_int(tcmplxA_fixlist_preset(p, x),==,tcmplxA_Success);
-    munit_assert_size(tcmplxA_fixlist_size(p),==,sz);
+    reedkiln_assert(tcmplxA_fixlist_preset(p, x) == tcmplxA_Success);
+    reedkiln_assert(tcmplxA_fixlist_size(p) == sz);
   }
   /* */{
     ds[1] = *tcmplxA_fixlist_at_c(p, i);
   }
-  munit_assert(ds[0].code == ds[1].code);
-  munit_assert(ds[0].len == ds[1].len);
-  munit_assert(ds[0].value == ds[1].value);
-  return MUNIT_OK;
+  reedkiln_assert(ds[0].code == ds[1].code);
+  reedkiln_assert(ds[0].len == ds[1].len);
+  reedkiln_assert(ds[0].value == ds[1].value);
+  return Reedkiln_OK;
 }
 
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_fixlist, NULL, argc, argv);
+  struct tcmplxAtest_arg args = {NULL};
+  return testfont_do_main(&tests_fixlist, &args, argc, argv);
 }

@@ -5,68 +5,48 @@
 #include "text-complex/access/brcvt.h"
 #include "text-complex/access/zutil.h"
 #include "text-complex/access/brmeta.h"
-#include "munit/munit.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static MunitResult test_brcvt_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_brcvt_item
-  (const MunitParameter params[], void* data);
-static MunitResult test_brcvt_metadata_ptr
-  (const MunitParameter params[], void* data);
-static MunitResult test_brcvt_metadata_cycle
-  (const MunitParameter params[], void* data);
-static MunitResult test_brcvt_zsrtostr_none
-  (const MunitParameter params[], void* data);
-static MunitResult test_brcvt_flush
-  (const MunitParameter params[], void* data);
-static void* test_brcvt_setup
-    (const MunitParameter params[], void* user_data);
+static int test_brcvt_cycle(void* data);
+static int test_brcvt_item(void* data);
+static int test_brcvt_metadata_ptr(void* data);
+static int test_brcvt_metadata_cycle(void* data);
+static int test_brcvt_zsrtostr_none(void* data);
+static int test_brcvt_flush(void* data);
+static void* test_brcvt_setup(void* user_data);
 static void test_brcvt_teardown(void* fixture);
 
-static MunitParameterEnum test_brcvt_params[] = {
-  { NULL, NULL },
+static struct reedkiln_box const box_brcvt = {
+  &test_brcvt_setup, &test_brcvt_teardown
 };
 
-static MunitTest tests_brcvt[] = {
-  {"cycle", test_brcvt_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"item", test_brcvt_item,
-    test_brcvt_setup,test_brcvt_teardown,0,test_brcvt_params},
-  {"metadata_ptr", test_brcvt_metadata_ptr,
-    test_brcvt_setup,test_brcvt_teardown,0,test_brcvt_params},
-  {"metadata_cycle", test_brcvt_metadata_cycle,
-    test_brcvt_setup,test_brcvt_teardown,0,test_brcvt_params},
-  {"in/none", test_brcvt_zsrtostr_none,
-    test_brcvt_setup,test_brcvt_teardown,0,NULL},
-  {"flush", test_brcvt_flush,
-    test_brcvt_setup,test_brcvt_teardown,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_brcvt = {
-  "access/brcvt/", tests_brcvt, NULL, 1, 0
+static struct reedkiln_entry const tests_brcvt[] = {
+  {"access/brcvt/cycle", test_brcvt_cycle },
+  {"access/brcvt/metadata_ptr", test_brcvt_metadata_ptr, NULL, &box_brcvt },
+  {"access/brcvt/metadata_cycle", test_brcvt_metadata_cycle, NULL, &box_brcvt },
+  {"access/brcvt/in/none", test_brcvt_zsrtostr_none, NULL,&box_brcvt },
+  {"access/brcvt/flush", test_brcvt_flush, NULL,&box_brcvt },
+  {NULL}
 };
 
 
 
 
-MunitResult test_brcvt_cycle
-  (const MunitParameter params[], void* data)
+int test_brcvt_cycle(void* data)
 {
   struct tcmplxA_brcvt* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_brcvt_new(64,128,16);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_brcvt_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_brcvt_setup(const MunitParameter params[], void* user_data) {
+void* test_brcvt_setup(void* user_data) {
   return tcmplxA_brcvt_new(64,128,16);
 }
 
@@ -75,49 +55,36 @@ void test_brcvt_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_brcvt_item
-  (const MunitParameter params[], void* data)
-{
-  struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
-  if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  return MUNIT_OK;
-}
 
-MunitResult test_brcvt_metadata_ptr
-  (const MunitParameter params[], void* data)
+int test_brcvt_metadata_ptr(void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_assert(tcmplxA_brcvt_metadata(p) != NULL);
-  munit_assert(tcmplxA_brcvt_metadata(p) ==
+    return Reedkiln_SKIP;
+  reedkiln_assert(tcmplxA_brcvt_metadata(p) != NULL);
+  reedkiln_assert(tcmplxA_brcvt_metadata(p) ==
     tcmplxA_brcvt_metadata_c(p));
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_brcvt_metadata_cycle
-  (const MunitParameter params[], void* data)
+int test_brcvt_metadata_cycle(void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   struct tcmplxA_brcvt* const q = tcmplxA_brcvt_new(4096,4096,4096);
   unsigned char text[16] = {0};
-  int const text_len = munit_rand_int_range(1,16);
+  int const text_len = testfont_rand_int_range(1,16);
   unsigned char buf[256] = {0};
   size_t buf_len = 0;
-  munit_rand_memory(sizeof(text), &text[0]);
+  reedkiln_memrand(&text[0], sizeof(text));
   if (p == NULL || q == NULL) {
     tcmplxA_brcvt_destroy(q);
-    return MUNIT_SKIP;
+    return Reedkiln_SKIP;
   }
-  (void)params;
   /* store */
   {
     struct tcmplxA_brmeta* const meta = tcmplxA_brcvt_metadata(p);
     int const res = tcmplxA_brmeta_emplace(meta, text_len);
-    munit_assert(res == tcmplxA_Success);
+    reedkiln_assert(res == tcmplxA_Success);
     memcpy(tcmplxA_brmeta_itemdata(meta,0), text, text_len);
   }
   /* encode */
@@ -128,12 +95,12 @@ MunitResult test_brcvt_metadata_cycle
     int res;
     res = tcmplxA_brcvt_strrtozs(p, &buf_len, buf, sizeof(buf),
       &dummy_p, dummy+sizeof(dummy));
-    munit_assert(res == tcmplxA_ErrPartial);
-    munit_assert(buf_len <= sizeof(buf));
+    reedkiln_assert(res == tcmplxA_ErrPartial);
+    reedkiln_assert(buf_len <= sizeof(buf));
     res = tcmplxA_brcvt_delimrtozs(p, &exbuf_len,
       buf+buf_len, sizeof(buf)-buf_len);
-    munit_assert(res >= tcmplxA_Success);
-    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    reedkiln_assert(res >= tcmplxA_Success);
+    reedkiln_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
   }
   /* decode */
@@ -144,37 +111,35 @@ MunitResult test_brcvt_metadata_cycle
     unsigned char const* buf_ptr = buf;
     res = tcmplxA_brcvt_zsrtostr(q, &dummy_len, dummy, sizeof(dummy),
       &buf_ptr, buf+buf_len);
-    munit_assert(res >= tcmplxA_Success);
+    reedkiln_assert(res >= tcmplxA_Success);
   }
   /* inspect */
   {
     struct tcmplxA_brmeta const* q_meta = tcmplxA_brcvt_metadata_c(q);
-    munit_assert(q_meta != NULL);
-    munit_assert(tcmplxA_brmeta_size(q_meta) == 1);
-    munit_assert(tcmplxA_brmeta_itemsize(q_meta,0) == text_len);
-    munit_assert_memory_equal(text_len,
-      tcmplxA_brmeta_itemdata(q_meta,0), text);
+    reedkiln_assert(q_meta != NULL);
+    reedkiln_assert(tcmplxA_brmeta_size(q_meta) == 1);
+    reedkiln_assert(tcmplxA_brmeta_itemsize(q_meta,0) == text_len);
+    reedkiln_assert(
+      memcmp(tcmplxA_brmeta_itemdata(q_meta,0), text, text_len) == 0);
   }
   tcmplxA_brcvt_destroy(q);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_brcvt_zsrtostr_none
-  (const MunitParameter params[], void* data)
+int test_brcvt_zsrtostr_none(void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   unsigned char buf[128+5] = {12u};
   size_t const len = (size_t)munit_rand_int_range(0,128);
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* See Section 11.1 of RFC 7932: `BrotliCompressTrivial` */
   /* "compress" some data */if (len == 0) {
     buf[0] = 6;
   } else {
     size_t const r = len - 1;
     unsigned char *const check_buffer = buf+4+len;
-    munit_rand_memory(len, (munit_uint8_t*)(buf+4));
+    reedkiln_memrand(buf+4, len);
     buf[1] = (unsigned char)((r & 31u) << 3);
     buf[2] = (unsigned char)(r >> 5);
     buf[3] = (unsigned char)(8 + (r >> 13));
@@ -187,16 +152,15 @@ MunitResult test_brcvt_zsrtostr_none
     unsigned char const* src = buf;
     int const res = tcmplxA_brcvt_zsrtostr
       (p, &ret, to_buf, 128, &src, src+total);
-    munit_assert_int(res, ==, tcmplxA_EOF);
-    munit_assert_size(ret, ==, len);
-    munit_assert_size(src-buf, ==, total);
-    munit_assert_memory_equal(len, to_buf, buf+4);
+    reedkiln_assert(res == tcmplxA_EOF);
+    reedkiln_assert(ret == len);
+    reedkiln_assert(src-buf == total);
+    reedkiln_assert(memcmp(to_buf, buf+4, len) == 0);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_brcvt_flush
-  (const MunitParameter params[], void* data)
+int test_brcvt_flush(void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   struct tcmplxA_brcvt* const q = tcmplxA_brcvt_new(4096,4096,4096);
@@ -205,12 +169,11 @@ MunitResult test_brcvt_flush
   int const flush_len = munit_rand_int_range(1,text_len-1);
   unsigned char buf[256] = {0};
   size_t buf_len = 0;
-  munit_rand_memory(sizeof(text), &text[0]);
+  reedkiln_memrand(&text[0], sizeof(text));
   if (p == NULL || q == NULL) {
     tcmplxA_brcvt_destroy(q);
-    return MUNIT_SKIP;
+    return Reedkiln_SKIP;
   }
-  (void)params;
   /* encode */
   {
     unsigned char const *text_p = text;
@@ -218,25 +181,25 @@ MunitResult test_brcvt_flush
     int res;
     res = tcmplxA_brcvt_strrtozs(p, &buf_len, buf, sizeof(buf),
       &text_p, text+flush_len);
-    munit_assert(res == tcmplxA_ErrPartial);
-    munit_assert(buf_len <= sizeof(buf));
+    reedkiln_assert(res == tcmplxA_ErrPartial);
+    reedkiln_assert(buf_len <= sizeof(buf));
     res = tcmplxA_brcvt_flush(p, &exbuf_len,
       buf+buf_len, sizeof(buf)-buf_len);
-    munit_assert(res == tcmplxA_ErrPartial);
-    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    reedkiln_assert(res == tcmplxA_ErrPartial);
+    reedkiln_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
     exbuf_len = 0;
     res = tcmplxA_brcvt_strrtozs(p,
       &exbuf_len, buf+buf_len, sizeof(buf)-buf_len,
       &text_p, text+text_len);
-    munit_assert(res == tcmplxA_ErrPartial);
-    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    reedkiln_assert(res == tcmplxA_ErrPartial);
+    reedkiln_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
     exbuf_len = 0;
     res = tcmplxA_brcvt_delimrtozs(p, &exbuf_len,
       buf+buf_len, sizeof(buf)-buf_len);
-    munit_assert(res >= tcmplxA_EOF);
-    munit_assert(exbuf_len <= sizeof(buf)-buf_len);
+    reedkiln_assert(res >= tcmplxA_EOF);
+    reedkiln_assert(exbuf_len <= sizeof(buf)-buf_len);
     buf_len += exbuf_len;
   }
   /* decode */
@@ -247,15 +210,15 @@ MunitResult test_brcvt_flush
     unsigned char const* buf_ptr = buf;
     res = tcmplxA_brcvt_zsrtostr(q, &dummy_len, dummy, sizeof(dummy),
       &buf_ptr, buf+buf_len);
-    munit_assert(res >= tcmplxA_Success);
-    munit_assert(dummy_len == text_len);
-    munit_assert_memory_equal(text_len, dummy, text);
+    reedkiln_assert(res >= tcmplxA_Success);
+    reedkiln_assert(dummy_len == text_len);
+    reedkiln_assert_memory_equal(text_len, dummy, text);
   }
   tcmplxA_brcvt_destroy(q);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_brcvt, NULL, argc, argv);
+  return reedkiln_main(&tests_brcvt, argc, argv, NULL);
 }

@@ -7,7 +7,7 @@
 
 #include <stddef.h>
 
-struct MunitArgument_;
+struct reedkiln_entry;
 
 enum tcmplxAtest_testfont {
   tcmplxAtest_OctetMIN = 0,
@@ -33,6 +33,8 @@ enum tcmplxAtest_testfont {
 
 struct tcmplxAtest_arg {
   char* font_path;
+  char* prefixes;
+  char* frequencies;
 };
 
 /* Parses stuff like (len) '*' (repeat_count) [',' ...]
@@ -94,12 +96,6 @@ int tcmplxAtest_arg_init(struct tcmplxAtest_arg* tfa);
 void tcmplxAtest_arg_close(struct tcmplxAtest_arg* tfa);
 
 /**
- * @brief Get an argument list for munit-plus.
- * @return the argument list
- */
-struct MunitArgument_ const* tcmplxAtest_get_args(void);
-
-/**
  * @brief Start a code string parsing.
  * @param x parser struct
  * @param s the string to parse
@@ -139,6 +135,9 @@ size_t testfont_rand_size_range(size_t a, size_t b);
  * @return a number
  */
 unsigned int testfont_rand_uint_range(unsigned int a, unsigned int b);
+
+int testfont_do_main(struct reedkiln_entry const* lines, void* data,
+  int argc, char** argv);
 
 
 #endif /*hg_TCMPLXA_TESTFONT_H_*/

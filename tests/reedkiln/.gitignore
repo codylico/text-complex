@@ -1,0 +1,10 @@
+/build
+/out
+/.vs
+/.vscode
+.DS_Store
+*~
+*.swp
+*.swo
+/notes
+/CMakeSettings.json

@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.0)
 option(TCMPLX_ACCESS_BUILD_TESTS "build some tests" ON)
 
 if (TCMPLX_ACCESS_BUILD_TESTS)
-add_library(munit STATIC munit/munit.c munit/munit.h)
+add_subdirectory(reedkiln)
 add_library(tcmplx_access_testfont STATIC testfont.c testfont.h)
-target_link_libraries(tcmplx_access_testfont mmaptwo munit)
+target_link_libraries(tcmplx_access_testfont mmaptwo reedkiln)
 target_include_directories(tcmplx_access_testfont
     PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../deps>")
 
@@ -42,7 +42,7 @@ target_include_directories(tcmplx_access_testfont
 #BEGIN FixList test
   add_executable(tcmplx_access_test_fixlist tca_fixlist.c)
   target_link_libraries(tcmplx_access_test_fixlist
-    tcmplx_access_testfont munit tcmplx_access mmaptwo)
+    tcmplx_access_testfont reedkiln tcmplx_access mmaptwo)
 #END   FixList test
 
 #BEGIN RingDist test
@@ -60,13 +60,13 @@ target_include_directories(tcmplx_access_testfont
 #BEGIN CtxtMap test
   add_executable(tcmplx_access_test_ctxtmap tca_ctxtmap.c)
   target_link_libraries(tcmplx_access_test_ctxtmap
-    tcmplx_access_testfont munit tcmplx_access)
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   CtxtMap test
 
 #BEGIN BDict test
   add_executable(tcmplx_access_test_bdict tca_bdict.c)
   target_link_libraries(tcmplx_access_test_bdict
-    tcmplx_access_testfont munit tcmplx_access)
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   BDict test
 
 #BEGIN ZUtil test
@@ -87,7 +87,7 @@ target_include_directories(tcmplx_access_testfont
 #BEGIN BlockBuf test
   add_executable(tcmplx_access_test_blockbuf tca_blockbuf.c)
   target_link_libraries(tcmplx_access_test_blockbuf
-    tcmplx_access_testfont munit tcmplx_access)
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   BlockBuf test
 
 #BEGIN ZCvt test
@@ -98,18 +98,19 @@ target_include_directories(tcmplx_access_testfont
 
 #BEGIN BrMeta test
   add_executable(tcmplx_access_test_brmeta tca_brmeta.c)
-  target_link_libraries(tcmplx_access_test_brmeta munit tcmplx_access)
+  target_link_libraries(tcmplx_access_test_brmeta
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   BrMeta test
 
 #BEGIN BrCvt test
   add_executable(tcmplx_access_test_brcvt tca_brcvt.c)
-  target_link_libraries(tcmplx_access_test_brcvt munit tcmplx_access)
+  target_link_libraries(tcmplx_access_test_brcvt reedkiln tcmplx_access)
 #END   BrCvt test
 
 #BEGIN CtxtSpan test
   add_executable(tcmplx_access_test_ctxtspan tca_ctxtspan.c)
   target_link_libraries(tcmplx_access_test_ctxtspan
-    tcmplx_access_testfont munit tcmplx_access)
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   CtxtSpan test
 
 #BEGIN GaspVec test
