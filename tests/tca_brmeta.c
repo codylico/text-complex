@@ -18,7 +18,7 @@ static struct reedkiln_box const box_brmeta = {
 
 static struct reedkiln_entry const tests_brmeta[] = {
   {"access/brmeta/cycle", test_brmeta_cycle },
-  {"access/brmeta/item", test_brmeta_item, NULL, &box_brmeta },
+  {"access/brmeta/item", test_brmeta_item, 0, &box_brmeta },
   {NULL}
 };
 

@@ -35,11 +35,11 @@ static struct reedkiln_box const box_fixlist_len = {
 
 static struct reedkiln_entry const tests_fixlist[] = {
   {"access/fixlist/cycle", test_fixlist_cycle },
-  {"access/fixlist/item", test_fixlist_item, NULL, &box_fixlist },
-  {"access/fixlist/gen_codes", test_fixlist_gen_codes, NULL, &box_fixlist_gen },
-  {"access/fixlist/preset", test_fixlist_preset, NULL, &box_fixlist },
-  {"access/fixlist/gen_lengths", test_fixlist_gen_lengths, NULL, &box_fixlist_len },
-  {"access/fixlist/codesort", test_fixlist_codesort, NULL, &box_fixlist_gen },
+  {"access/fixlist/item", test_fixlist_item, 0, &box_fixlist },
+  {"access/fixlist/gen_codes", test_fixlist_gen_codes, 0, &box_fixlist_gen },
+  {"access/fixlist/preset", test_fixlist_preset, 0, &box_fixlist },
+  {"access/fixlist/gen_lengths", test_fixlist_gen_lengths, 0, &box_fixlist_len },
+  {"access/fixlist/codesort", test_fixlist_codesort, 0, &box_fixlist_gen },
   {NULL}
 };
 

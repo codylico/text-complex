@@ -26,10 +26,10 @@ static struct reedkiln_box const box_brcvt = {
 
 static struct reedkiln_entry const tests_brcvt[] = {
   {"access/brcvt/cycle", test_brcvt_cycle },
-  {"access/brcvt/metadata_ptr", test_brcvt_metadata_ptr, NULL, &box_brcvt },
-  {"access/brcvt/metadata_cycle", test_brcvt_metadata_cycle, NULL, &box_brcvt },
-  {"access/brcvt/in/none", test_brcvt_zsrtostr_none, NULL,&box_brcvt },
-  {"access/brcvt/flush", test_brcvt_flush, NULL,&box_brcvt },
+  {"access/brcvt/metadata_ptr", test_brcvt_metadata_ptr, 0, &box_brcvt },
+  {"access/brcvt/metadata_cycle", test_brcvt_metadata_cycle, 0, &box_brcvt },
+  {"access/brcvt/in/none", test_brcvt_zsrtostr_none, 0,&box_brcvt },
+  {"access/brcvt/flush", test_brcvt_flush, 0,&box_brcvt },
   {NULL}
 };
 

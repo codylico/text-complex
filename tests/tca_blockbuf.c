@@ -24,11 +24,11 @@ static struct reedkiln_box box_blockbuf = {
 
 static struct reedkiln_entry tests_blockbuf[] = {
   {"access/blockbuf/cycle", test_blockbuf_cycle },
-  {"access/blockbuf/item", test_blockbuf_item, NULL, &box_blockbuf },
-  {"access/blockbuf/gen", test_blockbuf_gen, NULL, &box_blockbuf },
-  {"access/blockbuf/noconv", test_blockbuf_noconv, NULL, &box_blockbuf },
-  {"access/blockbuf/bypass", test_blockbuf_bypass, NULL, &box_blockbuf },
-  {"access/blockbuf/add", test_blockbuf_add, NULL, &box_blockbuf },
+  {"access/blockbuf/item", test_blockbuf_item, 0, &box_blockbuf },
+  {"access/blockbuf/gen", test_blockbuf_gen, 0, &box_blockbuf },
+  {"access/blockbuf/noconv", test_blockbuf_noconv, 0, &box_blockbuf },
+  {"access/blockbuf/bypass", test_blockbuf_bypass, 0, &box_blockbuf },
+  {"access/blockbuf/add", test_blockbuf_add, 0, &box_blockbuf },
   {NULL}
 };
 

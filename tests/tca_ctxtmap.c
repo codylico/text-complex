@@ -28,12 +28,12 @@ static struct reedkiln_box const box_ctxtmap = {
 
 static struct reedkiln_entry const tests_ctxtmap[] = {
   {"access/ctxtmap/cycle", test_ctxtmap_cycle },
-  {"access/ctxtmap/item", test_ctxtmap_item, NULL, &box_ctxtmap },
+  {"access/ctxtmap/item", test_ctxtmap_item, 0, &box_ctxtmap },
   {"access/ctxtmap/distance_context", test_ctxtmap_distcontext },
   {"access/ctxtmap/literal_context", test_ctxtmap_litcontext },
-  {"access/ctxtmap/imtf", test_ctxtmap_imtf, NULL, &box_ctxtmap },
-  {"access/ctxtmap/mtf", test_ctxtmap_mtf, NULL, &box_ctxtmap },
-  {"access/ctxtmap/modes", test_ctxtmap_modes, NULL, &box_ctxtmap },
+  {"access/ctxtmap/imtf", test_ctxtmap_imtf, 0, &box_ctxtmap },
+  {"access/ctxtmap/mtf", test_ctxtmap_mtf, 0, &box_ctxtmap },
+  {"access/ctxtmap/modes", test_ctxtmap_modes, 0, &box_ctxtmap },
   {NULL}
 };
 
