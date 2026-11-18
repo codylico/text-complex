@@ -35,6 +35,8 @@ struct tcmplxAtest_arg {
   char* font_path;
   char* prefixes;
   char* frequencies;
+  char* ndirect;
+  char* npostfix;
 };
 
 /* Parses stuff like (len) '*' (repeat_count) [',' ...]

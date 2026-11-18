@@ -16,6 +16,8 @@ int tcmplxAtest_arg_fp_parse
     char* const argv[]);
 static int tcmplxAtest_arg_prefixes_parse(void*,int*,int,char**);
 static int tcmplxAtest_arg_frequencies_parse(void*,int*,int,char**);
+static int tcmplxAtest_arg_ndirect_parse(void*,int*,int,char**);
+static int tcmplxAtest_arg_npostfix_parse(void*,int*,int,char**);
 static
 void tcmplxAtest_arg_fp_help(void* user_data);
 static
@@ -34,6 +36,8 @@ struct tcmplxAtest_argLine const tcmplxAtest_arglist[] = {
   { "font-path", tcmplxAtest_arg_fp_parse, tcmplxAtest_arg_fp_help },
   { "prefixes", tcmplxAtest_arg_prefixes_parse },
   { "frequencies", tcmplxAtest_arg_frequencies_parse },
+  { "ndirect", tcmplxAtest_arg_ndirect_parse },
+  { "npostfix", tcmplxAtest_arg_npostfix_parse },
   { NULL, NULL, NULL }
 };
 
@@ -293,8 +297,53 @@ static int tcmplxAtest_arg_frequencies_parse
     fprintf(stderr, "String broke --frequencies.\n");
     return 0;
   } else {
-    free(tfa->lengths);
-    tfa->lengths = dup;
+    free(tfa->frequencies);
+    tfa->frequencies = dup;
+    return 1;
+  }
+}
+
+static int tcmplxAtest_arg_ndirect_parse
+  (void* user_data,int* arg,int argc, char** argv)
+{
+  struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
+  char* dup = NULL;
+  int res = 0;
+  ++(*arg);
+  if ((*arg) >= argc) {
+    fprintf(stderr, "Missing string for --ndirect.\n");
+    return 0;
+  }
+  res = tcmplxAtest_strdup(&dup, argv[*arg]);
+  if (res != 0) {
+    fprintf(stderr, "String broke --ndirect.\n");
+    return 0;
+  } else {
+    free(tfa->ndirect);
+    tfa->ndirect = dup;
+    return 1;
+  }
+}
+
+
+static int tcmplxAtest_arg_npostfix_parse
+  (void* user_data,int* arg,int argc, char** argv)
+{
+  struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
+  char* dup = NULL;
+  int res = 0;
+  ++(*arg);
+  if ((*arg) >= argc) {
+    fprintf(stderr, "Missing string for --npostfix.\n");
+    return 0;
+  }
+  res = tcmplxAtest_strdup(&dup, argv[*arg]);
+  if (res != 0) {
+    fprintf(stderr, "String broke --npostfix.\n");
+    return 0;
+  } else {
+    free(tfa->npostfix);
+    tfa->npostfix = dup;
     return 1;
   }
 }

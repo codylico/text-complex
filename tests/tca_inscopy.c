@@ -3,49 +3,38 @@
  */
 #include "testfont.h"
 #include "text-complex/access/inscopy.h"
-#include "munit/munit.h"
+#include "reedkiln/log.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static MunitResult test_inscopy_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_inscopy_item
-  (const MunitParameter params[], void* data);
-static MunitResult test_inscopy_item_c
-  (const MunitParameter params[], void* data);
-static MunitResult test_inscopy_lengthsort
-  (const MunitParameter params[], void* data);
+static int test_inscopy_cycle(void* data);
+static int test_inscopy_item(void* data);
+static int test_inscopy_item_c(void* data);
+static int test_inscopy_lengthsort(void* data);
 /* TODO: A test for lengthsort to ensure it accounts for copy_first. */
-static MunitResult test_inscopy_codesort
-  (const MunitParameter params[], void* data);
-static MunitResult test_inscopy_encode
-  (const MunitParameter params[], void* data);
-static void* test_inscopy_setup
-    (const MunitParameter params[], void* user_data);
+static int test_inscopy_codesort(void* data);
+static int test_inscopy_encode(void* data);
+static void* test_inscopy_setup(void* user_data);
 static void test_inscopy_teardown(void* fixture);
 static unsigned long int test_inscopy_rand_length25(void);
 
-static MunitTest tests_inscopy[] = {
-  {"cycle", test_inscopy_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"item", test_inscopy_item,
-    test_inscopy_setup,test_inscopy_teardown,0,NULL},
-  {"item_const", test_inscopy_item_c,
-    test_inscopy_setup,test_inscopy_teardown,0,NULL},
-  {"lengthsort", test_inscopy_lengthsort,
-    test_inscopy_setup,test_inscopy_teardown,0,NULL},
-  {"codesort", test_inscopy_codesort,
-    test_inscopy_setup,test_inscopy_teardown,0,NULL},
-  {"encode", test_inscopy_encode,
-    test_inscopy_setup,test_inscopy_teardown,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
+static struct reedkiln_box const box_inscopy = {
+  test_inscopy_setup,test_inscopy_teardown
 };
 
-static MunitSuite const suite_inscopy = {
-  "access/inscopy/", tests_inscopy, NULL, 1, 0
+static struct reedkiln_entry const tests_inscopy[] = {
+  {"access/inscopy/cycle", test_inscopy_cycle },
+  {"access/inscopy/item", test_inscopy_item, 0, &box_inscopy },
+  {"access/inscopy/item_const", test_inscopy_item_c, 0, &box_inscopy },
+  {"access/inscopy/lengthsort", test_inscopy_lengthsort, 0, &box_inscopy },
+  {"access/inscopy/codesort", test_inscopy_codesort, 0, &box_inscopy },
+  {"access/inscopy/encode", test_inscopy_encode, 0, &box_inscopy },
+  {NULL}
 };
+
 
 
 
@@ -63,22 +52,20 @@ unsigned long int test_inscopy_rand_length25(void) {
 
 
 
-MunitResult test_inscopy_cycle
-  (const MunitParameter params[], void* data)
+int test_inscopy_cycle(void* data)
 {
   struct tcmplxA_inscopy* ptr[1];
   size_t const t = testfont_rand_size_range(0u,256u);
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_inscopy_new(t);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_inscopy_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_inscopy_setup(const MunitParameter params[], void* user_data) {
+void* test_inscopy_setup(void* user_data) {
   enum tcmplxA_inscopy_type const t =
-      (enum tcmplxA_inscopy_type)munit_rand_int_range(0,2);
+      (enum tcmplxA_inscopy_type)testfont_rand_int_range(0,2);
   struct tcmplxA_inscopy *p = tcmplxA_inscopy_new(0u);
   if (p != NULL) {
     int const res = tcmplxA_inscopy_preset(p, t);
@@ -95,13 +82,11 @@ void test_inscopy_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_inscopy_item
-  (const MunitParameter params[], void* data)
+int test_inscopy_item(void* data)
 {
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* consistency check */{
     size_t const i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p));
     munit_assert_ptr_equal
@@ -113,26 +98,26 @@ MunitResult test_inscopy_item
       /* test literals */{
         size_t const i = testfont_rand_size_range(0,255);
         struct tcmplxA_inscopy_row* row = tcmplxA_inscopy_at(p, i);
-        munit_assert_ptr_not_null(row);
-        munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Literal);
-        munit_assert_size(row->code, ==, i);
+        reedkiln_assert(row);
+        reedkiln_assert(row->type == tcmplxA_InsCopy_Literal);
+        reedkiln_assert(row->code == i);
       }
       /* test stop */{
         struct tcmplxA_inscopy_row* row =
           tcmplxA_inscopy_at(p, 256);
-        munit_assert_ptr_not_null(row);
-        munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Stop);
-        munit_assert_short(row->code, ==, 256u);
+        reedkiln_assert(row);
+        reedkiln_assert(row->type == tcmplxA_InsCopy_Stop);
+        reedkiln_assert(row->code == 256u);
       }
       /* test length */{
         size_t i = testfont_rand_size_range(257,285);
         struct tcmplxA_inscopy_row* row =
           tcmplxA_inscopy_at(p,i);
-        munit_assert_ptr_not_null(row);
-        munit_assert_size(row->code, ==, i);
-        munit_assert_uint(row->type&127, ==, tcmplxA_InsCopy_Copy);
-        munit_assert_uint(row->insert_bits, <=, 5);
-        munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
+        reedkiln_assert(row);
+        reedkiln_assert(row->code == i);
+        reedkiln_assert((row->type&127) == tcmplxA_InsCopy_Copy);
+        reedkiln_assert(row->insert_bits <= 5);
+        reedkiln_log_printf("[%u]={%u,*%u};",
           (unsigned int)i,
           row->insert_bits, row->insert_first);
       }
@@ -142,12 +127,12 @@ MunitResult test_inscopy_item
       size_t i = testfont_rand_size_range(0,703);
       struct tcmplxA_inscopy_row* row =
         tcmplxA_inscopy_at(p,i);
-      munit_assert_size(row->code, ==, i);
-      munit_assert_int((row->zero_distance_tf!=0), ==, i<128);
-      munit_assert_int
-        (row->type, ==, tcmplxA_InsCopy_InsertCopy);
-      munit_logf(MUNIT_LOG_DEBUG,
-        "[%u] = {bits: %u, first: %u, copy_bits: %u, copy_first: %u}",
+      reedkiln_assert(row->code == i);
+      reedkiln_assert((row->zero_distance_tf!=0) == i<128);
+      reedkiln_assert
+        (row->type == tcmplxA_InsCopy_InsertCopy);
+      reedkiln_log_printf(
+        "[%u]={%u,*%u, copy %u,*%u};",
         (unsigned int)(i),
         row->insert_bits, row->insert_first,
         row->copy_bits, row->copy_first);
@@ -156,28 +141,27 @@ MunitResult test_inscopy_item
     {
       size_t i = testfont_rand_size_range(0,25);
       struct tcmplxA_inscopy_row* row = tcmplxA_inscopy_at(p,i);
-      munit_assert_int
-        (row->type, ==, tcmplxA_InsCopy_BlockCount);
-      munit_assert_size(row->code, ==, i);
-      munit_assert_uint(row->insert_bits, <=, 24);
-      munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
+      reedkiln_assert
+        (row->type == tcmplxA_InsCopy_BlockCount);
+      reedkiln_assert(row->code == i);
+      reedkiln_assert(row->insert_bits <= 24);
+      reedkiln_log_printf("[%u]={%u,*%u};",
         (unsigned int)(i),
         row->insert_bits, row->insert_first);
     }break;
   default:
-    munit_errorf("Unexpected table length %" MUNIT_SIZE_MODIFIER "u.",
-      tcmplxA_inscopy_size(p));
+    reedkiln_log_printf("Unexpected table length %u.",
+      (unsigned)tcmplxA_inscopy_size(p));
+    reedkiln_fail();
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_inscopy_item_c
-  (const MunitParameter params[], void* data)
+int test_inscopy_item_c(void* data)
 {
   struct tcmplxA_inscopy const* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   (void)data;
   switch (tcmplxA_inscopy_size(p)) {
   case 286: /* Deflate */
@@ -185,23 +169,23 @@ MunitResult test_inscopy_item_c
       /* test literals */{
         struct tcmplxA_inscopy_row const* row =
           tcmplxA_inscopy_at_c(p, testfont_rand_size_range(0,255));
-        munit_assert_ptr_not_null(row);
-        munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Literal);
+        reedkiln_assert(row);
+        reedkiln_assert(row->type == tcmplxA_InsCopy_Literal);
       }
       /* test stop */{
         struct tcmplxA_inscopy_row const* row =
           tcmplxA_inscopy_at_c(p, 256);
-        munit_assert_ptr_not_null(row);
-        munit_assert_uint(row->type, ==, tcmplxA_InsCopy_Stop);
+        reedkiln_assert(row);
+        reedkiln_assert(row->type == tcmplxA_InsCopy_Stop);
       }
       /* test length */{
         size_t i = testfont_rand_size_range(257,285);
         struct tcmplxA_inscopy_row const* row =
           tcmplxA_inscopy_at_c(p,i);
-        munit_assert_ptr_not_null(row);
-        munit_assert_uint(row->type&127, ==, tcmplxA_InsCopy_Copy);
-        munit_assert_uint(row->insert_bits, <=, 5);
-        munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
+        reedkiln_assert(row);
+        reedkiln_assert((row->type&127) == tcmplxA_InsCopy_Copy);
+        reedkiln_assert(row->insert_bits <= 5);
+        reedkiln_log_printf("[%u]={%u,*%u};",
           (unsigned int)i,
           row->insert_bits, row->insert_first);
       }
@@ -211,11 +195,11 @@ MunitResult test_inscopy_item_c
       size_t i = testfont_rand_size_range(0,703);
       struct tcmplxA_inscopy_row const* row =
         tcmplxA_inscopy_at_c(p,i);
-      munit_assert_int((row->zero_distance_tf!=0), ==, i<128);
-      munit_assert_int
-        (row->type, ==, tcmplxA_InsCopy_InsertCopy);
-      munit_logf(MUNIT_LOG_DEBUG,
-        "[%u] = {bits: %u, first: %u, copy_bits: %u, copy_first: %u}",
+      reedkiln_assert((row->zero_distance_tf!=0) == i<128);
+      reedkiln_assert
+        (row->type == tcmplxA_InsCopy_InsertCopy);
+      reedkiln_log_printf(
+        "[%u]={%u,*%u, copy %u,*%u};",
         (unsigned int)(i),
         row->insert_bits, row->insert_first,
         row->copy_bits, row->copy_first);
@@ -224,71 +208,67 @@ MunitResult test_inscopy_item_c
     {
       size_t i = testfont_rand_size_range(0,25);
       struct tcmplxA_inscopy_row const* row = tcmplxA_inscopy_at_c(p,i);
-      munit_assert_int
-        (row->type, ==, tcmplxA_InsCopy_BlockCount);
-      munit_assert_size(row->code, ==, i);
-      munit_assert_uint(row->insert_bits, <=, 24);
-      munit_logf(MUNIT_LOG_DEBUG, "[%u] = {bits: %u, first: %u}",
+      reedkiln_assert
+        (row->type == tcmplxA_InsCopy_BlockCount);
+      reedkiln_assert(row->code == i);
+      reedkiln_assert(row->insert_bits <= 24);
+      reedkiln_log_printf("[%u]={%u,*%u};",
         (unsigned int)(i),
         row->insert_bits, row->insert_first);
     }break;
   default:
-    munit_errorf("Unexpected table length %" MUNIT_SIZE_MODIFIER "u.",
-      tcmplxA_inscopy_size(p));
+    reedkiln_log_printf("Unexpected table length %u.",
+      (unsigned)tcmplxA_inscopy_size(p));
+    reedkiln_fail();
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 
-MunitResult test_inscopy_codesort
-  (const MunitParameter params[], void* data)
+int test_inscopy_codesort(void* data)
 {
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* run code-sort */{
     int const res = tcmplxA_inscopy_codesort(p);
-    munit_assert_int(res,==,tcmplxA_Success);
+    reedkiln_assert(res == tcmplxA_Success);
   }
   /* inspect */if (tcmplxA_inscopy_size(p) >= 2) {
     size_t i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p)-2);
     struct tcmplxA_inscopy_row const* first = tcmplxA_inscopy_at_c(p, i);
     struct tcmplxA_inscopy_row const* second = tcmplxA_inscopy_at_c(p, i+1);
-    munit_assert_uint(first->code, <, second->code);
+    reedkiln_assert(first->code < second->code);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_inscopy_lengthsort
-  (const MunitParameter params[], void* data)
+int test_inscopy_lengthsort(void* data)
 {
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* run length-sort */{
     int const res = tcmplxA_inscopy_lengthsort(p);
-    munit_assert_int(res,==,tcmplxA_Success);
+    reedkiln_assert(res == tcmplxA_Success);
   }
   /* inspect */if (tcmplxA_inscopy_size(p) >= 2) {
     size_t i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p)-2);
     struct tcmplxA_inscopy_row const* first = tcmplxA_inscopy_at_c(p, i);
     struct tcmplxA_inscopy_row const* second = tcmplxA_inscopy_at_c(p, i+1);
     if (first->zero_distance_tf != second->zero_distance_tf) {
-      munit_assert_false(first->zero_distance_tf);
-      munit_assert_true(second->zero_distance_tf);
+      reedkiln_assert(!first->zero_distance_tf);
+      reedkiln_assert(second->zero_distance_tf);
     } else if (first->insert_first != second->insert_first) {
-      munit_assert_uint(first->insert_first, <, second->insert_first);
+      reedkiln_assert(first->insert_first < second->insert_first);
     } else {
-      munit_assert_uint(first->copy_first, <=, second->copy_first);
+      reedkiln_assert(first->copy_first <= second->copy_first);
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_inscopy_encode
-  (const MunitParameter params[], void* data)
+int test_inscopy_encode(void* data)
 {
   /*
    * DEFLATE insert max: 258
@@ -299,12 +279,11 @@ MunitResult test_inscopy_encode
   size_t const not_found = ((size_t)-1);
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* run length-sort */{
     int const res = tcmplxA_inscopy_lengthsort(p);
     if (res != tcmplxA_Success)
-      return MUNIT_SKIP;
+      return Reedkiln_SKIP;
   }
   switch (tcmplxA_inscopy_size(p)) {
   case 704: /* Brotli insert-copy pairs */{
@@ -316,7 +295,7 @@ MunitResult test_inscopy_encode
       size_t encode_index =
         tcmplxA_inscopy_encode(p, ins_len, cpy_len, zero_dist);
       if ((encode_index == not_found) && zero_dist) {
-        munit_log(MUNIT_LOG_DEBUG, "Retrying without zero distance.");
+        reedkiln_log_printf("Retrying without zero distance.\n");
         encode_index = tcmplxA_inscopy_encode(p, ins_len, cpy_len, 0);
       }
       if ((encode_index != not_found) == expect_success) {
@@ -325,22 +304,23 @@ MunitResult test_inscopy_encode
             tcmplxA_inscopy_at_c(p, encode_index);
           unsigned long int const ins_extra = ins_len - row->insert_first;
           unsigned long int const cpy_extra = cpy_len - row->copy_first;
-          munit_logf(MUNIT_LOG_DEBUG,
+          reedkiln_log_printf(
             "Encode (insert: %lu, copy: %lu, zero: %s) as "
             "<%u, %lu:%u, %lu:%u (zero: %s)>",
             ins_len, cpy_len, zero_dist?"true":"false",
             row->code, ins_extra, row->insert_bits, cpy_extra, row->copy_bits,
             row->zero_distance_tf?"true":"false");
         } else {
-          munit_logf(MUNIT_LOG_DEBUG,
+          reedkiln_log_printf(
             "Encode (insert: %lu, copy: %lu, zero: %s) properly rejected.",
             ins_len, cpy_len, zero_dist?"true":"false");
         }
       } else {
-        munit_errorf("Table row %" MUNIT_SIZE_MODIFIER "u selected for "
+        reedkiln_log_printf("Table row %u selected for "
           "%s configuration (insert: %lu, copy: %lu, zero: %s).",
-          encode_index, (expect_success?"valid":"impossible"),
+          (unsigned)encode_index, (expect_success?"valid":"impossible"),
           ins_len, cpy_len, zero_dist?"true":"false");
+        reedkiln_fail();
       }
     }break;
   case 286: /* DEFLATE */{
@@ -353,17 +333,18 @@ MunitResult test_inscopy_encode
           struct tcmplxA_inscopy_row const* const row =
             tcmplxA_inscopy_at_c(p, encode_index);
           unsigned long int const cpy_extra = cpy_len - row->copy_first;
-          munit_logf(MUNIT_LOG_DEBUG,
+          reedkiln_log_printf(
             "Encode (copy: %lu) as <%u, %lu:%u>",
             cpy_len, row->code, cpy_extra, row->copy_bits);
         } else {
-          munit_logf(MUNIT_LOG_DEBUG,
+          reedkiln_log_printf(
             "Encode (copy: %lu) properly rejected.", cpy_len);
         }
       } else {
-        munit_errorf("Table row %" MUNIT_SIZE_MODIFIER "u selected for "
+        reedkiln_log_printf("Table row %u selected for "
           "%s configuration (copy: %lu).",
           encode_index, (expect_success?"valid":"impossible"), cpy_len);
+        reedkiln_fail();
       }
     }break;
   case 26: /* Brotli block counts */{
@@ -376,23 +357,24 @@ MunitResult test_inscopy_encode
           struct tcmplxA_inscopy_row const* const row =
             tcmplxA_inscopy_at_c(p, encode_index);
           unsigned long int const block_extra = block_len - row->insert_first;
-          munit_logf(MUNIT_LOG_DEBUG,
+          reedkiln_log_printf(
             "Encode (block-count: %lu) as <%u, %lu:%u>",
             block_len, row->code, block_extra, row->insert_bits);
         } else {
-          munit_logf(MUNIT_LOG_DEBUG,
+          reedkiln_log_printf(
             "Encode (block-count: %lu) properly rejected.", block_len);
         }
       } else {
-        munit_errorf("Table row %" MUNIT_SIZE_MODIFIER "u selected for "
+        reedkiln_log_printf("Table row %u selected for "
           "%s configuration (block-count: %lu).",
           encode_index, (expect_success?"valid":"impossible"), block_len);
+        reedkiln_fail();
       }
     }break;
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_inscopy, NULL, argc, argv);
+  return reedkiln_main(&tests_inscopy, argc, argv, NULL);
 }

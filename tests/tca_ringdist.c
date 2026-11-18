@@ -3,7 +3,7 @@
  */
 #include "testfont.h"
 #include "text-complex/access/ringdist.h"
-#include "munit/munit.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,76 +29,52 @@ const test_ringdist_bit_comp_1951[30] = {
     {28,13},{29,13}
   };
 
-static MunitResult test_ringdist_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_ringdist_1951_bit_count
-  (const MunitParameter params[], void* data);
-static MunitResult test_ringdist_7932_bit_count
-  (const MunitParameter params[], void* data);
-static MunitResult test_ringdist_1951_decode
-  (const MunitParameter params[], void* data);
-static MunitResult test_ringdist_7932_decode
-  (const MunitParameter params[], void* data);
-static MunitResult test_ringdist_encode
-  (const MunitParameter params[], void* data);
-static MunitResult test_ringdist_reconfigure
-  (const MunitParameter params[], void* data);
-static void* test_ringdist_1951_setup
-    (const MunitParameter params[], void* user_data);
-static void* test_ringdist_7932_setup
-    (const MunitParameter params[], void* user_data);
+static int test_ringdist_cycle(void* data);
+static int test_ringdist_1951_bit_count(void* data);
+static int test_ringdist_7932_bit_count(void* data);
+static int test_ringdist_1951_decode(void* data);
+static int test_ringdist_7932_decode(void* data);
+static int test_ringdist_encode(void* data);
+static int test_ringdist_reconfigure(void* data);
+static void* test_ringdist_1951_setup(void* user_data);
+static void* test_ringdist_7932_setup(void* user_data);
 static void test_ringdist_teardown(void* fixture);
 
-static MunitParameterEnum test_ringdist_params[] = {
-  { "NDIRECT", NULL },
-  { "NPOSTFIX", NULL },
-  { NULL, NULL }
+
+static struct reedkiln_box const box_ringdist_1951 = {
+  test_ringdist_1951_setup,test_ringdist_teardown
+};
+static struct reedkiln_box const box_ringdist_7932 = {
+  test_ringdist_7932_setup,test_ringdist_teardown
 };
 
-static MunitTest tests_ringdist[] = {
-  {"cycle", test_ringdist_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"1951/bit_count", test_ringdist_1951_bit_count,
-    test_ringdist_1951_setup,test_ringdist_teardown,0,NULL},
-  {"7932/bit_count", test_ringdist_7932_bit_count,
-    test_ringdist_7932_setup,test_ringdist_teardown,0,test_ringdist_params},
-  {"1951/decode", test_ringdist_1951_decode,
-    test_ringdist_1951_setup,test_ringdist_teardown,0,NULL},
-  {"7932/decode", test_ringdist_7932_decode,
-    test_ringdist_7932_setup,test_ringdist_teardown,
-    MUNIT_TEST_OPTION_TODO,test_ringdist_params},
-  {"1951/encode", test_ringdist_encode,
-    test_ringdist_1951_setup,test_ringdist_teardown,
-    MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"7932/encode", test_ringdist_encode,
-    test_ringdist_7932_setup,test_ringdist_teardown,0,test_ringdist_params},
-  {"7932/reconfigure", test_ringdist_reconfigure,
-    test_ringdist_7932_setup,test_ringdist_teardown,
-    0,test_ringdist_params},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_ringdist = {
-  "access/ringdist/", tests_ringdist, NULL, 1, 0
+static struct reedkiln_entry const tests_ringdist[] = {
+  {"access/ringdist/cycle", test_ringdist_cycle },
+  {"access/ringdist/1951/bit_count", test_ringdist_1951_bit_count, 0, &box_ringdist_1951 },
+  {"access/ringdist/7932/bit_count", test_ringdist_7932_bit_count, 0, &box_ringdist_7932 },
+  {"access/ringdist/1951/decode", test_ringdist_1951_decode, 0, &box_ringdist_1951 },
+  {"access/ringdist/7932/decode", test_ringdist_7932_decode, Reedkiln_TODO, &box_ringdist_7932 },
+  {"access/ringdist/1951/encode", test_ringdist_encode, 0, &box_ringdist_1951 },
+  {"access/ringdist/7932/encode", test_ringdist_encode, 0, &box_ringdist_7932 },
+  {"access/ringdist/7932/reconfigure", test_ringdist_reconfigure, 0, &box_ringdist_7932 },
+  {NULL}
 };
 
 
 
 
-MunitResult test_ringdist_cycle
-  (const MunitParameter params[], void* data)
+
+int test_ringdist_cycle(void* data)
 {
   struct tcmplxA_ringdist* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_ringdist_new(0,4,0);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_ringdist_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_ringdist_1951_setup
-    (const MunitParameter params[], void* user_data)
+void* test_ringdist_1951_setup(void* user_data)
 {
   struct test_ringdist_fixture *out = (struct test_ringdist_fixture*)calloc
     (1,sizeof(struct test_ringdist_fixture));
@@ -116,16 +92,17 @@ void* test_ringdist_1951_setup
   return out;
 }
 
-void* test_ringdist_7932_setup
-    (const MunitParameter params[], void* user_data)
+void* test_ringdist_7932_setup(void* user_data)
 {
+  struct tcmplxAtest_arg const* const user_arg =
+    (struct tcmplxAtest_arg const*)user_data;
   struct test_ringdist_fixture *out = (struct test_ringdist_fixture*)calloc
     (1,sizeof(struct test_ringdist_fixture));
   if (out != NULL) {
     out->special_tf = 1;
     /* inspect params */{
       /* NDIRECT */{
-        char const* p = munit_parameters_get(params, "NDIRECT");
+        char const* p = user_arg->ndirect;
         char* ep = NULL;
         unsigned long int n = ~0lu;
         if (p != NULL) {
@@ -136,7 +113,7 @@ void* test_ringdist_7932_setup
         } else out->direct_count = testfont_rand_uint_range(0u,120u);
       }
       /* NPOSTFIX */{
-        char const* p = munit_parameters_get(params, "NPOSTFIX");
+        char const* p = user_arg->npostfix;
         char* ep = NULL;
         unsigned long int n = ~0lu;
         if (p != NULL) {
@@ -166,37 +143,33 @@ void test_ringdist_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_ringdist_1951_bit_count
-  (const MunitParameter params[], void* data)
+int test_ringdist_1951_bit_count(void* data)
 {
   struct test_ringdist_fixture *const fixt =
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* inspect */{
     size_t i;
     for (i = 0u; i < 30u; ++i) {
-      munit_assert_uint(
-          tcmplxA_ringdist_bit_count(p,test_ringdist_bit_comp_1951[i].code),
-            ==,test_ringdist_bit_comp_1951[i].bits
+      reedkiln_assert(
+          tcmplxA_ringdist_bit_count(p,test_ringdist_bit_comp_1951[i].code)
+            == test_ringdist_bit_comp_1951[i].bits
         );
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_ringdist_7932_bit_count
-  (const MunitParameter params[], void* data)
+int test_ringdist_7932_bit_count(void* data)
 {
   struct test_ringdist_fixture *const fixt =
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   unsigned int alpha_size;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* recompute alphabet size */{
     alpha_size = 16 + fixt->direct_count + (48 << fixt->postfix_size);
   }
@@ -207,23 +180,22 @@ MunitResult test_ringdist_7932_bit_count
     for (dcode = 0; dcode < alpha_size; ++dcode) {
       if (dcode < 16) {
         /* special code */
-        munit_assert_uint(tcmplxA_ringdist_bit_count(p, dcode), ==, 0);
+        reedkiln_assert(tcmplxA_ringdist_bit_count(p, dcode) == 0);
       } else if (dcode < 16 + ndirect) {
         /* direct code */
-        munit_assert_uint(tcmplxA_ringdist_bit_count(p, dcode), ==, 0);
+        reedkiln_assert(tcmplxA_ringdist_bit_count(p, dcode) == 0);
       } else {
         /* indirect code */
         unsigned int const ndistbits =
           1 + ((dcode - ndirect - 16) >> (npostfix + 1));
-        munit_assert_uint(tcmplxA_ringdist_bit_count(p, dcode), ==, ndistbits);
+        reedkiln_assert(tcmplxA_ringdist_bit_count(p, dcode) == ndistbits);
       }
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_ringdist_1951_decode
-  (const MunitParameter params[], void* data)
+int test_ringdist_1951_decode(void* data)
 {
   struct test_ringdist_fixture *const fixt =
     (struct test_ringdist_fixture*)data;
@@ -232,8 +204,7 @@ MunitResult test_ringdist_1951_decode
   unsigned int decomposed_code;
   unsigned int decomposed_extra;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* compose 1951 encoding of distance */{
     unsigned int back_bit_count = 0u;
     unsigned int num_bits;
@@ -260,41 +231,38 @@ MunitResult test_ringdist_1951_decode
     }
   }
   /* inspect */{
-    munit_assert_uint32(
-        tcmplxA_ringdist_decode(p,decomposed_code,decomposed_extra,0),
-          ==,back_dist
+    reedkiln_assert(
+        tcmplxA_ringdist_decode(p,decomposed_code,decomposed_extra,0)
+          == back_dist
       );
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_ringdist_7932_decode
-  (const MunitParameter params[], void* data)
+int test_ringdist_7932_decode(void* data)
 {
   struct test_ringdist_fixture *const fixt =
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  return MUNIT_SKIP;
+    return Reedkiln_SKIP;
+  // TODO Implement this test.
+  return Reedkiln_SKIP;
 }
 
-MunitResult test_ringdist_encode
-  (const MunitParameter params[], void* data)
+int test_ringdist_encode(void* data)
 {
   struct test_ringdist_fixture *const fixt =
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* round-trip test */{
     int j;
     struct tcmplxA_ringdist* const q = tcmplxA_ringdist_new
       (fixt->special_tf, fixt->direct_count, fixt->postfix_size);
     if (q == NULL)
-      return MUNIT_SKIP;
+      return Reedkiln_SKIP;
     else tcmplxA_ringdist_copy(q, p);
     for (j = 0; j < 100; ++j) {
       unsigned int back_dist = testfont_rand_uint_range(1u,32768u);
@@ -302,19 +270,18 @@ MunitResult test_ringdist_encode
       unsigned int decomposed_code;
       decomposed_code =
         tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra,0);
-      munit_assert_uint(decomposed_code,!=,UINT_MAX);
-      munit_assert_uint32(
-          tcmplxA_ringdist_decode(q,decomposed_code,decomposed_extra,0),
-            ==,back_dist
+      reedkiln_assert(decomposed_code != UINT_MAX);
+      reedkiln_assert(
+          tcmplxA_ringdist_decode(q,decomposed_code,decomposed_extra,0)
+            == back_dist
         );
     }
     tcmplxA_ringdist_destroy(q);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_ringdist_reconfigure
-  (const MunitParameter params[], void* data)
+int test_ringdist_reconfigure(void* data)
 {
   struct test_ringdist_fixture *const fixt = (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
@@ -323,20 +290,23 @@ MunitResult test_ringdist_reconfigure
   unsigned int back_dist = testfont_rand_uint_range(1u,32768u);
   int res = 0;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra, 32768u);
-  munit_assert(decomposed_code != UINT_MAX);
+  reedkiln_assert(decomposed_code != UINT_MAX);
   res = tcmplxA_ringdist_reconfigure(p, 1, testfont_rand_uint_range(0,120), fixt->postfix_size);
-  munit_assert(res == tcmplxA_Success);
+  reedkiln_assert(res == tcmplxA_Success);
   decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra, 32768u);
-  munit_assert(decomposed_code == 0);
-  return MUNIT_OK;
+  reedkiln_assert(decomposed_code == 0);
+  return Reedkiln_OK;
 }
 
 
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_ringdist, NULL, argc, argv);
+  struct tcmplxAtest_arg arg = {NULL};
+  int const res = testfont_do_main(&tests_ringdist, &arg, argc, argv);
+  free(arg.ndirect);
+  free(arg.npostfix);
+  return res;
 }

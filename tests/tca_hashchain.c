@@ -3,79 +3,63 @@
  */
 #include "testfont.h"
 #include "text-complex/access/hashchain.h"
-#include "munit/munit.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static MunitResult test_hashchain_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_hashchain_item
-  (const MunitParameter params[], void* data);
-static MunitResult test_hashchain_add
-  (const MunitParameter params[], void* data);
-static MunitResult test_hashchain_addring
-  (const MunitParameter params[], void* data);
-static MunitResult test_hashchain_find
-  (const MunitParameter params[], void* data);
-static void* test_hashchain_setup
-    (const MunitParameter params[], void* user_data);
-static void* test_hashchain_setupsmall
-    (const MunitParameter params[], void* user_data);
+static int test_hashchain_cycle(void* data);
+static int test_hashchain_add(void* data);
+static int test_hashchain_addring(void* data);
+static int test_hashchain_find(void* data);
+static void* test_hashchain_setup(void* user_data);
+static void* test_hashchain_setupsmall(void* user_data);
 static void test_hashchain_teardown(void* fixture);
 
-static MunitParameterEnum test_hashchain_params[] = {
-  { NULL, NULL },
+
+static struct reedkiln_box box_hashchain = {
+  test_hashchain_setup,test_hashchain_teardown
+};
+static struct reedkiln_box box_hashchain_small = {
+  test_hashchain_setupsmall,test_hashchain_teardown
 };
 
-static MunitTest tests_hashchain[] = {
-  {"cycle", test_hashchain_cycle,
-    NULL,NULL,0,NULL},
-  {"item", test_hashchain_item,
-    test_hashchain_setup,test_hashchain_teardown,0,NULL},
-  {"add", test_hashchain_add,
-    test_hashchain_setup,test_hashchain_teardown,0,NULL},
-  {"add/ring", test_hashchain_addring,
-    test_hashchain_setupsmall,test_hashchain_teardown,0,NULL},
-  {"find", test_hashchain_find,
-    test_hashchain_setupsmall,test_hashchain_teardown,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_hashchain = {
-  "access/hashchain/", tests_hashchain, NULL, 1, 0
+static struct reedkiln_entry tests_hashchain[] = {
+  {"access/hashchain/cycle", test_hashchain_cycle },
+  {"access/hashchain/add", test_hashchain_add, 0, &box_hashchain },
+  {"access/hashchain/add/ring", test_hashchain_addring, 0, &box_hashchain_small },
+  {"access/hashchain/find", test_hashchain_find, 0, &box_hashchain_small },
+  {NULL}
 };
 
 
 
 
-MunitResult test_hashchain_cycle
-  (const MunitParameter params[], void* data)
+
+int test_hashchain_cycle(void* data)
 {
-  uint32_t const num = (uint32_t)munit_rand_int_range(128,16777216);
-  size_t const len = (size_t)munit_rand_int_range(1,128);
+  unsigned const num = testfont_rand_uint_range(128,16777216);
+  size_t const len = testfont_rand_size_range(1,128);
   struct tcmplxA_hashchain* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_hashchain_new(num, len);
-  munit_assert_not_null(ptr[0]);
-  munit_assert_uint32(tcmplxA_hashchain_extent(ptr[0]), ==, num);
+  reedkiln_assert(ptr[0]);
+  reedkiln_assert(tcmplxA_hashchain_extent(ptr[0]) == num);
   tcmplxA_hashchain_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_hashchain_setup(const MunitParameter params[], void* user_data) {
-  uint32_t const num = (uint32_t)munit_rand_int_range(128,16777216);
-  size_t const len = (size_t)munit_rand_int_range(1,128);
+void* test_hashchain_setup(void* user_data) {
+  unsigned const num = testfont_rand_uint_range(128,16777216);
+  size_t const len = testfont_rand_size_range(1,128);
   return tcmplxA_hashchain_new(num, len);
 }
 
-void* test_hashchain_setupsmall
-    (const MunitParameter params[], void* user_data)
+void* test_hashchain_setupsmall(void* user_data)
 {
-  uint32_t const num = (uint32_t)munit_rand_int_range(128,512);
-  size_t const len = (size_t)munit_rand_int_range(1,16);
+  unsigned const num = testfont_rand_uint_range(128,512);
+  size_t const len = testfont_rand_size_range(1,16);
   return tcmplxA_hashchain_new(num, len);
 }
 
@@ -84,104 +68,87 @@ void test_hashchain_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_hashchain_item
-  (const MunitParameter params[], void* data)
-{
-  struct tcmplxA_hashchain* const p = (struct tcmplxA_hashchain*)data;
-  if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  (void)data;
-  return MUNIT_OK;
-}
-
-MunitResult test_hashchain_add
-  (const MunitParameter params[], void* data)
+int test_hashchain_add(void* data)
 {
   struct tcmplxA_hashchain* const p = (struct tcmplxA_hashchain*)data;
   int const add_count = munit_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* fill the buffer */{
-    munit_rand_memory(add_count, (munit_uint8_t*)buf);
+    reedkiln_memrand(buf, add_count);
   }
   /* add the items */{
     int i;
     for (i = 0; i < add_count; ++i) {
       int const res = tcmplxA_hashchain_add(p, buf[i]);
-      munit_assert_int(res,==,tcmplxA_Success);
+      reedkiln_assert(res == tcmplxA_Success);
     }
   }
   /* check the size */{
-    munit_assert_uint32(tcmplxA_hashchain_size(p), ==, add_count);
+    reedkiln_assert(tcmplxA_hashchain_size(p) == add_count);
   }
   /* check the stored bytes */{
     int j;
     for (j = 0; j < add_count; ++j) {
       int const i = add_count-j-1;
-      munit_assert_uchar(tcmplxA_hashchain_peek(p, i),==,buf[j]);
+      reedkiln_assert(tcmplxA_hashchain_peek(p, i) == buf[j]);
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_hashchain_addring
-  (const MunitParameter params[], void* data)
+int test_hashchain_addring(void* data)
 {
   struct tcmplxA_hashchain* const p = (struct tcmplxA_hashchain*)data;
-  int const add_count = munit_rand_int_range(1,64);
-  uint32_t const extent = tcmplxA_hashchain_extent(p);
-  uint32_t const skip_count = extent - munit_rand_int_range(1,64);
+  int const add_count = testfont_rand_int_range(1,64);
+  unsigned const extent = tcmplxA_hashchain_extent(p);
+  unsigned const skip_count = extent - testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* fill the buffer */{
-    munit_rand_memory(add_count, (munit_uint8_t*)buf);
+    reedkiln_memrand(buf, add_count);
   }
   /* skip some items */{
-    uint32_t i;
+    unsigned i;
     for (i = 0; i < skip_count; ++i) {
-      tcmplxA_hashchain_add(p, ((unsigned int)i)&255u);
+      tcmplxA_hashchain_add(p, i&255u);
     }
   }
   /* add the items */{
     int i;
     for (i = 0; i < add_count; ++i) {
       int const res = tcmplxA_hashchain_add(p, buf[i]);
-      munit_assert_int(res,==,tcmplxA_Success);
+      reedkiln_assert(res == tcmplxA_Success);
     }
   }
   /* check the size */{
-    uint32_t const expect_size =
+    unsigned const expect_size =
         ((unsigned int)(add_count+skip_count) > extent)
       ? extent : add_count+skip_count;
-    munit_assert_uint32(tcmplxA_hashchain_size(p), ==, expect_size);
+    reedkiln_assert(tcmplxA_hashchain_size(p) == expect_size);
   }
   /* check the stored bytes */{
     int j;
     for (j = 0; j < add_count; ++j) {
       int const i = add_count-j-1;
-      munit_assert_uchar(tcmplxA_hashchain_peek(p, i),==,buf[j]);
+      reedkiln_assert(tcmplxA_hashchain_peek(p, i) == buf[j]);
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_hashchain_find
-  (const MunitParameter params[], void* data)
+int test_hashchain_find(void* data)
 {
   struct tcmplxA_hashchain* const p = (struct tcmplxA_hashchain*)data;
-  int const add_count = munit_rand_int_range(3,64);
-  unsigned int seed = munit_rand_int_range(1,255);
-  uint32_t const extent = tcmplxA_hashchain_extent(p);
-  uint32_t const skip_count = extent - munit_rand_int_range(1,64);
+  int const add_count = testfont_rand_int_range(3,64);
+  unsigned int seed = testfont_rand_uint_range(1,255);
+  unsigned const extent = tcmplxA_hashchain_extent(p);
+  unsigned const skip_count = extent - testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* fill the buffer */{
     int i;
     for (i = 0; i < add_count; ++i) {
@@ -189,7 +156,7 @@ MunitResult test_hashchain_find
     }
   }
   /* skip some items */{
-    uint32_t i;
+    unsigned i;
     for (i = 0; i < skip_count; ++i) {
       tcmplxA_hashchain_add(p, 0u);
     }
@@ -198,23 +165,23 @@ MunitResult test_hashchain_find
     int i;
     for (i = 0; i < add_count; ++i) {
       int const res = tcmplxA_hashchain_add(p, buf[i]);
-      munit_assert_int(res,==,tcmplxA_Success);
+      reedkiln_assert(res == tcmplxA_Success);
     }
   }
   /* search for the stored bytes */{
     int j;
     for (j = 0; j < add_count-2; ++j) {
-      uint32_t const i = (uint32_t)(add_count-j-1);
-      uint32_t const k = tcmplxA_hashchain_find(p, buf+j, 0u);
-      if (k == ((uint32_t)-1) && j < add_count-3)
+      unsigned const i = (unsigned)(add_count-j-1);
+      unsigned const k = tcmplxA_hashchain_find(p, buf+j, 0u);
+      if (k == ((unsigned)-1) && j < add_count-3)
         continue;
-      munit_assert_uint32(k,==,i);
+      reedkiln_assert(k == i);
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_hashchain, NULL, argc, argv);
+  return reedkiln_main(&tests_hashchain, argc, argv, NULL);
 }
