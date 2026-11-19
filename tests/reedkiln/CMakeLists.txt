@@ -12,8 +12,8 @@ option(Reedkiln_ADD_CXX "Add a C++ target with automatic defines." ON)
 if (Reedkiln_ADD_CXX)
   enable_language(CXX)
   target_compile_definitions(reedkiln
-    INTERFACE "$<$<COMPILE_FEATURES:cxx_noexcept>:Reedkiln_UseNoexcept=1>"
-    "$<$<COMPILE_FEATURES:cxx_variadic_templates,cxx_constexpr,cxx_static_assert>:Reedkiln_UseExpect=1>")
+    INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:$<$<COMPILE_FEATURES:cxx_noexcept>:Reedkiln_UseNoexcept=1>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:$<$<COMPILE_FEATURES:cxx_variadic_templates,cxx_constexpr,cxx_static_assert>:Reedkiln_UseExpect=1>>")
 endif (Reedkiln_ADD_CXX)
 
 add_subdirectory(tests)
