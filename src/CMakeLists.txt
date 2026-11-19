@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.12)
 project(text-complex-access C)
 
 option(TCMPLX_ACCESS_BrCvt_LogErr "Whether to log bits of a Brotli stream to stderr" OFF)
