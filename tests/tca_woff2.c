@@ -43,7 +43,7 @@ int test_woff2_cycle(void* data)
   struct tcmplxA_woff2* ptr[1];
   (void)data;
   ptr[0] = tcmplxA_woff2_new(NULL,0);
-  reedkiln_assert(ptr[0]);
+  reedkiln_assert(!ptr[0]);
   tcmplxA_woff2_destroy(ptr[0]);
   return Reedkiln_OK;
 }
@@ -76,7 +76,7 @@ int test_woff2_item(void* data)
 {
   struct tcmplxA_woff2* const p = (struct tcmplxA_woff2*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* inspect offset table items */{
     struct tcmplxA_offtable const* const offt = tcmplxA_woff2_get_offsets(p);
     size_t l, i;
@@ -84,9 +84,9 @@ int test_woff2_item(void* data)
     l = tcmplxA_offtable_size(offt);
     for (i = 0; i < l; ++i) {
       struct tcmplxA_offline const* line = tcmplxA_offtable_at_c(offt, i);
-      reedkiln_log_printf("[%i] = {\"%.4s\", %li from %li}",
-        (int)i, line->tag, (long int)line->length,
-        (long int)line->offset
+      reedkiln_log_printf("[%i]={\"%.4s\", %li+%li};",
+        (int)i, line->tag,
+        (long int)line->offset, (long int)line->length
         );
     }
   }
