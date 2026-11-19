@@ -4,19 +4,12 @@
 #include "testfont.h"
 #include "text-complex/access/seq.h"
 #include "mmaptwo/mmaptwo.h"
-#include "munit/munit.h"
+#include "reedkiln/log.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef NDEBUG
-#  define test_sharp2(s) #s
-#  define test_sharp(s) test_sharp2(s)
-#  define test_break(s) \
-     { munit_error(s); return MUNIT_FAIL; }
-#else
-#  define test_break(s)
-#endif /*NDEBUG*/
 
 struct test_seq_fixture {
   struct tcmplxA_seq* seq;
@@ -26,63 +19,52 @@ struct test_seq_fixture {
   size_t len;
 };
 
-static MunitResult test_seq_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_seq_null_eof
-  (const MunitParameter params[], void* data);
-static MunitResult test_seq_eof
-  (const MunitParameter params[], void* data);
-static MunitResult test_seq_seek
-  (const MunitParameter params[], void* data);
-static MunitResult test_seq_whence
-  (const MunitParameter params[], void* data);
+static int test_seq_cycle(void* data);
+static int test_seq_null_eof(void* data);
+static int test_seq_eof(void* data);
+static int test_seq_seek(void* data);
+static int test_seq_whence(void* data);
 
-static void* test_seq_null_setup
-    (const MunitParameter params[], void* user_data);
-static void* test_seq_setup
-    (const MunitParameter params[], void* user_data);
+static void* test_seq_null_setup(void* user_data);
+static void* test_seq_setup(void* user_data);
 static void test_seq_teardown(void* fixture);
 
 
-static MunitTest tests_seq[] = {
-  {"cycle", test_seq_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"null_eof", test_seq_null_eof,
-    test_seq_null_setup,test_seq_teardown,0,NULL},
-  {"eof", test_seq_eof,
-    test_seq_setup,test_seq_teardown,0,NULL},
-  {"seek", test_seq_seek,
-    test_seq_setup,test_seq_teardown,0,NULL},
-  {"null_seek", test_seq_seek,
-    test_seq_null_setup,test_seq_teardown,0,NULL},
-  {"whence", test_seq_whence,
-    test_seq_setup,test_seq_teardown,0,NULL},
-  {"null_whence", test_seq_whence,
-    test_seq_null_setup,test_seq_teardown,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
+static struct reedkiln_box const box_seq_null = {
+  test_seq_null_setup,test_seq_teardown
+};
+static struct reedkiln_box const box_seq = {
+  test_seq_setup,test_seq_teardown
 };
 
-static MunitSuite const suite_seq = {
-  "access/seq/", tests_seq, NULL, 1, 0
+static struct reedkiln_entry const tests_seq[] = {
+  {"access/seq/cycle", test_seq_cycle },
+  {"access/seq/null_eof", test_seq_null_eof, 0,&box_seq_null },
+  {"access/seq/eof", test_seq_eof, 0,&box_seq },
+  {"access/seq/seek", test_seq_seek, 0,&box_seq },
+  {"access/seq/null_seek", test_seq_seek, 0,&box_seq_null },
+  {"access/seq/whence", test_seq_whence, 0,&box_seq },
+  {"access/seq/null_whence", test_seq_whence, 0,&box_seq_null },
+  {NULL}
 };
 
 
 
 
-MunitResult test_seq_cycle
-  (const MunitParameter params[], void* data)
+
+int test_seq_cycle(void* data)
 {
   struct tcmplxA_seq* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_seq_new(NULL);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_seq_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_seq_null_setup(const MunitParameter params[], void* user_data) {
-  struct test_seq_fixture* fixt = munit_new(struct test_seq_fixture);
+void* test_seq_null_setup(void* user_data) {
+  struct test_seq_fixture* fixt =
+    (struct test_seq_fixture*)calloc(1, sizeof(struct test_seq_fixture));
   fixt->seq = tcmplxA_seq_new(NULL);
   fixt->mapper = NULL;
   fixt->len = 0u;
@@ -90,13 +72,14 @@ void* test_seq_null_setup(const MunitParameter params[], void* user_data) {
   return fixt;
 }
 
-void* test_seq_setup(const MunitParameter params[], void* user_data) {
-  struct test_seq_fixture* fixt = munit_new(struct test_seq_fixture);
-  fixt->gen = munit_rand_int_range(0,tcmplxAtest_MAX);
-  fixt->len = (size_t)munit_rand_int_range(0,32767);
+void* test_seq_setup(void* user_data) {
+  struct test_seq_fixture* fixt =
+    (struct test_seq_fixture*)calloc(1, sizeof(struct test_seq_fixture));
+  fixt->gen = testfont_rand_int_range(0,tcmplxAtest_MAX);
+  fixt->len = testfont_rand_size_range(0,32767);
   if (fixt->len > tcmplxAtest_gen_size(fixt->gen))
     fixt->len = tcmplxAtest_gen_size(fixt->gen);
-  fixt->seed = (unsigned int)munit_rand_uint32();
+  fixt->seed = reedkiln_rand();
   fixt->mapper = tcmplxAtest_gen_maptwo(fixt->gen, fixt->len, fixt->seed);
   if (fixt->mapper != NULL) {
     fixt->seq = tcmplxA_seq_new(fixt->mapper);
@@ -109,64 +92,57 @@ void test_seq_teardown(void* fixture) {
   tcmplxA_seq_destroy(fixt->seq);
   if (fixt->mapper)
     mmaptwo_close(fixt->mapper);
+  free(fixt);
   return;
 }
 
-MunitResult test_seq_null_eof
-  (const MunitParameter params[], void* data)
+int test_seq_null_eof(void* data)
 {
   struct test_seq_fixture* fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_assert_size(tcmplxA_seq_get_pos(p),==,0u);
-  munit_assert_int(tcmplxA_seq_get_byte(p),==,-1);
-  munit_assert_size(tcmplxA_seq_get_pos(p),==,0u);
-  return MUNIT_OK;
+    return Reedkiln_SKIP;
+  reedkiln_assert(tcmplxA_seq_get_pos(p) == 0u);
+  reedkiln_assert(tcmplxA_seq_get_byte(p) == -1);
+  reedkiln_assert(tcmplxA_seq_get_pos(p) == 0u);
+  return Reedkiln_OK;
 }
 
-MunitResult test_seq_eof
-  (const MunitParameter params[], void* data)
+int test_seq_eof(void* data)
 {
   struct test_seq_fixture const* const fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_logf(MUNIT_LOG_INFO,
-    "inspecting until %" MUNIT_SIZE_MODIFIER "u", fixt->len);
+    return Reedkiln_SKIP;
+  reedkiln_log_printf("inspecting until %i;", (unsigned)fixt->len);
   if (fixt->len > 0u) {
     size_t i;
     for (i = 0u; i < fixt->len; ++i) {
       int b;
       int const d = tcmplxAtest_gen_datum(fixt->gen, i, fixt->seed);
-      munit_assert_size(tcmplxA_seq_get_pos(p),==,i);
+      reedkiln_assert(tcmplxA_seq_get_pos(p) == i);
       b = tcmplxA_seq_get_byte(p);
       if (b!=d)
-        munit_logf(MUNIT_LOG_WARNING, "breaks at %" MUNIT_SIZE_MODIFIER "u", i);
-      munit_assert_int(b,==,d);
+        reedkiln_log_printf("breaks at %i;", (int)i);
+      reedkiln_assert(b == d);
     }
-    munit_assert_size(tcmplxA_seq_get_pos(p),==,i);
-    munit_assert_int(tcmplxA_seq_get_byte(p),==,-1);
+    reedkiln_assert(tcmplxA_seq_get_pos(p) == i);
+    reedkiln_assert(tcmplxA_seq_get_byte(p) == -1);
   } else {
-    munit_assert_size(tcmplxA_seq_get_pos(p),==,0u);
-    munit_assert_int(tcmplxA_seq_get_byte(p),==,-1);
-    munit_assert_size(tcmplxA_seq_get_pos(p),==,0u);
+    reedkiln_assert(tcmplxA_seq_get_pos(p) == 0u);
+    reedkiln_assert(tcmplxA_seq_get_byte(p) == -1);
+    reedkiln_assert(tcmplxA_seq_get_pos(p) == 0u);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_seq_seek
-  (const MunitParameter params[], void* data)
+int test_seq_seek(void* data)
 {
   struct test_seq_fixture const* const fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_logf(MUNIT_LOG_INFO,
-    "inspecting until %" MUNIT_SIZE_MODIFIER "u", fixt->len);
+    return Reedkiln_SKIP;
+  reedkiln_log_printf("inspecting until %i; ", (int)fixt->len);
   /* */{
     int j;
     for (j = 0; j < 20; ++j) {
@@ -178,56 +154,50 @@ MunitResult test_seq_seek
       else if (j == 19)
         i = 0u;
       else
-        i = (size_t)munit_rand_int_range(0, 32767);
+        i = testfont_rand_size_range(0, 32767);
       if (i > fixt->len) {
         /* expect failure */
         size_t res = tcmplxA_seq_set_pos(p,i);
         if (res != ~(size_t)0u)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks past %" MUNIT_SIZE_MODIFIER "u", i);
-        munit_assert_size(~(size_t)0u,==,res);
+          reedkiln_log_printf("breaks past %i; ", (int)i);
+        reedkiln_assert(~(size_t)0u == res);
       } else if (i == fixt->len) {
         int b;
         int const d = -1;
-        munit_assert_size(i,==,tcmplxA_seq_set_pos(p,i));
+        reedkiln_assert(i == tcmplxA_seq_set_pos(p,i));
         b = tcmplxA_seq_get_byte(p);
         if (b!=d)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks at the end (%" MUNIT_SIZE_MODIFIER "u)", i);
-        munit_assert_int(b,==,d);
+          reedkiln_log_printf("breaks at the end (%i);", (int)i);
+        reedkiln_assert(b == d);
       } else {
         /* expect success */
         int b;
         int const d = tcmplxAtest_gen_datum(fixt->gen, i, fixt->seed);
-        munit_assert_size(i,==,tcmplxA_seq_set_pos(p,i));
+        reedkiln_assert(i == tcmplxA_seq_set_pos(p,i));
         b = tcmplxA_seq_get_byte(p);
         if (b!=d)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks at %" MUNIT_SIZE_MODIFIER "u", i);
-        munit_assert_int(b,==,d);
+          reedkiln_log_printf("breaks at %i", (int)i);
+        reedkiln_assert(b == d);
       }
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_seq_whence
-  (const MunitParameter params[], void* data)
+int test_seq_whence(void* data)
 {
   struct test_seq_fixture const* const fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  munit_logf(MUNIT_LOG_INFO,
-    "inspecting until %" MUNIT_SIZE_MODIFIER "u", fixt->len);
+    return Reedkiln_SKIP;
+  reedkiln_log_printf("inspecting until %i; ", (int)fixt->len);
   /* */{
     int j;
     size_t i = 0u;
     size_t const fail = ~(size_t)0u;
     for (j = 0; j < 20; ++j) {
-      long int const dist = munit_rand_int_range(-32767, 32767);
-      int whence = munit_rand_int_range(0,2);
+      long int const dist = testfont_rand_int_range(-32767, 32767);
+      int whence = testfont_rand_int_range(0,2);
       size_t landing_i;
       /* predict where the read position should land */
       switch (whence) {
@@ -256,52 +226,44 @@ MunitResult test_seq_whence
         /* expect failure */
         long int res = tcmplxA_seq_seek(p, dist, whence);
         if (res >= -1L)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks past %" MUNIT_SIZE_MODIFIER "u to "
-            "%" MUNIT_SIZE_MODIFIER "u (%li,%i)",
-            i,landing_i,dist,(int)(whence));
-        munit_assert_long(res,<,-1L);
+          reedkiln_log_printf("breaks past %i to %i (%li,%i);",
+            (int)i,(int)landing_i,dist,(int)(whence));
+        reedkiln_assert(res < -1L);
       } else if (landing_i == fixt->len) {
         int b;
         int const d = -1;
         long int res = tcmplxA_seq_seek(p,dist,whence);
         if (res != (long int)(landing_i))
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks from %" MUNIT_SIZE_MODIFIER "u to "
-            "%" MUNIT_SIZE_MODIFIER "u (%li,%i)",
-            i,landing_i,dist,(int)(whence));
-        munit_assert_long((long int)(landing_i),==,res);
+          reedkiln_log_printf("breaks from %i to %i (%li,%i);",
+            (int)i,(int)landing_i,dist,(int)(whence));
+        reedkiln_assert((long int)(landing_i) == res);
         i = landing_i;
         b = tcmplxA_seq_get_byte(p);
         if (b!=d)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks at the end (%" MUNIT_SIZE_MODIFIER "u)", i);
-        munit_assert_int(b,==,d);
+          reedkiln_log_printf("breaks at the end (%i);", i);
+        reedkiln_assert(b == d);
       } else {
         /* expect success */
         int b;
         int const d = tcmplxAtest_gen_datum(fixt->gen, landing_i, fixt->seed);
         long int res = tcmplxA_seq_seek(p,dist,whence);
         if (res != (long int)landing_i)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks from %" MUNIT_SIZE_MODIFIER "u to "
-            "%" MUNIT_SIZE_MODIFIER "u (%li,%i)",
-            i,landing_i,dist,(int)whence);
-        munit_assert_long((long int)landing_i,==,res);
+          reedkiln_log_printf("breaks from %i to %i (%li,%i);",
+            (int)i,(int)landing_i,dist,(int)whence);
+        reedkiln_assert((long int)landing_i == res);
         i = landing_i;
         b = tcmplxA_seq_get_byte(p);
         if (b!=d)
-          munit_logf(MUNIT_LOG_WARNING,
-            "breaks at %" MUNIT_SIZE_MODIFIER "u", i);
-        munit_assert_int(b,==,d);
+          reedkiln_log_printf("breaks at %i;", (int)i);
+        reedkiln_assert(b == d);
         i += 1u;
       }
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_seq, NULL, argc, argv);
+  return reedkiln_main(&tests_seq, argc, argv, NULL);
 }

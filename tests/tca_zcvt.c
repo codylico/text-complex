@@ -4,56 +4,44 @@
 #include "testfont.h"
 #include "text-complex/access/zcvt.h"
 #include "text-complex/access/zutil.h"
-#include "munit/munit.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static MunitResult test_zcvt_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_zcvt_item
-  (const MunitParameter params[], void* data);
-static MunitResult test_zcvt_zsrtostr_none
-  (const MunitParameter params[], void* data);
-static void* test_zcvt_setup
-    (const MunitParameter params[], void* user_data);
+static int test_zcvt_cycle(void* data);
+static int test_zcvt_item(void* data);
+static int test_zcvt_zsrtostr_none(void* data);
+static void* test_zcvt_setup(void* user_data);
 static void test_zcvt_teardown(void* fixture);
 
-static MunitParameterEnum test_zcvt_params[] = {
-  { NULL, NULL },
+
+static struct reedkiln_box const box_zcvt = {
+  test_zcvt_setup,test_zcvt_teardown
 };
 
-static MunitTest tests_zcvt[] = {
-  {"cycle", test_zcvt_cycle,
-    NULL,NULL,MUNIT_TEST_OPTION_SINGLE_ITERATION,NULL},
-  {"item", test_zcvt_item,
-    test_zcvt_setup,test_zcvt_teardown,0,test_zcvt_params},
-  {"in/none", test_zcvt_zsrtostr_none,
-    test_zcvt_setup,test_zcvt_teardown,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_zcvt = {
-  "access/zcvt/", tests_zcvt, NULL, 1, 0
+static struct reedkiln_entry const tests_zcvt[] = {
+  {"access/zcvt/cycle", test_zcvt_cycle },
+  {"access/zcvt/in/none", test_zcvt_zsrtostr_none, 0,&box_zcvt },
+  {NULL}
 };
 
 
 
 
-MunitResult test_zcvt_cycle
-  (const MunitParameter params[], void* data)
+
+int test_zcvt_cycle(void* data)
 {
   struct tcmplxA_zcvt* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_zcvt_new(64,128,16);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_zcvt_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_zcvt_setup(const MunitParameter params[], void* user_data) {
+void* test_zcvt_setup(void* user_data) {
   return tcmplxA_zcvt_new(64,128,16);
 }
 
@@ -62,30 +50,18 @@ void test_zcvt_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_zcvt_item
-  (const MunitParameter params[], void* data)
-{
-  struct tcmplxA_zcvt* const p = (struct tcmplxA_zcvt*)data;
-  if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
-  (void)data;
-  return MUNIT_OK;
-}
 
-MunitResult test_zcvt_zsrtostr_none
-  (const MunitParameter params[], void* data)
+int test_zcvt_zsrtostr_none(void* data)
 {
   struct tcmplxA_zcvt* const p = (struct tcmplxA_zcvt*)data;
   unsigned char buf[128+11] = {8u,29u,1u};
-  size_t const len = (size_t)munit_rand_int_range(0,128);
+  size_t const len = testfont_rand_size_range(0,128);
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* "compress" some data */{
-    uint32_t checksum;
+    unsigned checksum;
     unsigned char *const check_buffer = buf+7+len;
-    munit_rand_memory(len, (munit_uint8_t*)(buf+7));
+    reedkiln_memrand(buf+7, len);
     checksum = tcmplxA_zutil_adler32(len, buf+7, 1);
     buf[3] = (len)&0xff;
     buf[4] = (len>>8)&0xff;
@@ -103,15 +79,15 @@ MunitResult test_zcvt_zsrtostr_none
     unsigned char const* src = buf;
     int const res = tcmplxA_zcvt_zsrtostr
       (p, &ret, to_buf, 128, &src, src+total);
-    munit_assert_int(res, ==, tcmplxA_Success);
-    munit_assert_size(ret, ==, len);
-    munit_assert_size(src-buf, ==, total);
-    munit_assert_memory_equal(len, to_buf, buf+7);
+    reedkiln_assert(res == tcmplxA_Success);
+    reedkiln_assert(ret == len);
+    reedkiln_assert(src-buf == total);
+    reedkiln_assert(memcmp(len, to_buf, buf+7) == 0);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 
 int main(int argc, char **argv) {
-  return munit_suite_main(&suite_zcvt, NULL, argc, argv);
+  return reedkiln_main(&tests_zcvt, argc, argv, NULL);
 }

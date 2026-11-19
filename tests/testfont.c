@@ -228,12 +228,24 @@ int tcmplxAtest_strdup(char** out, char const* arg) {
 
 int tcmplxAtest_arg_init(struct tcmplxAtest_arg* tfa) {
   tfa->font_path = NULL;
+  tfa->prefixes = NULL;
+  tfa->frequencies = NULL;
+  tfa->ndirect = NULL;
+  tfa->npostfix = NULL;
   return 0;
 }
 
 void tcmplxAtest_arg_close(struct tcmplxAtest_arg* tfa) {
   free(tfa->font_path);
   tfa->font_path = NULL;
+  free(tfa->prefixes);
+  tfa->prefixes = NULL;
+  free(tfa->frequencies);
+  tfa->frequencies = NULL;
+  free(tfa->ndirect);
+  tfa->ndirect = NULL;
+  free(tfa->npostfix);
+  tfa->npostfix = NULL;
   return;
 }
 

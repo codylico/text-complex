@@ -5,63 +5,54 @@
 #include "text-complex/access/woff2.h"
 #include "text-complex/access/offtable.h"
 #include "mmaptwo/mmaptwo.h"
-#include "munit/munit.h"
+#include "reedkiln/log.h"
+#include "reedkiln/reedkiln.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static MunitResult test_woff2_cycle
-    (const MunitParameter params[], void* data);
-static MunitResult test_woff2_item
-  (const MunitParameter params[], void* data);
-static MunitResult test_woff2_tag_toi
-  (const MunitParameter params[], void* data);
-static void* test_woff2_setup
-    (const MunitParameter params[], void* user_data);
-static void* test_woff2_null_setup
-    (const MunitParameter params[], void* user_data);
+static int test_woff2_cycle(void* data);
+static int test_woff2_item(void* data);
+static int test_woff2_tag_toi(void* data);
+static void* test_woff2_setup(void* user_data);
+static void* test_woff2_null_setup(void* user_data);
 static void test_woff2_teardown(void* fixture);
 
-static MunitParameterEnum test_woff2_params[] = {
-  { NULL, NULL },
+
+static struct reedkiln_box const box_woff2_null = {
+  test_woff2_null_setup, test_woff2_teardown
+};
+static struct reedkiln_box const box_woff2 = {
+  test_woff2_setup, test_woff2_teardown
 };
 
-static MunitTest tests_woff2[] = {
-  {"cycle", test_woff2_cycle,
-    NULL,NULL,
-    MUNIT_TEST_OPTION_SINGLE_ITERATION|MUNIT_TEST_OPTION_TODO,
-    test_woff2_params},
-  {"item", test_woff2_item,
-    test_woff2_setup,test_woff2_teardown,0,NULL},
-  {"tag_toi", test_woff2_tag_toi, NULL,NULL,0,NULL},
-  {NULL, NULL, NULL,NULL,0,NULL}
-};
-
-static MunitSuite const suite_woff2 = {
-  "access/woff2/", tests_woff2, NULL, 1, 0
+static struct reedkiln_entry const tests_woff2[] = {
+  {"access/woff2/cycle", test_woff2_cycle, Reedkiln_TODO },
+  {"access/woff2/item", test_woff2_item, 0,&box_woff2 },
+  {"access/woff2/tag_toi", test_woff2_tag_toi },
+  {NULL}
 };
 
 
 
 
-MunitResult test_woff2_cycle
-  (const MunitParameter params[], void* data)
+
+int test_woff2_cycle(void* data)
 {
   struct tcmplxA_woff2* ptr[1];
-  (void)params;
   (void)data;
   ptr[0] = tcmplxA_woff2_new(NULL,0);
-  munit_assert_not_null(ptr[0]);
+  reedkiln_assert(ptr[0]);
   tcmplxA_woff2_destroy(ptr[0]);
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-void* test_woff2_null_setup(const MunitParameter params[], void* user_data) {
+void* test_woff2_null_setup(void* user_data) {
   return tcmplxA_woff2_new(NULL,0);
 }
 
-void* test_woff2_setup(const MunitParameter params[], void* user_data) {
+void* test_woff2_setup(void* user_data) {
   struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg *)user_data;
   struct mmaptwo_i* m2i;
   struct tcmplxA_woff2* w2;
@@ -82,51 +73,46 @@ void test_woff2_teardown(void* fixture) {
   return;
 }
 
-MunitResult test_woff2_item
-  (const MunitParameter params[], void* data)
+int test_woff2_item(void* data)
 {
   struct tcmplxA_woff2* const p = (struct tcmplxA_woff2*)data;
   if (p == NULL)
-    return MUNIT_SKIP;
-  (void)params;
+    return Reedkiln_SKIP;
   /* inspect offset table items */{
     struct tcmplxA_offtable const* const offt = tcmplxA_woff2_get_offsets(p);
     size_t l, i;
-    munit_assert_ptr_not_null(offt);
+    reedkiln_assert(offt);
     l = tcmplxA_offtable_size(offt);
     for (i = 0; i < l; ++i) {
       struct tcmplxA_offline const* line = tcmplxA_offtable_at_c(offt, i);
-      munit_logf(MUNIT_LOG_INFO,
-        "[%" MUNIT_SIZE_MODIFIER "u] = {\"%.4s\", %lu from %lu}",
-        i, line->tag, (long unsigned int)line->length,
-        (long unsigned int)line->offset
+      reedkiln_log_printf("[%i] = {\"%.4s\", %li from %li}",
+        (int)i, line->tag, (long int)line->length,
+        (long int)line->offset
         );
     }
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
-MunitResult test_woff2_tag_toi
-  (const MunitParameter params[], void* data)
+int test_woff2_tag_toi(void* data)
 {
-  (void)params;
   (void)data;
-  unsigned int i = (unsigned int)(munit_rand_uint32()&63);
+  unsigned int i = (reedkiln_rand()&63);
   if (i == 63) {
     unsigned char const* value = tcmplxA_woff2_tag_fromi(i);
-    munit_assert_ptr_null(value);
+    reedkiln_assert(!value);
     unsigned char buf[4] = {1,2,3,4};
     unsigned int j = tcmplxA_woff2_tag_toi(buf);
-    munit_assert_uint(j,==,i);
+    reedkiln_assert(j == i);
   } else {
     unsigned char const* value = tcmplxA_woff2_tag_fromi(i);
-    munit_assert_ptr_not_null(value);
+    reedkiln_assert(value);
     unsigned char buf[4];
     memcpy(buf,value,sizeof(buf));
     unsigned int j = tcmplxA_woff2_tag_toi(buf);
-    munit_assert_uint(j,==,i);
+    reedkiln_assert(j == i);
   }
-  return MUNIT_OK;
+  return Reedkiln_OK;
 }
 
 
@@ -134,8 +120,7 @@ int main(int argc, char **argv) {
   struct tcmplxAtest_arg tfa;
   int res;
   tcmplxAtest_arg_init(&tfa);
-  res = munit_suite_main_custom
-    (&suite_woff2, &tfa, argc, argv, tcmplxAtest_get_args());
+  res = testfont_do_main(&tests_woff2, &tfa, argc, argv);
   tcmplxAtest_arg_close(&tfa);
   return res;
 }
