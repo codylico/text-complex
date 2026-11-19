@@ -69,7 +69,7 @@ int test_ringslide_add(void* data)
   int const add_count = testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* fill the buffer */{
     reedkiln_memrand(buf, add_count);
   }
@@ -101,7 +101,7 @@ int test_ringslide_addring(void* data)
   unsigned const skip_count = extent - testfont_rand_uint_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* fill the buffer */{
     reedkiln_memrand(buf, add_count);
   }

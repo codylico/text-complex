@@ -83,7 +83,7 @@ int test_ctxtmap_item(void* data)
 {
   struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* */{
     unsigned char* data_ptr = tcmplxA_ctxtmap_data(p);
     size_t j;
@@ -157,14 +157,14 @@ int test_ctxtmap_imtf(void* data)
   struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
   unsigned char* mem;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* */{
     size_t const isize =
       tcmplxA_ctxtmap_contexts(p) * tcmplxA_ctxtmap_block_types(p);
     unsigned char* const data = tcmplxA_ctxtmap_data(p);
     mem = malloc(isize*sizeof(unsigned char));
     if (mem == NULL)
-      return Reedkiln_SKIP;
+      return Reedkiln_IGNORE;
     reedkiln_memrand(data, isize);
     memcpy(mem, data, isize*sizeof(unsigned char));
     /* apply the inverse transform */{
@@ -181,14 +181,14 @@ int test_ctxtmap_mtf(void* data)
   struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
   unsigned char* mem;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* */{
     size_t const isize =
       tcmplxA_ctxtmap_contexts(p) * tcmplxA_ctxtmap_block_types(p);
     unsigned char* const data = tcmplxA_ctxtmap_data(p);
     mem = malloc(isize*sizeof(unsigned char));
     if (mem == NULL)
-      return Reedkiln_SKIP;
+      return Reedkiln_IGNORE;
     reedkiln_memrand(data, isize);
     memcpy(mem, data, isize*sizeof(unsigned char));
     /* apply the inverse transform */{
@@ -205,7 +205,7 @@ int test_ctxtmap_modes(void* data)
 {
   struct tcmplxA_ctxtmap* const p = (struct tcmplxA_ctxtmap*)data;
   if (!p)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* */{
     size_t blocks = tcmplxA_ctxtmap_block_types(p);
     int mode = testfont_rand_int_range(0,3);

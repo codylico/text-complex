@@ -56,7 +56,7 @@ int test_zutil_adler32_long(void* data)
   (void)data;
   buf = calloc(1, len);
   if (buf == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_memrand(buf, len);
   checksums[0] = test_adler32(buf, len);
   checksums[1] = tcmplxA_zutil_adler32(len, buf, 1);

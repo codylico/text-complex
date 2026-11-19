@@ -57,7 +57,7 @@ int test_gaspvec_item(void* data)
   size_t sz;
   size_t i;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   sz = tcmplxA_gaspvec_size(p);
   i = testfont_rand_size_range(0,sz-1);
   reedkiln_assert(sz >= 4);
@@ -78,7 +78,7 @@ int test_gaspvec_skip(void* data)
   size_t i;
   unsigned short x;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   sz = tcmplxA_gaspvec_size(p);
   i = testfont_rand_size_range(0,sz-1);
   x = (unsigned short)testfont_rand_int_range(0,65534);

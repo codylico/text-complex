@@ -74,7 +74,7 @@ int test_hashchain_add(void* data)
   int const add_count = testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* fill the buffer */{
     reedkiln_memrand(buf, add_count);
   }
@@ -106,7 +106,7 @@ int test_hashchain_addring(void* data)
   unsigned const skip_count = extent - testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* fill the buffer */{
     reedkiln_memrand(buf, add_count);
   }
@@ -148,7 +148,7 @@ int test_hashchain_find(void* data)
   unsigned const skip_count = extent - testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* fill the buffer */{
     int i;
     for (i = 0; i < add_count; ++i) {

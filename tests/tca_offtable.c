@@ -54,7 +54,7 @@ int test_offtable_item(void* data)
   size_t sz;
   size_t i;
   if (offtable == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   (void)data;
   sz = tcmplxA_offtable_size(offtable);
   i = testfont_rand_size_range(0,sz-1);

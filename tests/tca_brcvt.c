@@ -60,7 +60,7 @@ int test_brcvt_metadata_ptr(void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_assert(tcmplxA_brcvt_metadata(p) != NULL);
   reedkiln_assert(tcmplxA_brcvt_metadata(p) ==
     tcmplxA_brcvt_metadata_c(p));
@@ -78,7 +78,7 @@ int test_brcvt_metadata_cycle(void* data)
   reedkiln_memrand(&text[0], sizeof(text));
   if (p == NULL || q == NULL) {
     tcmplxA_brcvt_destroy(q);
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   }
   /* store */
   {
@@ -132,7 +132,7 @@ int test_brcvt_zsrtostr_none(void* data)
   unsigned char buf[128+5] = {12u};
   size_t const len = testfont_rand_size_range(0,128);
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* See Section 11.1 of RFC 7932: `BrotliCompressTrivial` */
   /* "compress" some data */if (len == 0) {
     buf[0] = 6;
@@ -172,7 +172,7 @@ int test_brcvt_flush(void* data)
   reedkiln_memrand(&text[0], sizeof(text));
   if (p == NULL || q == NULL) {
     tcmplxA_brcvt_destroy(q);
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   }
   /* encode */
   {

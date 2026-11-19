@@ -119,7 +119,7 @@ int test_fixlist_item(void* data)
   size_t sz;
   size_t i;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   sz = tcmplxA_fixlist_size(p);
   i = testfont_rand_size_range(0,sz-1);
   reedkiln_assert(sz >= 4);
@@ -136,7 +136,7 @@ int test_fixlist_gen_codes(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_assert(tcmplxA_fixlist_gen_codes(p) == tcmplxA_Success);
   /* inspect the new codes */{
     size_t i;
@@ -156,7 +156,7 @@ int test_fixlist_codesort(void* data)
 {
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_assert(tcmplxA_fixlist_gen_codes(p) == tcmplxA_Success);
   reedkiln_assert(tcmplxA_fixlist_codesort(p) == tcmplxA_Success);
   /* inspect the new codes */if (tcmplxA_fixlist_size(p) > 1) {
@@ -197,7 +197,7 @@ int test_fixlist_gen_lengths(void* data)
   struct tcmplxA_fixlist* const p = (struct tcmplxA_fixlist*)data;
   tcmplxA_uint32* ph;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* extract the histogram */{
     size_t const sz = tcmplxA_fixlist_size(p);
     size_t i;
@@ -244,7 +244,7 @@ int test_fixlist_preset(void* data)
   size_t i;
   size_t sz;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   x = (unsigned int)testfont_rand_int_range(0,7);
   /* generate once */{
     reedkiln_assert(tcmplxA_fixlist_preset(p, x) == tcmplxA_Success);

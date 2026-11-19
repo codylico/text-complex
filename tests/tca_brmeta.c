@@ -53,7 +53,7 @@ int test_brmeta_item(void* data)
   int i;
   unsigned char* ptr;
   if (table == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_assert(tcmplxA_brmeta_size(table) == 0);
   sz = testfont_rand_int_range(1,256);
   {

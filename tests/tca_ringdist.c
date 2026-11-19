@@ -149,7 +149,7 @@ int test_ringdist_1951_bit_count(void* data)
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* inspect */{
     size_t i;
     for (i = 0u; i < 30u; ++i) {
@@ -169,7 +169,7 @@ int test_ringdist_7932_bit_count(void* data)
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   unsigned int alpha_size;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* recompute alphabet size */{
     alpha_size = 16 + fixt->direct_count + (48 << fixt->postfix_size);
   }
@@ -204,7 +204,7 @@ int test_ringdist_1951_decode(void* data)
   unsigned int decomposed_code;
   unsigned int decomposed_extra;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* compose 1951 encoding of distance */{
     unsigned int back_bit_count = 0u;
     unsigned int num_bits;
@@ -245,9 +245,9 @@ int test_ringdist_7932_decode(void* data)
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   // TODO Implement this test.
-  return Reedkiln_SKIP;
+  return Reedkiln_IGNORE;
 }
 
 int test_ringdist_encode(void* data)
@@ -256,13 +256,13 @@ int test_ringdist_encode(void* data)
     (struct test_ringdist_fixture*)data;
   struct tcmplxA_ringdist* const p = (fixt!=NULL) ? fixt->rd : NULL;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* round-trip test */{
     int j;
     struct tcmplxA_ringdist* const q = tcmplxA_ringdist_new
       (fixt->special_tf, fixt->direct_count, fixt->postfix_size);
     if (q == NULL)
-      return Reedkiln_SKIP;
+      return Reedkiln_IGNORE;
     else tcmplxA_ringdist_copy(q, p);
     for (j = 0; j < 100; ++j) {
       unsigned int back_dist = testfont_rand_uint_range(1u,32768u);
@@ -290,7 +290,7 @@ int test_ringdist_reconfigure(void* data)
   unsigned int back_dist = testfont_rand_uint_range(1u,32768u);
   int res = 0;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   decomposed_code = tcmplxA_ringdist_encode(p, back_dist, &decomposed_extra, 32768u);
   reedkiln_assert(decomposed_code != UINT_MAX);
   res = tcmplxA_ringdist_reconfigure(p, 1, testfont_rand_uint_range(0,120), fixt->postfix_size);

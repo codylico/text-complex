@@ -101,7 +101,7 @@ int test_seq_null_eof(void* data)
   struct test_seq_fixture* fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_assert(tcmplxA_seq_get_pos(p) == 0u);
   reedkiln_assert(tcmplxA_seq_get_byte(p) == -1);
   reedkiln_assert(tcmplxA_seq_get_pos(p) == 0u);
@@ -113,7 +113,7 @@ int test_seq_eof(void* data)
   struct test_seq_fixture const* const fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_log_printf("inspecting until %i;", (unsigned)fixt->len);
   if (fixt->len > 0u) {
     size_t i;
@@ -141,7 +141,7 @@ int test_seq_seek(void* data)
   struct test_seq_fixture const* const fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_log_printf("inspecting until %i; ", (int)fixt->len);
   /* */{
     int j;
@@ -189,7 +189,7 @@ int test_seq_whence(void* data)
   struct test_seq_fixture const* const fixt = (struct test_seq_fixture*)data;
   struct tcmplxA_seq* const p = fixt->seq;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   reedkiln_log_printf("inspecting until %i; ", (int)fixt->len);
   /* */{
     int j;

@@ -57,7 +57,7 @@ int test_zcvt_zsrtostr_none(void* data)
   unsigned char buf[128+11] = {8u,29u,1u};
   size_t const len = testfont_rand_size_range(0,128);
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* "compress" some data */{
     unsigned checksum;
     unsigned char *const check_buffer = buf+7+len;

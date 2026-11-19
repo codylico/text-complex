@@ -86,7 +86,7 @@ int test_inscopy_item(void* data)
 {
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* consistency check */{
     size_t const i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p));
     reedkiln_assert
@@ -161,7 +161,7 @@ int test_inscopy_item_c(void* data)
 {
   struct tcmplxA_inscopy const* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   (void)data;
   switch (tcmplxA_inscopy_size(p)) {
   case 286: /* Deflate */
@@ -229,7 +229,7 @@ int test_inscopy_codesort(void* data)
 {
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* run code-sort */{
     int const res = tcmplxA_inscopy_codesort(p);
     reedkiln_assert(res == tcmplxA_Success);
@@ -247,7 +247,7 @@ int test_inscopy_lengthsort(void* data)
 {
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* run length-sort */{
     int const res = tcmplxA_inscopy_lengthsort(p);
     reedkiln_assert(res == tcmplxA_Success);
@@ -279,11 +279,11 @@ int test_inscopy_encode(void* data)
   size_t const not_found = ((size_t)-1);
   struct tcmplxA_inscopy* const p = (struct tcmplxA_inscopy*)data;
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* run length-sort */{
     int const res = tcmplxA_inscopy_lengthsort(p);
     if (res != tcmplxA_Success)
-      return Reedkiln_SKIP;
+      return Reedkiln_IGNORE;
   }
   switch (tcmplxA_inscopy_size(p)) {
   case 704: /* Brotli insert-copy pairs */{

@@ -72,7 +72,7 @@ int test_blockbuf_item(void* data)
   size_t const count = testfont_rand_size_range
     (1, tcmplxA_blockbuf_capacity(p));
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* add some stuff */{
     unsigned char buf[128];
     int res;
@@ -90,7 +90,7 @@ int test_blockbuf_gen(void* data)
   size_t const count = tcmplxA_blockbuf_capacity(p);
   unsigned char buf[128];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* build the text */{
     size_t i;
     reedkiln_memrand(buf, count);
@@ -166,7 +166,7 @@ int test_blockbuf_noconv(void* data)
   size_t const count = tcmplxA_blockbuf_capacity(p);
   unsigned char buf[128];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* build the text */{
     size_t i;
     reedkiln_memrand(buf, count);
@@ -202,7 +202,7 @@ int test_blockbuf_bypass(void* data)
   size_t const count = tcmplxA_blockbuf_capacity(p);
   unsigned char buf[3];
   if (p == NULL || count < 3)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* build the text */{
     size_t i;
     reedkiln_memrand(buf, 3);
@@ -243,7 +243,7 @@ int test_blockbuf_add(void* data)
   int const add_count = testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
-    return Reedkiln_SKIP;
+    return Reedkiln_IGNORE;
   /* fill the buffer */{
     reedkiln_memrand(buf, add_count);
   }
