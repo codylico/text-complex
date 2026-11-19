@@ -389,6 +389,10 @@ int test_bdict_transform_affix(void* data)
 
 
 int main(int argc, char **argv) {
-  struct tcmplxAtest_arg arg = {NULL};
-  return testfont_do_main(&tests_bdict, &arg, argc, argv);
+  struct tcmplxAtest_arg tfa = {NULL};
+  int res = 0;
+  tcmplxAtest_arg_init(&tfa);
+  res = testfont_do_main(&tests_bdict, &tfa, argc, argv);
+  tcmplxAtest_arg_close(&tfa);
+  return res;
 }

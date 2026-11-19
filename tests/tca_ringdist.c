@@ -304,9 +304,10 @@ int test_ringdist_reconfigure(void* data)
 
 
 int main(int argc, char **argv) {
-  struct tcmplxAtest_arg arg = {NULL};
-  int const res = testfont_do_main(&tests_ringdist, &arg, argc, argv);
-  free(arg.ndirect);
-  free(arg.npostfix);
+  struct tcmplxAtest_arg tfa = {NULL};
+  int res = 0;
+  tcmplxAtest_arg_init(&tfa);
+  res = testfont_do_main(&tests_ringdist, &tfa, argc, argv);
+  tcmplxAtest_arg_close(&tfa);
   return res;
 }
