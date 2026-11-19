@@ -138,7 +138,7 @@ int test_ctxtmap_litcontext(void* data)
   /* inspect the result */if (m < 4) {
     switch (m) {
     case tcmplxA_CtxtMap_LSB6:
-      reedkiln_assert(ctxt == hist[0]&0x3f);
+      reedkiln_assert(ctxt == (hist[0]&0x3f));
       break;
     case tcmplxA_CtxtMap_MSB6:
       reedkiln_assert(ctxt == (hist[0]>>2));

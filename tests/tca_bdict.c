@@ -265,7 +265,7 @@ int test_bdict_transform_isolate(void* data)
       break;
     case 1: /* ferment first */
       reedkiln_assert(b_word_len == a_word_len);
-      reedkiln_assert(memcmp(a_word+1,b_word+1, a_word_len-1));
+      reedkiln_assert(memcmp(a_word+1,b_word+1, a_word_len-1) == 0);
       reedkiln_assert(test_bdict_fermentcmp(a_word[0], b_word[0]));
       break;
     case 2: /* ferment all */
