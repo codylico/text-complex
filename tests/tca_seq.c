@@ -240,7 +240,7 @@ int test_seq_whence(void* data)
         i = landing_i;
         b = tcmplxA_seq_get_byte(p);
         if (b!=d)
-          reedkiln_log_printf("breaks at the end (%i);", i);
+          reedkiln_log_printf("breaks at the end (%i);", (int)i);
         reedkiln_assert(b == d);
       } else {
         /* expect success */
@@ -265,5 +265,5 @@ int test_seq_whence(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_seq, argc, argv, NULL);
+  return reedkiln_main(tests_seq, argc, argv, NULL);
 }

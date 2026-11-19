@@ -82,12 +82,12 @@ int test_zcvt_zsrtostr_none(void* data)
     reedkiln_assert(res == tcmplxA_Success);
     reedkiln_assert(ret == len);
     reedkiln_assert(src-buf == total);
-    reedkiln_assert(memcmp(len, to_buf, buf+7) == 0);
+    reedkiln_assert(memcmp(to_buf, buf+7, len) == 0);
   }
   return Reedkiln_OK;
 }
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_zcvt, argc, argv, NULL);
+  return reedkiln_main(tests_zcvt, argc, argv, NULL);
 }

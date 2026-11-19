@@ -116,7 +116,7 @@ int test_ctxtspan_guess_signed(void* data)
 int test_ctxtspan_subdivide(void* data)
 {
   unsigned char buf[32] = {0};
-  unsigned len = munit_rand_uint32()%33;
+  unsigned len = reedkiln_rand()%33;
   struct tcmplxA_ctxtspan spans = {0};
   size_t i;
   (void)data;
@@ -138,5 +138,5 @@ int test_ctxtspan_subdivide(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_ctxtspan, argc, argv, NULL);
+  return reedkiln_main(tests_ctxtspan, argc, argv, NULL);
 }

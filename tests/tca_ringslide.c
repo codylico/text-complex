@@ -136,5 +136,5 @@ int test_ringslide_addring(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_ringslide, argc, argv, NULL);
+  return reedkiln_main(tests_ringslide, argc, argv, NULL);
 }

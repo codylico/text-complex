@@ -58,7 +58,7 @@ int test_fixlist_cycle(void* data)
 }
 
 void* test_fixlist_setup(void* user_data) {
-  return tcmplxA_fixlist_new((size_t)munit_rand_int_range(4,256));
+  return tcmplxA_fixlist_new(testfont_rand_size_range(4,256));
 }
 
 void* test_fixlist_gen_setup(void* user_data) {
@@ -86,7 +86,7 @@ void* test_fixlist_len_setup(void* user_data) {
   struct tcmplxAtest_arg const* const user_arg = (struct tcmplxAtest_arg*)user_data;
   int const start_res = tcmplxAtest_fixlist_lex_start(&lex, user_arg->frequencies);
   out = tcmplxA_fixlist_new
-    (start_res==0 ? lex.total : munit_rand_int_range(2,384));
+    (start_res==0 ? lex.total : testfont_rand_size_range(2,384));
   if (out == NULL)
     return out;
   else if (start_res != 0) {
@@ -94,7 +94,7 @@ void* test_fixlist_len_setup(void* user_data) {
     size_t i;
     /* generate random */
     for (i = 0; i < len; ++i) {
-      tcmplxA_fixlist_at(out, i)->len = munit_rand_int_range(0,32);
+      tcmplxA_fixlist_at(out, i)->len = (unsigned short)testfont_rand_int_range(0,32);
       tcmplxA_fixlist_at(out, i)->value = (unsigned int)i;
     }
   } else {
@@ -121,7 +121,7 @@ int test_fixlist_item(void* data)
   if (p == NULL)
     return Reedkiln_SKIP;
   sz = tcmplxA_fixlist_size(p);
-  i = (size_t)munit_rand_int_range(0,(int)(sz)-1);
+  i = testfont_rand_size_range(0,sz-1);
   reedkiln_assert(sz >= 4);
   reedkiln_assert(sz <= 256);
   dsp[0] = tcmplxA_fixlist_at(p, i);
@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
   struct tcmplxAtest_arg tfa = {NULL};
   int res = 0;
   tcmplxAtest_arg_init(&tfa);
-  res = testfont_do_main(&tests_fixlist, &tfa, argc, argv);
+  res = testfont_do_main(tests_fixlist, &tfa, argc, argv);
   tcmplxAtest_arg_close(&tfa);
   return res;
 }

@@ -8,12 +8,10 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 
-static
-int tcmplxAtest_arg_fp_parse
-  ( void* user_data, int* arg, int argc,
-    char* const argv[]);
+static int tcmplxAtest_arg_fp_parse(void* user_data, int* arg, int argc,char** argv);
 static int tcmplxAtest_arg_prefixes_parse(void*,int*,int,char**);
 static int tcmplxAtest_arg_frequencies_parse(void*,int*,int,char**);
 static int tcmplxAtest_arg_ndirect_parse(void*,int*,int,char**);
@@ -29,7 +27,7 @@ struct tcmplxAtest_argLine
 {
   char const* name;
   int (*parse)(void*, int*, int, char**);
-  int (*help)(void*);
+  void (*help)(void*);
 };
 
 struct tcmplxAtest_argLine const tcmplxAtest_arglist[] = {
@@ -251,7 +249,7 @@ void tcmplxAtest_arg_close(struct tcmplxAtest_arg* tfa) {
 
 static int tcmplxAtest_arg_fp_parse
   ( void* user_data, int* arg, int argc,
-    char* const argv[])
+    char** argv)
 {
   struct tcmplxAtest_arg *const tfa = (struct tcmplxAtest_arg*)user_data;
   ++(*arg);

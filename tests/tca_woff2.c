@@ -59,8 +59,7 @@ void* test_woff2_setup(void* user_data) {
   if (tfa->font_path != NULL)
     m2i = mmaptwo_open(tfa->font_path, "re", 0,0);
   else
-    m2i = tcmplxAtest_gen_maptwo
-        (tcmplxAtest_Zero, 256, (unsigned int)munit_rand_uint32());
+    m2i = tcmplxAtest_gen_maptwo(tcmplxAtest_Zero, 256, reedkiln_rand());
   w2 = tcmplxA_woff2_new(m2i,0);
   if (w2 == NULL) {
     mmaptwo_close(m2i);
@@ -117,10 +116,10 @@ int test_woff2_tag_toi(void* data)
 
 
 int main(int argc, char **argv) {
-  struct tcmplxAtest_arg tfa;
+  struct tcmplxAtest_arg tfa = {NULL};
   int res;
   tcmplxAtest_arg_init(&tfa);
-  res = testfont_do_main(&tests_woff2, &tfa, argc, argv);
+  res = testfont_do_main(tests_woff2, &tfa, argc, argv);
   tcmplxAtest_arg_close(&tfa);
   return res;
 }

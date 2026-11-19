@@ -130,7 +130,7 @@ int test_brcvt_zsrtostr_none(void* data)
 {
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   unsigned char buf[128+5] = {12u};
-  size_t const len = (size_t)munit_rand_int_range(0,128);
+  size_t const len = testfont_rand_size_range(0,128);
   if (p == NULL)
     return Reedkiln_SKIP;
   /* See Section 11.1 of RFC 7932: `BrotliCompressTrivial` */
@@ -165,8 +165,8 @@ int test_brcvt_flush(void* data)
   struct tcmplxA_brcvt* const p = (struct tcmplxA_brcvt*)data;
   struct tcmplxA_brcvt* const q = tcmplxA_brcvt_new(4096,4096,4096);
   unsigned char text[16] = {0};
-  int const text_len = munit_rand_int_range(3,16);
-  int const flush_len = munit_rand_int_range(1,text_len-1);
+  int const text_len = testfont_rand_int_range(3,16);
+  int const flush_len = testfont_rand_int_range(1,text_len-1);
   unsigned char buf[256] = {0};
   size_t buf_len = 0;
   reedkiln_memrand(&text[0], sizeof(text));
@@ -212,7 +212,7 @@ int test_brcvt_flush(void* data)
       &buf_ptr, buf+buf_len);
     reedkiln_assert(res >= tcmplxA_Success);
     reedkiln_assert(dummy_len == text_len);
-    reedkiln_assert_memory_equal(text_len, dummy, text);
+    reedkiln_assert(memcmp(dummy, text, text_len) == 0);
   }
   tcmplxA_brcvt_destroy(q);
   return Reedkiln_OK;
@@ -220,5 +220,5 @@ int test_brcvt_flush(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_brcvt, argc, argv, NULL);
+  return reedkiln_main(tests_brcvt, argc, argv, NULL);
 }

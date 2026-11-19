@@ -59,14 +59,14 @@ int test_gaspvec_item(void* data)
   if (p == NULL)
     return Reedkiln_SKIP;
   sz = tcmplxA_gaspvec_size(p);
-  i = (size_t)munit_rand_int_range(0,(int)(sz)-1);
-  munit_assert(sz >= 4);
-  munit_assert(sz <= 256);
+  i = testfont_rand_size_range(0,sz-1);
+  reedkiln_assert(sz >= 4);
+  reedkiln_assert(sz <= 256);
   dsp[0] = tcmplxA_gaspvec_at(p, i);
   dsp[1] = tcmplxA_gaspvec_at_c(p, i);
-  munit_assert(dsp[0] != NULL);
-  munit_assert(dsp[1] != NULL);
-  munit_assert(dsp[0] == dsp[1]);
+  reedkiln_assert(dsp[0] != NULL);
+  reedkiln_assert(dsp[1] != NULL);
+  reedkiln_assert(dsp[0] == dsp[1]);
   return Reedkiln_OK;
 }
 
@@ -80,7 +80,7 @@ int test_gaspvec_skip(void* data)
   if (p == NULL)
     return Reedkiln_SKIP;
   sz = tcmplxA_gaspvec_size(p);
-  i = (size_t)testfont_rand_int_range(0,(int)(sz)-1);
+  i = testfont_rand_size_range(0,sz-1);
   x = (unsigned short)testfont_rand_int_range(0,65534);
   reedkiln_assert(sz >= 4);
   reedkiln_assert(sz <= 256);
@@ -93,5 +93,5 @@ int test_gaspvec_skip(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_gaspvec, argc, argv, NULL);
+  return reedkiln_main(tests_gaspvec, argc, argv, NULL);
 }

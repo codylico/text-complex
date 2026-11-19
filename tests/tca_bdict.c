@@ -234,12 +234,12 @@ int test_bdict_transform_isolate(void* data)
     { 0, 9, 44,
       3, 11, 26, 34, 39, 40, 55, -1, 54,
       12, 27, 23, 42, 63, 56, 48, 59, 64 };
-  unsigned int const transform_subindex = munit_rand_int_range(0,20);
+  unsigned int const transform_subindex = testfont_rand_uint_range(0,20);
   unsigned char a_word[38], b_word[38];
   unsigned int a_word_len, b_word_len;
   /* compose a word */{
     unsigned char buf[24];
-    unsigned int const wordlen = munit_rand_int_range(4,24);
+    unsigned int const wordlen = testfont_rand_uint_range(4,24);
     unsigned int i;
     reedkiln_memrand(buf, sizeof(buf));
     for (i = 0u; i < wordlen; ++i) {
@@ -301,7 +301,7 @@ int test_bdict_transform_ferment(void* data)
   unsigned int a_word_len, b_word_len;
   /* compose a word */{
     unsigned char buf[24];
-    unsigned int const wordlen = munit_rand_int_range(4,24);
+    unsigned int const wordlen = testfont_rand_uint_range(4,24);
     unsigned int i;
     reedkiln_memrand(buf, sizeof(buf));
     memcpy(a_word, buf, sizeof(unsigned char)*wordlen);
@@ -392,7 +392,7 @@ int main(int argc, char **argv) {
   struct tcmplxAtest_arg tfa = {NULL};
   int res = 0;
   tcmplxAtest_arg_init(&tfa);
-  res = testfont_do_main(&tests_bdict, &tfa, argc, argv);
+  res = testfont_do_main(tests_bdict, &tfa, argc, argv);
   tcmplxAtest_arg_close(&tfa);
   return res;
 }

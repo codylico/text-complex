@@ -71,7 +71,7 @@ void test_hashchain_teardown(void* fixture) {
 int test_hashchain_add(void* data)
 {
   struct tcmplxA_hashchain* const p = (struct tcmplxA_hashchain*)data;
-  int const add_count = munit_rand_int_range(1,64);
+  int const add_count = testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
     return Reedkiln_SKIP;
@@ -183,5 +183,5 @@ int test_hashchain_find(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_hashchain, argc, argv, NULL);
+  return reedkiln_main(tests_hashchain, argc, argv, NULL);
 }

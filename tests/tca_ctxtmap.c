@@ -219,5 +219,5 @@ int test_ctxtmap_modes(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_ctxtmap, argc, argv, NULL);
+  return reedkiln_main(tests_ctxtmap, argc, argv, NULL);
 }

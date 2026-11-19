@@ -20,7 +20,8 @@ target_include_directories(tcmplx_access_testfont
 
 #BEGIN OffTable test
   add_executable(tcmplx_access_test_offtable tca_offtable.c)
-  target_link_libraries(tcmplx_access_test_offtable reedkiln tcmplx_access)
+  target_link_libraries(tcmplx_access_test_offtable
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   OffTable test
 
 #BEGIN Woff2 test
@@ -71,17 +72,20 @@ target_include_directories(tcmplx_access_testfont
 
 #BEGIN ZUtil test
   add_executable(tcmplx_access_test_zutil tca_zutil.c)
-  target_link_libraries(tcmplx_access_test_zutil reedkiln tcmplx_access)
+  target_link_libraries(tcmplx_access_test_zutil
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   ZUtil test
 
 #BEGIN RingSlide test
   add_executable(tcmplx_access_test_ringslide tca_ringslide.c)
-  target_link_libraries(tcmplx_access_test_ringslide reedkiln tcmplx_access)
+  target_link_libraries(tcmplx_access_test_ringslide
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   RingSlide test
 
 #BEGIN HashChain test
   add_executable(tcmplx_access_test_hashchain tca_hashchain.c)
-  target_link_libraries(tcmplx_access_test_hashchain reedkiln tcmplx_access)
+  target_link_libraries(tcmplx_access_test_hashchain
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   HashChain test
 
 #BEGIN BlockBuf test
@@ -104,7 +108,8 @@ target_include_directories(tcmplx_access_testfont
 
 #BEGIN BrCvt test
   add_executable(tcmplx_access_test_brcvt tca_brcvt.c)
-  target_link_libraries(tcmplx_access_test_brcvt reedkiln tcmplx_access)
+  target_link_libraries(tcmplx_access_test_brcvt
+    tcmplx_access_testfont reedkiln tcmplx_access)
 #END   BrCvt test
 
 #BEGIN CtxtSpan test

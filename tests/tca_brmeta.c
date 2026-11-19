@@ -38,7 +38,7 @@ int test_brmeta_cycle(void* data)
 }
 
 void* test_brmeta_setup(void* user_data) {
-  return tcmplxA_brmeta_new((size_t)munit_rand_int_range(0,16));
+  return tcmplxA_brmeta_new(testfont_rand_size_range(0,16));
 }
 
 void test_brmeta_teardown(void* fixture) {
@@ -77,5 +77,5 @@ int test_brmeta_item(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_brmeta, argc, argv, NULL);
+  return reedkiln_main(tests_brmeta, argc, argv, NULL);
 }

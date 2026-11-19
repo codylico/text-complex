@@ -40,8 +40,8 @@ int test_blockbuf_cycle(void* data)
   struct tcmplxA_blockbuf* ptr[1];
   unsigned const block_size = testfont_rand_uint_range(1u,128u);
   unsigned const window_size = testfont_rand_uint_range(128u,512u);
-  size_t const chain_length = (size_t)testfont_rand_int_range(1u,32u);
-  int const bdict_tf = munit_rand_int_range(0,1);
+  size_t const chain_length = testfont_rand_size_range(1u,32u);
+  int const bdict_tf = testfont_rand_int_range(0,1);
   (void)data;
   ptr[0] = tcmplxA_blockbuf_new
     (block_size, window_size, chain_length, bdict_tf);
@@ -240,7 +240,7 @@ int test_blockbuf_bypass(void* data)
 int test_blockbuf_add(void* data)
 {
   struct tcmplxA_blockbuf* const p = (struct tcmplxA_blockbuf*)data;
-  int const add_count = munit_rand_int_range(1,64);
+  int const add_count = testfont_rand_int_range(1,64);
   unsigned char buf[64];
   if (p == NULL)
     return Reedkiln_SKIP;
@@ -264,5 +264,5 @@ int test_blockbuf_add(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_blockbuf, argc, argv, NULL);
+  return reedkiln_main(tests_blockbuf, argc, argv, NULL);
 }

@@ -1,4 +1,5 @@
 
+#include "testfont.h"
 #include "text-complex/access/offtable.h"
 #include "reedkiln/reedkiln.h"
 #include <stdio.h>
@@ -69,5 +70,5 @@ int test_offtable_item(void* data)
 
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_offtable, argc, argv, NULL);
+  return reedkiln_main(tests_offtable, argc, argv, NULL);
 }

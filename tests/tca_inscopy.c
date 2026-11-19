@@ -89,8 +89,8 @@ int test_inscopy_item(void* data)
     return Reedkiln_SKIP;
   /* consistency check */{
     size_t const i = testfont_rand_size_range(0,tcmplxA_inscopy_size(p));
-    munit_assert_ptr_equal
-      (tcmplxA_inscopy_at(p, i), tcmplxA_inscopy_at_c(p, i));
+    reedkiln_assert
+      (tcmplxA_inscopy_at(p, i) == tcmplxA_inscopy_at_c(p, i));
   }
   switch (tcmplxA_inscopy_size(p)) {
   case 286: /* Deflate */
@@ -289,7 +289,7 @@ int test_inscopy_encode(void* data)
   case 704: /* Brotli insert-copy pairs */{
       unsigned long int const ins_len = test_inscopy_rand_length25();
       unsigned long int const cpy_len = test_inscopy_rand_length25();
-      int const zero_dist = (munit_rand_int_range(0,1) != 0);
+      int const zero_dist = (testfont_rand_int_range(0,1) != 0);
       int const expect_success =
         (ins_len <= 16799809ul && cpy_len >= 2 && cpy_len <= 16779333ul);
       size_t encode_index =
@@ -341,9 +341,9 @@ int test_inscopy_encode(void* data)
             "Encode (copy: %lu) properly rejected.", cpy_len);
         }
       } else {
-        reedkiln_log_printf("Table row %u selected for "
-          "%s configuration (copy: %lu).",
-          encode_index, (expect_success?"valid":"impossible"), cpy_len);
+        reedkiln_log_printf("Table row %i selected for "
+          "%s configuration (copy: %li).",
+          (int)encode_index, (expect_success?"valid":"impossible"), (long)cpy_len);
         reedkiln_fail();
       }
     }break;
@@ -365,9 +365,9 @@ int test_inscopy_encode(void* data)
             "Encode (block-count: %lu) properly rejected.", block_len);
         }
       } else {
-        reedkiln_log_printf("Table row %u selected for "
-          "%s configuration (block-count: %lu).",
-          encode_index, (expect_success?"valid":"impossible"), block_len);
+        reedkiln_log_printf("Table row %i selected for "
+          "%s configuration (block-count: %li).",
+          (int)encode_index, (expect_success?"valid":"impossible"), (long)block_len);
         reedkiln_fail();
       }
     }break;
@@ -376,5 +376,5 @@ int test_inscopy_encode(void* data)
 }
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_inscopy, argc, argv, NULL);
+  return reedkiln_main(tests_inscopy, argc, argv, NULL);
 }

@@ -1,4 +1,5 @@
 
+#include "testfont.h"
 #include "text-complex/access/zutil.h"
 #include "reedkiln/reedkiln.h"
 #include <stdlib.h>
@@ -37,7 +38,7 @@ unsigned long int test_adler32(unsigned char* b, size_t n) {
 int test_zutil_adler32(void* data)
 {
   unsigned char buf[256];
-  size_t const len = munit_rand_int_range(0,256);
+  size_t const len = testfont_rand_size_range(0,256);
   unsigned long int checksums[2];
   (void)data;
   reedkiln_memrand(buf, len);
@@ -75,5 +76,5 @@ int test_zutil_adler32_long(void* data)
 }
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_zutil, argc, argv, NULL);
+  return reedkiln_main(tests_zutil, argc, argv, NULL);
 }

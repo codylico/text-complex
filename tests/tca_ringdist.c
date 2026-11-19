@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
   struct tcmplxAtest_arg tfa = {NULL};
   int res = 0;
   tcmplxAtest_arg_init(&tfa);
-  res = testfont_do_main(&tests_ringdist, &tfa, argc, argv);
+  res = testfont_do_main(tests_ringdist, &tfa, argc, argv);
   tcmplxAtest_arg_close(&tfa);
   return res;
 }

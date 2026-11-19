@@ -26,5 +26,5 @@ int test_util_alloc(void* data)
 }
 
 int main(int argc, char **argv) {
-  return reedkiln_main(&tests_util, argc, argv, NULL);
+  return reedkiln_main(tests_util, argc, argv, NULL);
 }
