@@ -11,17 +11,20 @@ target_include_directories(tcmplx_access_testfont
 #BEGIN API test
   add_executable(tcmplx_access_test_api tca_api.c)
   target_link_libraries(tcmplx_access_test_api tcmplx_access)
+  add_test(NAME tcmplx_access::test_api COMMAND tcmplx_access_test_api)
 #END   API test
 
 #BEGIN Util test
   add_executable(tcmplx_access_test_util tca_util.c)
   target_link_libraries(tcmplx_access_test_util reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_util COMMAND tcmplx_access_test_util)
 #END   Util test
 
 #BEGIN OffTable test
   add_executable(tcmplx_access_test_offtable tca_offtable.c)
   target_link_libraries(tcmplx_access_test_offtable
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_offtable COMMAND tcmplx_access_test_offtable)
 #END   OffTable test
 
 #BEGIN Woff2 test
@@ -30,6 +33,7 @@ target_include_directories(tcmplx_access_testfont
     tcmplx_access_testfont reedkiln tcmplx_access)
   target_include_directories(tcmplx_access_test_woff2
     PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../deps>")
+  add_test(NAME tcmplx_access::test_woff2 COMMAND tcmplx_access_test_woff2)
 #END   Woff2 test
 
 #BEGIN Seq test
@@ -38,89 +42,104 @@ target_include_directories(tcmplx_access_testfont
     tcmplx_access_testfont reedkiln tcmplx_access mmaptwo)
   target_include_directories(tcmplx_access_test_seq
     PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../deps>")
+  add_test(NAME tcmplx_access::test_seq COMMAND tcmplx_access_test_seq)
 #END   Seq test
 
 #BEGIN FixList test
   add_executable(tcmplx_access_test_fixlist tca_fixlist.c)
   target_link_libraries(tcmplx_access_test_fixlist
     tcmplx_access_testfont reedkiln tcmplx_access mmaptwo)
+  add_test(NAME tcmplx_access::test_fixlist COMMAND tcmplx_access_test_fixlist)
 #END   FixList test
 
 #BEGIN RingDist test
   add_executable(tcmplx_access_test_ringdist tca_ringdist.c)
   target_link_libraries(tcmplx_access_test_ringdist
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_ringdist COMMAND tcmplx_access_test_ringdist)
 #END   RingDist test
 
 #BEGIN InsCopy test
   add_executable(tcmplx_access_test_inscopy tca_inscopy.c)
   target_link_libraries(tcmplx_access_test_inscopy
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_inscopy COMMAND tcmplx_access_test_inscopy)
 #END   InsCopy test
 
 #BEGIN CtxtMap test
   add_executable(tcmplx_access_test_ctxtmap tca_ctxtmap.c)
   target_link_libraries(tcmplx_access_test_ctxtmap
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_ctxtmap COMMAND tcmplx_access_test_ctxtmap)
 #END   CtxtMap test
 
 #BEGIN BDict test
   add_executable(tcmplx_access_test_bdict tca_bdict.c)
   target_link_libraries(tcmplx_access_test_bdict
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_bdict COMMAND tcmplx_access_test_bdict)
 #END   BDict test
 
 #BEGIN ZUtil test
   add_executable(tcmplx_access_test_zutil tca_zutil.c)
   target_link_libraries(tcmplx_access_test_zutil
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_zutil COMMAND tcmplx_access_test_zutil)
 #END   ZUtil test
 
 #BEGIN RingSlide test
   add_executable(tcmplx_access_test_ringslide tca_ringslide.c)
   target_link_libraries(tcmplx_access_test_ringslide
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_ringslide COMMAND tcmplx_access_test_ringslide)
 #END   RingSlide test
 
 #BEGIN HashChain test
   add_executable(tcmplx_access_test_hashchain tca_hashchain.c)
   target_link_libraries(tcmplx_access_test_hashchain
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_hashchain COMMAND tcmplx_access_test_hashchain)
 #END   HashChain test
 
 #BEGIN BlockBuf test
   add_executable(tcmplx_access_test_blockbuf tca_blockbuf.c)
   target_link_libraries(tcmplx_access_test_blockbuf
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_blockbuf COMMAND tcmplx_access_test_blockbuf)
 #END   BlockBuf test
 
 #BEGIN ZCvt test
   add_executable(tcmplx_access_test_zcvt tca_zcvt.c)
   target_link_libraries(tcmplx_access_test_zcvt
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_zcvt COMMAND tcmplx_access_test_zcvt)
 #END   ZCvt test
 
 #BEGIN BrMeta test
   add_executable(tcmplx_access_test_brmeta tca_brmeta.c)
   target_link_libraries(tcmplx_access_test_brmeta
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_brmeta COMMAND tcmplx_access_test_brmeta)
 #END   BrMeta test
 
 #BEGIN BrCvt test
   add_executable(tcmplx_access_test_brcvt tca_brcvt.c)
   target_link_libraries(tcmplx_access_test_brcvt
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_brcvt COMMAND tcmplx_access_test_brcvt)
 #END   BrCvt test
 
 #BEGIN CtxtSpan test
   add_executable(tcmplx_access_test_ctxtspan tca_ctxtspan.c)
   target_link_libraries(tcmplx_access_test_ctxtspan
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_ctxtspan COMMAND tcmplx_access_test_ctxtspan)
 #END   CtxtSpan test
 
 #BEGIN GaspVec test
   add_executable(tcmplx_access_test_gaspvec tca_gaspvec.c)
   target_link_libraries(tcmplx_access_test_gaspvec
     tcmplx_access_testfont reedkiln tcmplx_access)
+  add_test(NAME tcmplx_access::test_gaspvec COMMAND tcmplx_access_test_gaspvec)
 #END   GaspVec test
 endif (TCMPLX_ACCESS_BUILD_TESTS)
