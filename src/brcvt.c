@@ -1474,12 +1474,13 @@ static int tcmplxA_brcvt_zsrtostr_bits
       }
       if (ps->count >= ps->bit_length) {
         tcmplxA_brcvt_countbits(ps->backward, ps->count, "MSKIPLEN %lu", ps->backward+1UL);
-        if (!(ps->backward>>(ps->count-8)))
+        if (ps->backward > 0 && !(ps->backward>>(ps->count-8)))
           ae = tcmplxA_ErrSanitize;
         ps->count = 0;
         ps->metablock_pos = 0;
         ps->backward += 1;
         ps->state = tcmplxA_BrCvt_MetaText;
+        ps->bit_length = 0;
       }
       break;
     case tcmplxA_BrCvt_MetaText:
